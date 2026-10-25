@@ -101,4 +101,12 @@ fun Bike.withReading(km: Int, today: LocalDate): Bike {
 fun Bike.markDone(partId: String, km: Int, today: LocalDate) =
     copy(parts = parts.map { if (it.id == partId) it.copy(lastKm = km, lastDate = today.toString()) else it })
 
+/** A rider-set interval; at least one of [km] or [days] must be set. */
+fun Bike.withInterval(partId: String, km: Int?, days: Int?): Bike {
+    require(km != null || days != null)
+    return copy(parts = parts.map { if (it.id == partId) it.copy(km = km, days = days) else it })
+}
+
+fun Bike.suggested(partId: String): Part? = defaultParts(category, drive, cooling).firstOrNull { it.id == partId }
+
 fun fmtKm(n: Int): String = "%,d".format(java.util.Locale.ROOT, n).replace(',', '.')

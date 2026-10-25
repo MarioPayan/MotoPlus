@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.AppViewModel
 import com.kaze.motoplus.Tab
+import com.kaze.motoplus.domain.suggested
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,18 @@ fun App(vm: AppViewModel) {
         return
     }
     val bike = vm.bike!!
+    vm.editing?.let { id ->
+        bike.parts.firstOrNull { it.id == id }?.let { p ->
+            IntervalDialog(p, bike.suggested(id), onSave = { km, d -> vm.setInterval(id, km, d) }, onDismiss = { vm.editing = null })
+        }
+    }
+    if (vm.screen == com.kaze.motoplus.Screen.parts) {
+        Box(Modifier.fillMaxSize()) {
+            PartsScreen(vm, bike)
+            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+        }
+        return
+    }
     Scaffold(
         containerColor = shop.paper,
         snackbarHost = { SnackbarHost(snack) },
@@ -49,6 +62,7 @@ fun App(vm: AppViewModel) {
                                 DropdownMenuItem(text = { Text(b.title) }, onClick = { vm.select(b.id); open = false })
                             }
                             HorizontalDivider()
+                            DropdownMenuItem(text = { Text("Piezas y plazos") }, onClick = { vm.screen = com.kaze.motoplus.Screen.parts; open = false })
                             DropdownMenuItem(text = { Text("Añadir moto") }, onClick = { vm.adding = true; open = false })
                         }
                     }

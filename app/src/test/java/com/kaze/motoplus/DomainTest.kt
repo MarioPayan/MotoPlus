@@ -109,5 +109,13 @@ class DomainTest {
         assertNull(pickOdometer("sin números", 100.0))
     }
 
+    @Test fun customIntervalAndSuggestion() {
+        val b = bike(parts = defaultParts(Category.naked, Drive.chain, Cooling.liquid)).withInterval("aceite", 5000, null)
+        val p = b.parts.first { it.id == "aceite" }
+        assertEquals(5000, p.km); assertNull(p.days)
+        assertEquals(6000, b.suggested("aceite")!!.km)
+        assertNull(b.suggested("inventada"))
+    }
+
     @Test fun formatsKm() = assertEquals("12.473", fmtKm(12473))
 }

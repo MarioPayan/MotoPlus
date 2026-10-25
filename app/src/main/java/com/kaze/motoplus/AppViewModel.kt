@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { moto, km, informe }
+enum class Screen { main, parts }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val store = GarageStore(app)
@@ -25,6 +26,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var garage by mutableStateOf(store.load()); private set
     var catalog by mutableStateOf<Catalog?>(null); private set
     var tab by mutableStateOf(Tab.moto)
+    var screen by mutableStateOf(Screen.main)
+    var editing by mutableStateOf<String?>(null)
     var selectedZone by mutableStateOf<String?>(null)
     var highlighted by mutableStateOf<Set<String>>(emptySet())
     var adding by mutableStateOf(garage.bikes.isEmpty())
@@ -67,6 +70,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val km = estimate(b, today).km.toInt()
         updateBike { it.markDone(partId, km, today) }
         message = "Registrado a ${fmtKm(km)} km"
+    }
+
+    fun setInterval(partId: String, km: Int?, days: Int?) {
+        updateBike { it.withInterval(partId, km, days) }
+        editing = null
+        message = "Plazo actualizado"
     }
 
     fun saveReading(km: Int) {
