@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+@kotlinx.serialization.Serializable
 enum class Status { ok, warn, bad, none }
 
 data class PartState(val status: Status, val used: Double, val text: String)
@@ -99,7 +100,7 @@ fun Bike.withReading(km: Int, today: LocalDate): Bike {
 }
 
 fun Bike.markDone(partId: String, km: Int, today: LocalDate) =
-    copy(parts = parts.map { if (it.id == partId) it.copy(lastKm = km, lastDate = today.toString()) else it })
+    addRecord(ServiceRecord(java.util.UUID.randomUUID().toString(), partId, today.toString(), km))
 
 /** A rider-set interval; at least one of [km] or [days] must be set. */
 fun Bike.withInterval(partId: String, km: Int?, days: Int?): Bike {

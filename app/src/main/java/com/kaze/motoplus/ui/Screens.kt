@@ -36,8 +36,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val ES = Locale.forLanguageTag("es-ES")
-private fun prettyDate(iso: String) = LocalDate.parse(iso).format(DateTimeFormatter.ofPattern("d MMM yyyy", ES))
+internal val ES = Locale.forLanguageTag("es-ES")
+internal fun prettyDate(iso: String) = LocalDate.parse(iso).format(DateTimeFormatter.ofPattern("d MMM yyyy", ES))
 
 // ---------- Alta de moto ----------
 
@@ -143,7 +143,7 @@ fun MotoScreen(vm: AppViewModel, bike: Bike) {
                 Text(" / 100 salud", fontSize = 14.sp, color = shop.ink2, modifier = Modifier.weight(1f))
                 InfoButton { info = true }
             }
-            BikeCanvas(vm.drawing, zones, vm.selectedZone, vm.highlighted, onZone = {
+            BikeCanvas(vm.drawingFor(bike), zones, vm.selectedZone, vm.highlighted, onZone = {
                 vm.selectedZone = it; vm.highlighted = vm.highlighted - it
             })
             OutlinedButton({ vm.screen = Screen.parts }, Modifier.fillMaxWidth()) {
@@ -157,12 +157,12 @@ fun MotoScreen(vm: AppViewModel, bike: Bike) {
                     Box(Modifier.weight(1f)) { SectionTitle(ZONES.getValue(sel)) }
                     TextButton({ vm.selectedZone = null }) { Text("Cerrar") }
                 }
-                zones.getValue(sel).parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }) }
+                zones.getValue(sel).parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
                 if (zones.getValue(sel).parts.isEmpty()) Hint("No hay piezas de mantenimiento en esta zona para tu moto.")
             } else {
                 SectionTitle("Lo próximo")
                 bike.parts.map { it to partState(it, odo, today) }.sortedByDescending { it.second.used }.take(3)
-                    .forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }) }
+                    .forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
                 Hint("Toca una zona de la moto para ver sus piezas.")
             }
         }
@@ -201,13 +201,16 @@ private fun LegendDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun PartRow(p: Part, s: PartState, onDone: () -> Unit, onEdit: () -> Unit) {
+fun PartRow(p: Part, s: PartState, onDone: () -> Unit, onEdit: () -> Unit, onOpen: (() -> Unit)? = null) {
     val shop = LocalShop.current
     val c = shop.status(s.status)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         HorizontalDivider(color = shop.line)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(p.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Text(
+                if (onOpen != null) "${p.name}  ›" else p.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                modifier = Modifier.weight(1f).then(if (onOpen != null) Modifier.clickable(onClickLabel = "Ver historial", onClick = onOpen) else Modifier),
+            )
             Text(s.text, color = c, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
         }
         LinearProgressIndicator(
@@ -254,7 +257,7 @@ fun PartsScreen(vm: AppViewModel, bike: Bike) {
                         Box(Modifier.weight(1f)) { Pill(ZONES.getValue(z).uppercase(), shop.status(st.status)) }
                         TextButton({ vm.selectedZone = z; vm.screen = Screen.main }) { Text("Ver en la moto") }
                     }
-                    st.parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }) }
+                    st.parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }

@@ -49,3 +49,12 @@ fun defaultParts(category: Category, drive: Drive, cooling: Cooling): List<Part>
 
 fun defaultDrive(category: Category) = if (category == Category.scooter) Drive.cvt else Drive.chain
 fun defaultCooling(category: Category) = if (category == Category.offroad || category == Category.custom) Cooling.air else Cooling.liquid
+
+/** Which drawing a category uses. Ids must match assets/bike_<name>.json. */
+fun silhouette(c: Category) = when (c) {
+    Category.naked -> "naked"
+    Category.sport, Category.touring -> "sport"
+    Category.trail, Category.offroad -> "trail"
+    Category.custom -> "custom"
+    Category.scooter -> "scooter"
+}

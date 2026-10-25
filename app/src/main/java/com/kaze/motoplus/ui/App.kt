@@ -37,9 +37,15 @@ fun App(vm: AppViewModel) {
             IntervalDialog(p, bike.suggested(id), onSave = { km, d -> vm.setInterval(id, km, d) }, onDismiss = { vm.editing = null })
         }
     }
-    if (vm.screen == com.kaze.motoplus.Screen.parts) {
+    vm.recording?.let { RecordDialog(vm, bike, it) }
+    if (vm.editingBike) BikeDialog(vm, bike)
+    if (vm.screen != com.kaze.motoplus.Screen.main) {
         Box(Modifier.fillMaxSize()) {
-            PartsScreen(vm, bike)
+            when (vm.screen) {
+                com.kaze.motoplus.Screen.parts -> PartsScreen(vm, bike)
+                com.kaze.motoplus.Screen.part -> PartScreen(vm, bike, vm.openPart ?: "")
+                else -> HistoryScreen(vm, bike)
+            }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
         }
         return
@@ -63,6 +69,8 @@ fun App(vm: AppViewModel) {
                             }
                             HorizontalDivider()
                             DropdownMenuItem(text = { Text("Piezas y plazos") }, onClick = { vm.screen = com.kaze.motoplus.Screen.parts; open = false })
+                            DropdownMenuItem(text = { Text("Historial y gastos") }, onClick = { vm.screen = com.kaze.motoplus.Screen.history; open = false })
+                            DropdownMenuItem(text = { Text("Editar o borrar esta moto") }, onClick = { vm.editingBike = true; open = false })
                             DropdownMenuItem(text = { Text("Añadir moto") }, onClick = { vm.adding = true; open = false })
                         }
                     }

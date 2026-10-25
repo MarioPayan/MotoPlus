@@ -119,3 +119,31 @@ class DomainTest {
 
     @Test fun formatsKm() = assertEquals("12.473", fmtKm(12473))
 }
+
+class HistoryTest {
+    private val today = LocalDate.parse("2026-10-24")
+    private val base = Bike(
+        id = "b", brand = "Yamaha", model = "MT-07", category = Category.naked, drive = Drive.chain, cooling = Cooling.liquid,
+        parts = defaultParts(Category.naked, Drive.chain, Cooling.liquid), readings = listOf(Reading("2026-10-24", 12000)),
+    )
+
+    @Test fun lastDoneFollowsNewestRecord() {
+        var b = base.addRecord(ServiceRecord("1", "aceite", "2026-01-10", 8000, cost = 60.0))
+            .addRecord(ServiceRecord("2", "aceite", "2026-06-01", 10500, cost = 55.5))
+        assertEquals(10500, b.parts.first { it.id == "aceite" }.lastKm)
+        assertEquals(115.5, b.totalCost, 1e-9)
+        b = b.deleteRecord("2")
+        assertEquals("2026-01-10", b.parts.first { it.id == "aceite" }.lastDate)
+        b = b.updateRecord(ServiceRecord("1", "aceite", "2026-02-10", 8100))
+        assertEquals(8100, b.parts.first { it.id == "aceite" }.lastKm)
+        b = b.deleteRecord("1")
+        assertNull(b.parts.first { it.id == "aceite" }.lastKm)
+        assertEquals(Status.none, partState(b.parts.first { it.id == "aceite" }, 12000.0, today).status)
+    }
+
+    @Test fun markDoneAddsRecord() {
+        val b = base.markDone("cadena_engrase", 12000, today)
+        assertEquals(1, b.recordsFor("cadena_engrase").size)
+        assertEquals(12000, b.parts.first { it.id == "cadena_engrase" }.lastKm)
+    }
+}

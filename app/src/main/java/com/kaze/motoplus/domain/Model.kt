@@ -65,6 +65,9 @@ data class Bike(
     val rides: List<Ride> = emptyList(),
     val gpsFactor: Double = 1.0,
     val reports: List<SavedReport> = emptyList(),
+    val history: List<ServiceRecord> = emptyList(),
+    /** Last status we notified per part, so a reminder fires once per change. */
+    val notified: Map<String, Status> = emptyMap(),
 ) {
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }
