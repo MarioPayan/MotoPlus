@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,16 +35,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-fun money(v: Double): String = NumberFormat.getCurrencyInstance().format(v)
-
-@Composable
-private fun Header(title: String, onBack: () -> Unit) {
-    BackHandler(onBack = onBack)
-    Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onBack) { Text("‹ Volver") }
-        Text(title.uppercase(), style = Display.copy(fontSize = 22.sp), color = LocalShop.current.ink, maxLines = 1)
-    }
-}
+fun money(v: Double): String = NumberFormat.getCurrencyInstance().apply { if (v % 1.0 == 0.0) maximumFractionDigits = 0 }.format(v)
 
 /** One part: its state, its interval and every time it was done. */
 @Composable
@@ -52,13 +45,13 @@ fun PartScreen(vm: AppViewModel, bike: Bike, partId: String) {
     val state = partState(part, estimate(bike, vm.today).km, vm.today)
     val records = bike.recordsFor(partId)
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header(part.name) { vm.screen = Screen.parts }
+        Header(part.name, { vm.screen = vm.back })
         LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Sheet {
-                    Pill(zoneLabel(part.zone).uppercase(), shop.status(state.status))
-                    PartRow(part, state, { vm.markDone(part.id) }, { vm.editing = part.id })
-                    OutlinedButton({ vm.newRecord(part.id) }, Modifier.fillMaxWidth()) { Text("Registrar con fecha, coste o factura") }
+                    Cap(zoneLabel(part.zone), shop.status(state.status))
+                    PartRow(vm, part, state, showInterval = true)
+                    Btn("Registrar con fecha, coste o factura", { vm.newRecord(part.id) }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
                 }
             }
             item {
@@ -82,12 +75,12 @@ fun HistoryScreen(vm: AppViewModel, bike: Bike) {
     val records = bike.history.sortedWith(compareByDescending<ServiceRecord> { it.date }.thenByDescending { it.km })
     val names = bike.parts.associate { it.id to it.name }
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header("Historial y gastos") { vm.screen = Screen.main }
+        Header("Historial y gastos", { vm.screen = Screen.main })
         LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Sheet {
-                    Hint("GASTADO EN ${bike.title.uppercase()}")
-                    Text(money(bike.totalCost), style = Display.copy(fontSize = 34.sp), color = shop.ink)
+                    Cap("Gastado en ${bike.title}")
+                    Text(money(bike.totalCost), style = Mono.copy(fontSize = 32.sp, fontWeight = FontWeight.SemiBold), color = shop.ink)
                     Hint("${records.size} ${if (records.size == 1) "registro" else "registros"} · ${records.count { it.photo != null }} con factura")
                 }
             }
@@ -186,7 +179,7 @@ fun BikeDialog(vm: AppViewModel, bike: Bike) {
     var confirmDelete by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = { vm.editingBike = false },
-        title = { Text("Editar moto") },
+        title = { Text("EDITAR MOTO") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(brand, { brand = it }, Modifier.fillMaxWidth(), label = { Text("Marca") }, singleLine = true)
@@ -194,6 +187,18 @@ fun BikeDialog(vm: AppViewModel, bike: Bike) {
                 OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text("Año") },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 Hint("${bike.category.label} · ${bike.drive.label} · refrigeración ${bike.cooling.label.lowercase()}")
+                Cap("Color de esta moto")
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Accent.entries.forEach { ac ->
+                        val on = ac == bike.accent
+                        Box(
+                            Modifier.size(32.dp).then(if (on) Modifier.border(2.dp, shop.ink, CircleShape).padding(4.dp) else Modifier)
+                                .background(ac.color(shop.dark), CircleShape).border(1.dp, shop.line, CircleShape)
+                                .clickable(onClickLabel = ac.label) { vm.setAccent(ac) },
+                        )
+                    }
+                }
+                Hint(bike.accent.label)
                 if (!confirmDelete) TextButton({ confirmDelete = true }, contentPadding = PaddingValues(0.dp)) { Text("Borrar esta moto", color = shop.bad) }
                 else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Hint("Se borran su historial, lecturas, informes y fotos. No se puede deshacer.", shop.bad)

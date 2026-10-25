@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, report }
-enum class Screen { main, parts, part, history }
+enum class Screen { main, parts, part, history, zone }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -43,6 +43,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var editingBike by mutableStateOf(false)
     var pendingImport by mutableStateOf("")
     var message by mutableStateOf<String?>(null)
+    /** Zone that just had something marked done, plus a counter so the same zone can flash twice. */
+    var flash by mutableStateOf<Pair<String, Int>?>(null); private set
+    /** Where the part screen goes back to. */
+    var back by mutableStateOf(Screen.main); private set
 
     val today: LocalDate get() = LocalDate.now()
     val bike get() = garage.selected
@@ -88,6 +92,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val b = bike ?: return
         val km = estimate(b, today).km.toInt()
         updateBike { it.markDone(partId, km, today) }
+        b.parts.firstOrNull { it.id == partId }?.let { flash = it.zone to ((flash?.second ?: 0) + 1) }
         message = "Registrado a ${fmtKm(km)} km"
     }
 
@@ -158,7 +163,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun showZones(zones: Set<String>) {
-        highlighted = zones; selectedZone = zones.firstOrNull(); tab = Tab.bike; screen = Screen.main
+        highlighted = zones; selectedZone = null; tab = Tab.bike; screen = Screen.main
     }
 
     fun setTracking(enabled: Boolean) {
@@ -168,7 +173,16 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun setTrackedDevices(devices: Map<String, String>) = Repo.update { it.copy(tracking = it.tracking.copy(devices = devices)) }
 
-    fun openPart(id: String) { openPart = id; screen = Screen.part }
+    fun openPart(id: String) { back = if (screen == Screen.part) back else screen; openPart = id; screen = Screen.part }
+
+    fun openZone(z: String) { selectedZone = z; highlighted = highlighted - z; screen = Screen.zone }
+
+    fun resetIntervals() {
+        updateBike { b -> b.copy(parts = b.parts.map { p -> b.suggested(p.id)?.let { p.copy(km = it.km, days = it.days) } ?: p }) }
+        message = "Plazos restablecidos"
+    }
+
+    fun setAccent(a: Accent) = updateBike { it.copy(accent = a) }
 }
 
 data class RecordDraft(val id: String?, val partId: String, val date: String, val km: String, val cost: String, val notes: String, val photo: String?)

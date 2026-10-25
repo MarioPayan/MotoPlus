@@ -23,6 +23,10 @@ enum class Drive { chain, belt, shaft, cvt }
 @Serializable
 enum class Cooling { liquid, air }
 
+/** The rider's colour for a bike. None of them is green, amber or red: those belong to part status. */
+@Serializable
+enum class Accent { cyan, violet, magenta, chalk }
+
 /** A maintenance item. Interval by distance, by time, or both: whichever comes first. */
 @Serializable
 data class Part(
@@ -75,6 +79,7 @@ data class Bike(
     val history: List<ServiceRecord> = emptyList(),
     /** Last status we notified per part, so a reminder fires once per change. */
     val notified: Map<String, Status> = emptyMap(),
+    val accent: Accent = Accent.cyan,
 ) {
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }

@@ -1,6 +1,5 @@
 package com.kaze.motoplus.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,17 +9,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.AppViewModel
+import com.kaze.motoplus.Screen
 import com.kaze.motoplus.Tab
+import com.kaze.motoplus.domain.Bike
+import com.kaze.motoplus.domain.EstimateBasis
+import com.kaze.motoplus.domain.estimate
+import com.kaze.motoplus.domain.fmtKm
 import com.kaze.motoplus.domain.suggested
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val TABS = listOf(Tab.bike to ("MOTO" to "gauge"), Tab.km to ("KM" to "route"), Tab.report to ("IA" to "bulb"))
+
 @Composable
 fun App(vm: AppViewModel) {
     val shop = LocalShop.current
@@ -39,60 +42,32 @@ fun App(vm: AppViewModel) {
     }
     vm.recording?.let { RecordDialog(vm, bike, it) }
     if (vm.editingBike) BikeDialog(vm, bike)
-    if (vm.screen != com.kaze.motoplus.Screen.main) {
-        Box(Modifier.fillMaxSize()) {
+    if (vm.screen != Screen.main) {
+        Box(Modifier.fillMaxSize().background(shop.paper)) {
             when (vm.screen) {
-                com.kaze.motoplus.Screen.parts -> PartsScreen(vm, bike)
-                com.kaze.motoplus.Screen.part -> PartScreen(vm, bike, vm.openPart ?: "")
+                Screen.parts -> PartsScreen(vm, bike)
+                Screen.part -> PartScreen(vm, bike, vm.openPart ?: "")
+                Screen.zone -> ZoneScreen(vm, bike, vm.selectedZone ?: "engine")
                 else -> HistoryScreen(vm, bike)
             }
-            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }
         }
         return
     }
     Scaffold(
         containerColor = shop.paper,
-        snackbarHost = { SnackbarHost(snack) },
-        topBar = {
-            var open by remember { mutableStateOf(false) }
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = shop.paper),
-                title = {
-                    Box {
-                        Column(Modifier.clickable { open = true }) {
-                            Text("MI MOTO ▾", style = Display.copy(fontSize = 24.sp), color = shop.ink)
-                            Text(bike.title, fontSize = 12.sp, color = shop.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        DropdownMenu(open, onDismissRequest = { open = false }) {
-                            vm.garage.bikes.forEach { b ->
-                                DropdownMenuItem(text = { Text(b.title) }, onClick = { vm.select(b.id); open = false })
-                            }
-                            HorizontalDivider()
-                            DropdownMenuItem(text = { Text("Piezas y plazos") }, onClick = { vm.screen = com.kaze.motoplus.Screen.parts; open = false })
-                            DropdownMenuItem(text = { Text("Historial y gastos") }, onClick = { vm.screen = com.kaze.motoplus.Screen.history; open = false })
-                            DropdownMenuItem(text = { Text("Editar o borrar esta moto") }, onClick = { vm.editingBike = true; open = false })
-                            DropdownMenuItem(text = { Text("Añadir moto") }, onClick = { vm.adding = true; open = false })
-                        }
-                    }
-                },
-                actions = {
-                    val est = com.kaze.motoplus.domain.estimate(bike, vm.today)
-                    Text(
-                        "~${com.kaze.motoplus.domain.fmtKm(est.km.toInt())} km",
-                        style = Mono.copy(fontSize = 12.sp), color = shop.paper,
-                        modifier = Modifier.padding(end = 12.dp).background(shop.ink, RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                },
-            )
-        },
+        snackbarHost = { SnackbarHost(snack) { ShopSnackbar(it) } },
+        topBar = { TopBar(vm, bike) },
         bottomBar = {
-            NavigationBar(containerColor = shop.sheet) {
-                listOf(Tab.bike to "MOTO", Tab.km to "KM", Tab.report to "INFORME IA").forEach { (t, label) ->
+            NavigationBar(containerColor = shop.sheet, tonalElevation = 0.dp, modifier = Modifier.border(width = 0.5.dp, color = shop.line)) {
+                TABS.forEach { (t, l) ->
+                    val (label, icon) = l
+                    val on = vm.tab == t
                     NavigationBarItem(
-                        selected = vm.tab == t, onClick = { vm.tab = t },
-                        icon = { TabIcon(t, if (vm.tab == t) shop.accent else shop.ink2) },
-                        label = { Text(label, style = Display.copy(fontSize = 13.sp)) },
-                        colors = NavigationBarItemDefaults.colors(selectedTextColor = shop.accent, indicatorColor = shop.accent.copy(alpha = 0.12f)),
+                        selected = on, onClick = { vm.tab = t },
+                        icon = { Icon(icon, if (on) shop.accent else shop.ink2, 22.dp) },
+                        label = { Text(label, style = Caption.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold)) },
+                        colors = NavigationBarItemDefaults.colors(selectedTextColor = shop.accent, unselectedTextColor = shop.ink2, indicatorColor = shop.accent.copy(alpha = 0.16f)),
                     )
                 }
             }
@@ -108,61 +83,50 @@ fun App(vm: AppViewModel) {
     }
 }
 
+/** "MI MOTO ▾" with the garage menu, and the odometer box. */
 @Composable
-private fun TabIcon(t: Tab, c: Color) = Canvas(Modifier.size(24.dp)) {
-    val s = Stroke(2.dp.toPx())
-    val w = size.width
-    when (t) {
-        Tab.bike -> {
-            drawCircle(c, w * .17f, Offset(w * .22f, w * .66f), style = s)
-            drawCircle(c, w * .17f, Offset(w * .78f, w * .66f), style = s)
-            drawLine(c, Offset(w * .22f, w * .66f), Offset(w * .42f, w * .4f), s.width)
-            drawLine(c, Offset(w * .42f, w * .4f), Offset(w * .62f, w * .4f), s.width)
-            drawLine(c, Offset(w * .62f, w * .4f), Offset(w * .78f, w * .66f), s.width)
-            drawLine(c, Offset(w * .62f, w * .4f), Offset(w * .7f, w * .2f), s.width)
-        }
-        Tab.km -> {
-            drawArc(c, 180f, 180f, false, Offset(w * .1f, w * .25f), androidx.compose.ui.geometry.Size(w * .8f, w * .8f), style = s)
-            drawLine(c, Offset(w * .5f, w * .65f), Offset(w * .7f, w * .42f), s.width)
-        }
-        Tab.report -> {
-            drawRoundRect(c, Offset(w * .12f, w * .18f), androidx.compose.ui.geometry.Size(w * .76f, w * .52f), androidx.compose.ui.geometry.CornerRadius(3f), style = s)
-            drawLine(c, Offset(w * .3f, w * .7f), Offset(w * .2f, w * .88f), s.width)
-            drawLine(c, Offset(w * .3f, w * .38f), Offset(w * .7f, w * .38f), s.width)
-            drawLine(c, Offset(w * .3f, w * .52f), Offset(w * .55f, w * .52f), s.width)
-        }
-    }
-}
-
-/** A plain section card with the shop's hairline border. */
-@Composable
-fun Sheet(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun TopBar(vm: AppViewModel, bike: Bike) {
     val shop = LocalShop.current
-    Column(
-        modifier.fillMaxWidth().background(shop.sheet, RoundedCornerShape(14.dp)).border(1.dp, shop.line, RoundedCornerShape(14.dp)).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        content = content,
-    )
-}
-
-@Composable
-fun SectionTitle(text: String) = Text(text.uppercase(), style = Display.copy(fontSize = 19.sp), color = LocalShop.current.ink)
-
-@Composable
-fun Hint(text: String, color: Color = LocalShop.current.ink2) = Text(text, fontSize = 12.sp, color = color)
-
-@Composable
-fun ChoiceRow(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        options.forEach { (k, label) ->
-            FilterChip(selected = k == selected, onClick = { onPick(k) }, label = { Text(label) })
+    var open by remember { mutableStateOf(false) }
+    val est = estimate(bike, vm.today)
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 18.dp, end = 14.dp, top = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.weight(1f)) {
+            Column(Modifier.clickable(onClickLabel = "Cambiar de moto y más opciones") { open = true }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("MI MOTO", style = Display.copy(fontSize = 21.sp), color = shop.ink)
+                    Text(" ▾", fontSize = 13.sp, color = shop.ink2)
+                }
+                Text(bike.title, fontSize = 12.sp, color = shop.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            DropdownMenu(open, onDismissRequest = { open = false }, containerColor = shop.sheet2) {
+                vm.garage.bikes.forEach { b ->
+                    DropdownMenuItem(text = { Text(b.title, fontWeight = if (b.id == bike.id) FontWeight.SemiBold else FontWeight.Normal) }, onClick = { vm.select(b.id); open = false },
+                        leadingIcon = { Box(Modifier.size(10.dp).background(b.accent.color(shop.dark), RoundedCornerShape(5.dp))) })
+                }
+                HorizontalDivider(color = shop.line)
+                MenuItem("wrench", "Plazos de todas las piezas") { vm.screen = Screen.parts; open = false }
+                MenuItem("history", "Historial y gastos") { vm.screen = Screen.history; open = false }
+                MenuItem("edit", "Editar esta moto") { vm.editingBike = true; open = false }
+                MenuItem("plus", "Añadir moto") { vm.adding = true; open = false }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Row(
+                Modifier.background(shop.sheet, RoundedCornerShape(6.dp)).border(1.dp, shop.line, RoundedCornerShape(6.dp)).padding(horizontal = 9.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(fmtKm(est.km.toInt()), style = Mono.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold), color = shop.ink)
+                Text(" KM", style = Mono.copy(fontSize = 10.sp), color = shop.ink2, modifier = Modifier.padding(bottom = 2.dp))
+            }
+            val exact = est.basis == EstimateBasis.todayReading
+            Text(if (exact) "LEÍDO HOY" else "≈ ESTIMADO", style = Caption.copy(fontSize = 9.sp), color = if (exact) shop.ok else shop.ink2, modifier = Modifier.padding(top = 3.dp))
         }
     }
 }
 
 @Composable
-fun Pill(text: String, color: Color) = Row(verticalAlignment = Alignment.CenterVertically) {
-    Box(Modifier.size(8.dp).background(color, RoundedCornerShape(4.dp)))
-    Spacer(Modifier.width(6.dp))
-    Text(text, fontSize = 12.sp)
+private fun ShopSnackbar(d: SnackbarData) {
+    val shop = LocalShop.current
+    Snackbar(d, shape = RoundedCornerShape(6.dp), containerColor = shop.sheet2, contentColor = shop.ink, actionColor = shop.accent,
+        modifier = Modifier.padding(12.dp))
 }

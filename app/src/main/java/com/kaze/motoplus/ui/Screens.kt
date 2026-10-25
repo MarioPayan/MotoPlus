@@ -131,144 +131,6 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
     }
 }
 
-// ---------- Moto ----------
-
-@Composable
-fun BikeScreen(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
-    val today = vm.today
-    val odo = estimate(bike, today).km
-    val zones = zoneStates(bike, odo, today)
-    var info by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Sheet {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${health(bike, odo, today)}", style = Display.copy(fontSize = 34.sp), color = shop.ink)
-                Text(" / 100 salud", fontSize = 14.sp, color = shop.ink2, modifier = Modifier.weight(1f))
-                InfoButton { info = true }
-            }
-            BikeCanvas(vm.drawingFor(bike), zones, vm.selectedZone, vm.highlighted, onZone = {
-                vm.selectedZone = it; vm.highlighted = vm.highlighted - it
-            })
-            OutlinedButton({ vm.screen = Screen.parts }, Modifier.fillMaxWidth()) {
-                Text("Ver todas las piezas (${bike.parts.size})")
-            }
-        }
-        val sel = vm.selectedZone
-        Sheet {
-            if (sel != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { SectionTitle(zoneLabel(sel)) }
-                    TextButton({ vm.selectedZone = null }) { Text("Cerrar") }
-                }
-                zones.getValue(sel).parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
-                if (zones.getValue(sel).parts.isEmpty()) Hint("No hay piezas de mantenimiento en esta zona para tu moto.")
-            } else {
-                SectionTitle("Lo próximo")
-                bike.parts.map { it to partState(it, odo, today) }.sortedByDescending { it.second.used }.take(3)
-                    .forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
-                Hint("Toca una zona de la moto para ver sus piezas.")
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-    }
-    if (info) LegendDialog { info = false }
-}
-
-@Composable
-private fun InfoButton(onClick: () -> Unit) {
-    val shop = LocalShop.current
-    Box(
-        Modifier.size(32.dp).clickable(onClickLabel = "Cómo leer los colores", onClick = onClick).padding(4.dp)
-            .border(1.5.dp, shop.ink2, androidx.compose.foundation.shape.CircleShape),
-        contentAlignment = Alignment.Center,
-    ) { Text("i", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = shop.ink2) }
-}
-
-@Composable
-private fun LegendDialog(onDismiss: () -> Unit) {
-    val shop = LocalShop.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onDismiss) { Text("Entendido") } },
-        title = { Text("Cómo leer la moto") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Pill("Verde: le queda más de una cuarta parte del plazo.", shop.ok)
-                Pill("Ámbar: le queda menos de una cuarta parte. Ve planeándolo.", shop.warn)
-                Pill("Rojo: plazo vencido o nunca registrado. Las zonas vencidas laten.", shop.bad)
-                Pill("Naranja que late: zona señalada por tu último informe de la IA.", shop.accent)
-                Text("Cada zona toma el color de su pieza más urgente. Cada plazo cuenta por kilómetros o por tiempo, lo que llegue antes, y los puedes cambiar en Piezas y plazos.", fontSize = 13.sp, color = shop.ink2)
-            }
-        },
-    )
-}
-
-@Composable
-fun PartRow(p: Part, s: PartState, onDone: () -> Unit, onEdit: () -> Unit, onOpen: (() -> Unit)? = null) {
-    val shop = LocalShop.current
-    val c = shop.status(s.status)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        HorizontalDivider(color = shop.line)
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                if (onOpen != null) "${p.name}  ›" else p.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
-                modifier = Modifier.weight(1f).then(if (onOpen != null) Modifier.clickable(onClickLabel = "Ver historial", onClick = onOpen) else Modifier),
-            )
-            Text(s.text, color = c, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-        }
-        LinearProgressIndicator(
-            progress = { s.used.toFloat().coerceIn(0f, 1f) }, color = c, trackColor = shop.line.copy(alpha = 0.5f),
-            modifier = Modifier.fillMaxWidth().height(6.dp), drawStopIndicator = {}, gapSize = 0.dp,
-        )
-        val last = p.lastDate?.let { "Última: ${p.lastKm?.let { fmtKm(it) + " km · " } ?: ""}${prettyDate(it)}" } ?: "Nunca registrada"
-        Hint(last, Modifier)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "${intervalText(p)}  ✎", fontSize = 12.sp, color = shop.accent, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f).clickable(onClickLabel = "Cambiar plazo", onClick = onEdit).padding(vertical = 6.dp),
-            )
-            Button(onDone, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp), modifier = Modifier.height(32.dp)) { Text("Hecho hoy", fontSize = 13.sp) }
-        }
-    }
-}
-
-fun intervalText(p: Part) = listOfNotNull(
-    p.km?.let { "cada ${fmtKm(it)} km" },
-    p.days?.let { if (it >= 60 && it % 30 == 0 || it >= 365) "cada ${Math.round(it / 30.4)} meses" else "cada $it días" },
-).joinToString(" o ").ifEmpty { "sin plazo" }
-
-// ---------- Piezas y plazos ----------
-
-@Composable
-fun PartsScreen(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
-    val today = vm.today
-    val odo = estimate(bike, today).km
-    val zones = zoneStates(bike, odo, today)
-    androidx.activity.compose.BackHandler { vm.screen = Screen.main }
-    Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton({ vm.screen = Screen.main }) { Text("‹ Volver") }
-            Text("PIEZAS Y PLAZOS", style = Display.copy(fontSize = 22.sp), color = shop.ink)
-        }
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Hint("Toca un plazo para cambiarlo. Los sugeridos son genéricos para este tipo de moto (${bike.category.label}, ${bike.drive.label.lowercase()}); el manual de tu moto manda.") }
-            items(zones.keys.filter { zones.getValue(it).parts.isNotEmpty() }.sortedByDescending { zones.getValue(it).worst }) { z ->
-                val st = zones.getValue(z)
-                Sheet {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) { Pill(zoneLabel(z).uppercase(), shop.status(st.status)) }
-                        TextButton({ vm.selectedZone = z; vm.screen = Screen.main }) { Text("Ver en la moto") }
-                    }
-                    st.parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
-                }
-            }
-            item { Spacer(Modifier.height(8.dp)) }
-        }
-    }
-}
-
 @Composable
 fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, onDismiss: () -> Unit) {
     val shop = LocalShop.current
@@ -291,7 +153,7 @@ fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, o
                 Hint("Lo que llegue antes. Deja uno vacío para contar solo por el otro.")
                 suggested?.takeIf { it.km != kmN || it.days != days }?.let { sp ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Hint("Sugerido: ${intervalText(sp)}", Modifier.weight(1f))
+                        Hint("Sugerido: ${intervalText(sp)}", modifier = Modifier.weight(1f))
                         TextButton({
                             km = sp.km?.toString() ?: ""
                             months = (sp.days ?: 60) >= 60
@@ -307,8 +169,6 @@ fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, o
     )
 }
 
-@Composable
-private fun Hint(text: String, modifier: Modifier) = Text(text, fontSize = 12.sp, color = LocalShop.current.ink2, modifier = modifier)
 
 // ---------- Km ----------
 

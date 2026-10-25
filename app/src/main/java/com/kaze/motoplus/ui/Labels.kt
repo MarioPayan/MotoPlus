@@ -20,6 +20,14 @@ fun zoneLabel(id: String) = when (Zone.of(id)) {
     null -> id
 }
 
+/** Short caps name for callouts on the drawing. */
+fun zoneShort(id: String, drive: Drive) = when (Zone.of(id)) {
+    Zone.RearWheel -> "RUEDA TRAS."; Zone.RearBrake -> "FRENO TRAS."; Zone.RearShock -> "AMORT."; Zone.Battery -> "BATERÍA"
+    Zone.Drivetrain -> when (drive) { Drive.chain -> "CADENA"; Drive.belt -> "CORREA"; Drive.shaft -> "CARDÁN"; Drive.cvt -> "VARIADOR" }
+    Zone.Intake -> "ADMISIÓN"; Zone.Engine -> "MOTOR"; Zone.Cooling -> "REFRIG."; Zone.Fork -> "HORQUILLA"
+    Zone.FrontBrake -> "FRENO DEL."; Zone.FrontWheel -> "RUEDA DEL."; Zone.Lights -> "LUCES"; null -> id.uppercase()
+}
+
 val Category.label get() = when (this) {
     Category.naked -> "Naked"; Category.sport -> "Deportiva"; Category.trail -> "Trail"; Category.scooter -> "Scooter"
     Category.custom -> "Custom"; Category.touring -> "Turismo"; Category.offroad -> "Enduro / cross"

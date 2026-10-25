@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) handle(intent)
         setContent {
-            MotoTheme { App(vm) }
+            MotoTheme(vm.bike?.accent ?: com.kaze.motoplus.domain.Accent.cyan) { App(vm) }
             // Ask for notifications once the rider has a bike to be reminded about.
             val hasBike = vm.garage.bikes.isNotEmpty()
             val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
