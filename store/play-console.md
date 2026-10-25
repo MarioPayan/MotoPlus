@@ -6,7 +6,7 @@
 3. Publicar `store/privacidad.md` en una URL pública (por ejemplo, Cloudflare Pages) y ponerla en la ficha.
 
 ## Seguridad de los datos
-- Recopila datos: **No** (todo se queda en el dispositivo y no se transmite).
+- Recopila datos: **No**. Todo se queda en el dispositivo; la copia opcional va al Google Drive del propio usuario, con su cuenta y el permiso drive.file, y el desarrollador nunca la recibe. Confirmar al rellenar el formulario si Google cuenta esa copia como recopilación; si lo hace, declararla como datos cifrados en tránsito que el usuario puede borrar.
 - Comparte datos: **No**.
 - Ubicación precisa: se usa en el dispositivo para la funcionalidad de la app, no se recopila.
 

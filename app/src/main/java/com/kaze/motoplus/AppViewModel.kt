@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
