@@ -16,4 +16,4 @@ MotoPlus no tiene servidor, no pide cuenta y no envía tus datos a nadie.
 
 **Borrar tus datos.** Borra una moto desde "Editar o borrar esta moto", o todos los datos desinstalando la app.
 
-Contacto: mariano.kaze@gmail.com
+Contacto: [correo de contacto antes de publicar]
