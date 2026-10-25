@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -60,7 +60,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { catalog = withContext(Dispatchers.IO) { Catalog.load(app) } }
     }
 
-    private fun updateBike(f: (Bike) -> Bike) {
+    internal fun updateBike(f: (Bike) -> Bike) {
         val b = bike ?: return
         Repo.updateBike(b.id, f)
     }
@@ -236,3 +236,23 @@ fun AppViewModel.importDocPhoto(uri: Uri): String? = try {
 
 /** The selected bike's papers, then the rider's own. */
 val AppViewModel.papers get() = garage.documents.filter { it.bikeId == bike?.id } + garage.documents.filter { it.bikeId == null }
+
+// ---------- Fuel ----------
+
+fun AppViewModel.saveFuel(km: Int, liters: Double, total: Double?, full: Boolean) {
+    updateBike { it.withFuel(FuelEntry(UUID.randomUUID().toString(), today.toString(), km, liters, total, full, System.currentTimeMillis()), today) }
+    com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
+    screen = Screen.main
+    message = "Repostaje guardado · odómetro en ${fmtKm(km)} km"
+}
+
+fun AppViewModel.replaceLastReading(km: Int) {
+    updateBike { it.replaceLastReading(km, today, System.currentTimeMillis()) }
+    com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
+    message = "Lectura corregida"
+}
+
+fun AppViewModel.deleteFuel(id: String) {
+    updateBike { it.deleteFuel(id) }
+    message = "Repostaje borrado"
+}

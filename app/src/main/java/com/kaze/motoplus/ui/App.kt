@@ -50,6 +50,7 @@ fun App(vm: AppViewModel) {
                 Screen.zone -> ZoneScreen(vm, bike, vm.selectedZone ?: "engine")
                 Screen.doc -> vm.docDraft?.let { DocScreen(vm, it) } ?: run { vm.screen = Screen.main }
                 Screen.control -> ControlScreen(vm, bike)
+                Screen.fuel -> FuelScreen(vm, bike)
                 else -> HistoryScreen(vm, bike)
             }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }

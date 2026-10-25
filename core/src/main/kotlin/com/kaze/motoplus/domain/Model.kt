@@ -80,6 +80,7 @@ data class Bike(
     /** Last status we notified per part, so a reminder fires once per change. */
     val notified: Map<String, Status> = emptyMap(),
     val accent: Accent = Accent.cyan,
+    val fuel: List<FuelEntry> = emptyList(),
 ) {
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }

@@ -101,7 +101,13 @@ fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
         val f = (km - last.km) / est.gpsSinceReading
         if (f in 0.85..1.15) f else gpsFactor
     } else gpsFactor
-    return copy(readings = readings.filter { it.date != today.toString() } + Reading(today.toString(), km, now), gpsFactor = factor)
+    return copy(readings = readings + Reading(today.toString(), km, now), gpsFactor = factor)
+}
+
+/** Fixes a mistyped latest reading (and the fill-up that brought it): it is replaced, never added on top of. */
+fun Bike.replaceLastReading(km: Int, today: LocalDate, now: Long = 0): Bike {
+    val last = readings.maxWith(compareBy({ it.date }, { it.at }))
+    return copy(readings = readings - last + Reading(today.toString(), km, now), fuel = fuel.map { if (it.km == last.km && it.at == last.at) it.copy(km = km, at = now) else it })
 }
 
 fun Bike.markDone(partId: String, km: Int, today: LocalDate) =
