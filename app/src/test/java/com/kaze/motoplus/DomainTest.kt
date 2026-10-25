@@ -40,6 +40,12 @@ class DomainTest {
         assertEquals(12315.0, estimate(b, today).km, 0.0)
     }
 
+    @Test fun sameDayRideCountsAfterReading() {
+        val b = bike().copy(readings = listOf(Reading("2026-10-24", 12000, at = 1_000)),
+            rides = listOf(Ride("2026-10-24", 10.0, "x", at = 500), Ride("2026-10-24", 20.0, "x", at = 2_000)))
+        assertEquals(12000 + 20 * 1.03, estimate(b, today).km, 1e-9)
+    }
+
     @Test fun absurdReadingKeepsFactor() {
         val b = bike(listOf(Ride("2026-10-12", 100.0, "x"))).withReading(13000, today)
         assertEquals(1.03, b.gpsFactor, 1e-9)
@@ -157,4 +163,21 @@ class HistoryTest {
         assertEquals(1, b.recordsFor("cadena_engrase").size)
         assertEquals(12000, b.parts.first { it.id == "cadena_engrase" }.lastKm)
     }
+}
+
+class DistanceTest {
+    @Test fun sumsMovementAndDropsNoise() {
+        val m = DistanceMeter()
+        var t = 0L
+        // ~1.1 km north in 100 m steps every 5 s (72 km/h)
+        for (i in 0..11) { m.add(40.0 + i * 0.0009, -3.7, 8f, t); t += 5000 }
+        assertEquals(1.1, m.km, 0.02)
+        val before = m.meters
+        m.add(40.0 + 11 * 0.0009 + 0.00002, -3.7, 8f, t)   // 2 m of jitter at a light
+        m.add(41.0, -3.7, 8f, t + 1000)                     // 100 km jump in 1 s
+        m.add(40.5, -3.7, 120f, t + 2000)                   // useless fix
+        assertEquals(before, m.meters, 0.0)
+    }
+
+    @Test fun haversineKnownDistance() = assertEquals(111_195.0, haversine(0.0, 0.0, 1.0, 0.0), 50.0)
 }

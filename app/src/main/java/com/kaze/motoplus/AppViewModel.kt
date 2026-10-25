@@ -58,7 +58,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun addBike(brand: String, model: String, year: Int?, category: Category, drive: Drive, cooling: Cooling, km: Int, allDoneToday: Boolean) {
         val d = today.toString()
-        var b = Bike(UUID.randomUUID().toString(), brand.trim(), model.trim(), year, category, drive, cooling, defaultParts(category, drive, cooling), listOf(Reading(d, km)))
+        var b = Bike(UUID.randomUUID().toString(), brand.trim(), model.trim(), year, category, drive, cooling, defaultParts(category, drive, cooling), listOf(Reading(d, km, System.currentTimeMillis())))
         if (allDoneToday) b.parts.forEach { p -> b = b.addRecord(ServiceRecord(UUID.randomUUID().toString(), p.id, d, km, notes = "Revisión completa al dar de alta la moto")) }
         Repo.update { Garage(it.bikes + b, b.id) }
         adding = false; tab = Tab.moto; screen = Screen.main; selectedZone = null
@@ -131,7 +131,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun saveReading(km: Int) {
-        updateBike { it.withReading(km, today) }
+        updateBike { it.withReading(km, today, System.currentTimeMillis()) }
         com.kaze.motoplus.work.ReminderWorker.runNow(app)
         message = "Lectura guardada"
     }
@@ -159,6 +159,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun showZones(zones: Set<String>) {
         highlighted = zones; selectedZone = zones.firstOrNull(); tab = Tab.moto; screen = Screen.main
     }
+
+    fun setTracking(enabled: Boolean) {
+        Repo.update { it.copy(tracking = it.tracking.copy(enabled = enabled)) }
+        if (enabled) com.kaze.motoplus.work.Tracker.register(app) else com.kaze.motoplus.work.Tracker.unregister(app)
+    }
+
+    fun setTrackedDevices(devices: Map<String, String>) = Repo.update { it.copy(tracking = it.tracking.copy(devices = devices)) }
 
     fun openPart(id: String) { openPart = id; screen = Screen.part }
 }

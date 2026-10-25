@@ -10,6 +10,8 @@ class MotoApp : Application() {
         super.onCreate()
         Repo.init(this)
         createChannels(this)
+        com.kaze.motoplus.work.createRideChannel(this)
+        com.kaze.motoplus.work.Tracker.register(this)
         ReminderWorker.schedule(this)
     }
 }

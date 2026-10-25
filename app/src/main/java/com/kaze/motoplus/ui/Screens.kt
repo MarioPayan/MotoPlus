@@ -353,10 +353,16 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
                 if (n != null && n < last) Hint("Debe ser mayor o igual que la última lectura (${fmtKm(last)} km).", shop.bad)
             }
         }
+        TrackingCard(vm)
         Sheet {
-            SectionTitle("Salidas detectadas")
-            if (bike.rides.isEmpty()) Hint("La detección automática (al conectar el casco o al ir en vehículo) llega en la siguiente fase. Mientras tanto, la app estima con tu media de km por día.")
-            bike.rides.reversed().forEach { r -> Row { Text(prettyDate(r.date), Modifier.weight(1f), fontSize = 13.sp); Text("${r.km.toInt()} km", fontWeight = FontWeight.SemiBold) } }
+            SectionTitle("Salidas")
+            if (bike.rides.isEmpty()) Hint("Aún no hay salidas registradas. Mientras tanto, la app estima con tu media de km por día.")
+            bike.rides.takeLast(20).reversed().forEach { r ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text(prettyDate(r.date), fontSize = 13.sp); Hint(r.source) }
+                    Text("${"%.1f".format(r.km)} km", fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
         Sheet {
             SectionTitle("Lecturas reales")

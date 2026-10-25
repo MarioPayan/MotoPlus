@@ -43,10 +43,13 @@ data class Part(
 )
 
 @Serializable
-data class Reading(val date: String, val km: Int)
+data class Reading(val date: String, val km: Int, val at: Long = 0)
 
 @Serializable
-data class Ride(val date: String, val km: Double, val source: String, val wet: Boolean = false)
+data class Ride(val date: String, val km: Double, val source: String, val wet: Boolean = false, val at: Long = 0) {
+    /** Rides on the reading's own day count only if they ended after it was taken. */
+    fun after(r: Reading) = date > r.date || (date == r.date && at > 0 && r.at > 0 && at > r.at)
+}
 
 @Serializable
 data class SavedReport(val at: String, val km: Int, val data: ReportData)
@@ -72,7 +75,15 @@ data class Bike(
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }
 
+/** Automatic ride detection settings for this phone. */
 @Serializable
-data class Garage(val bikes: List<Bike> = emptyList(), val selectedId: String? = null) {
+data class Tracking(
+    val enabled: Boolean = false,
+    /** Bluetooth devices (helmet intercom, bike) whose connection means "I'm riding". */
+    val devices: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class Garage(val bikes: List<Bike> = emptyList(), val selectedId: String? = null, val tracking: Tracking = Tracking()) {
     val selected get() = bikes.firstOrNull { it.id == selectedId } ?: bikes.firstOrNull()
 }

@@ -22,14 +22,14 @@ private fun daysBetween(from: String, to: LocalDate) =
  * or, with no rides, the rider's average km/day projected from the readings.
  */
 fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
-    val last = bike.readings.maxBy { it.date }
-    val after = bike.rides.filter { it.date > last.date }
+    val last = bike.readings.maxWith(compareBy({ it.date }, { it.at }))
+    val after = bike.rides.filter { it.after(last) }
     if (after.isNotEmpty()) {
         val gps = after.sumOf { it.km }
         return OdoEstimate(
             km = last.km + gps * bike.gpsFactor,
             margin = max(5, (gps * 0.02).roundToInt()),
-            source = "${after.size} salidas detectadas desde la última lectura",
+            source = if (after.size == 1) "1 salida desde la última lectura" else "${after.size} salidas desde la última lectura",
             gpsSinceReading = gps,
         )
     }
@@ -89,14 +89,14 @@ fun health(bike: Bike, odo: Double, today: LocalDate): Int {
 }
 
 /** Records a real odometer reading and, when GPS rides covered the gap, recalibrates the GPS factor. */
-fun Bike.withReading(km: Int, today: LocalDate): Bike {
+fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
     val est = estimate(this, today)
-    val last = readings.maxBy { it.date }
+    val last = readings.maxWith(compareBy({ it.date }, { it.at }))
     val factor = if (est.gpsSinceReading > 0) {
         val f = (km - last.km) / est.gpsSinceReading
         if (f in 0.85..1.15) f else gpsFactor
     } else gpsFactor
-    return copy(readings = readings.filter { it.date != today.toString() } + Reading(today.toString(), km), gpsFactor = factor)
+    return copy(readings = readings.filter { it.date != today.toString() } + Reading(today.toString(), km, now), gpsFactor = factor)
 }
 
 fun Bike.markDone(partId: String, km: Int, today: LocalDate) =
