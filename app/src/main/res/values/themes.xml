@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.MotoPlus" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+    </style>
+    <style name="Theme.MotoPlus.Starting" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/paper</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_bg</item>
+        <item name="postSplashScreenTheme">@style/Theme.MotoPlus</item>
+    </style>
+</resources>

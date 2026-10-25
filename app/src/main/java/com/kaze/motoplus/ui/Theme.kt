@@ -12,6 +12,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontVariation
+import com.kaze.motoplus.R
 import com.kaze.motoplus.domain.Status
 
 @Immutable
@@ -33,9 +38,29 @@ private val Dark = Shop(
 
 val LocalShop = staticCompositionLocalOf { Light }
 
+private val Barlow = FontFamily(Font(R.font.barlowcondensed_semibold, FontWeight.SemiBold), Font(R.font.barlowcondensed_bold, FontWeight.Bold))
+@OptIn(ExperimentalTextApi::class)
+private val Plex = FontFamily(
+    listOf(400, 500, 600, 700).map { w ->
+        Font(R.font.ibmplexsans, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    }
+)
+private val PlexMono = FontFamily(Font(R.font.ibmplexmono_regular, FontWeight.Normal), Font(R.font.ibmplexmono_semibold, FontWeight.SemiBold))
+
 /** Condensed bold for headings, like the labels on a service manual. */
-val Display = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = 0.5.sp)
-val Mono = TextStyle(fontFamily = FontFamily.Monospace)
+val Display = TextStyle(fontFamily = Barlow, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = 0.5.sp)
+val Mono = TextStyle(fontFamily = PlexMono)
+
+private val Body = Typography().let { t ->
+    fun TextStyle.plex() = copy(fontFamily = Plex)
+    t.copy(
+        bodyLarge = t.bodyLarge.plex(), bodyMedium = t.bodyMedium.plex(), bodySmall = t.bodySmall.plex(),
+        labelLarge = t.labelLarge.copy(fontFamily = Barlow, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, letterSpacing = 0.4.sp),
+        labelMedium = t.labelMedium.plex(), labelSmall = t.labelSmall.plex(),
+        titleLarge = t.titleLarge.copy(fontFamily = Barlow, fontWeight = FontWeight.Bold), titleMedium = t.titleMedium.plex(), titleSmall = t.titleSmall.plex(),
+        headlineSmall = t.headlineSmall.copy(fontFamily = Barlow, fontWeight = FontWeight.Bold),
+    )
+}
 
 @Composable
 fun MotoTheme(content: @Composable () -> Unit) {
@@ -46,6 +71,6 @@ fun MotoTheme(content: @Composable () -> Unit) {
         onSurfaceVariant = s.ink2, outline = s.line, surfaceContainer = s.sheet, surfaceContainerLow = s.sheet,
     )
     androidx.compose.runtime.CompositionLocalProvider(LocalShop provides s) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = Body, content = content)
     }
 }
