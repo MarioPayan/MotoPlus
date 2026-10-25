@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Release signing comes from a properties file kept outside the repo, or from CI environment variables.
+val keystoreProps = Properties().apply {
+    val f = file(System.getenv("MOTOPLUS_KEYSTORE_PROPERTIES") ?: "${System.getProperty("user.home")}/.local/share/motoplus-keys/keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -12,14 +20,25 @@ android {
         applicationId = "com.kaze.motoplus"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.9.0"
+    }
+
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) create("upload") {
+            storeFile = file(keystoreProps.getProperty("storeFile"))
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("upload")?.let { signingConfig = it }
         }
     }
 

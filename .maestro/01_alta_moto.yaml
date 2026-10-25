@@ -1,0 +1,25 @@
+appId: com.kaze.motoplus
+name: Alta de moto desde el catálogo
+---
+- launchApp:
+    clearState: true
+- tapOn: "Ej.: yamaha mt-07"
+- inputText: "yamaha mt-07"
+- hideKeyboard
+- tapOn: "Naked · 2018.*"
+- scrollUntilVisible:
+    element: "Kilómetros que marca ahora"
+- tapOn: "Kilómetros que marca ahora"
+- inputText: "12210"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Acabo de hacerle la revisión completa"
+- tapOn: "Acabo de hacerle la revisión completa"
+- tapOn: "Guardar moto"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- assertVisible: "100"
+- assertVisible: "Yamaha MT-07.*"

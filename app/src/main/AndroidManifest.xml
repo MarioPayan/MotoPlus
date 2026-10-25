@@ -39,6 +39,8 @@
                 <data android:scheme="https" android:host="motoplus.app" android:pathPrefix="/i" />
             </intent-filter>
         </activity>
+        <!-- OCR model comes from Google Play services instead of shipping inside the APK -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr" />
         <service android:name=".work.RideService" android:exported="false" android:foregroundServiceType="location" />
         <receiver android:name=".work.TransitionReceiver" android:exported="false" />
         <receiver android:name=".work.BluetoothReceiver" android:exported="true">

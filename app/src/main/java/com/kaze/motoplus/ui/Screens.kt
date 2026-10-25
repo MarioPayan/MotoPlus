@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -111,8 +112,11 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
             ChoiceRow(Cooling.entries.map { it.name to it.label }, cooling.name) { cooling = Cooling.valueOf(it) }
             OutlinedTextField(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text("Kilómetros que marca ahora") },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(allDone, { allDone = it })
+            Row(
+                Modifier.fillMaxWidth().toggleable(allDone, role = androidx.compose.ui.semantics.Role.Checkbox) { allDone = it },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(allDone, null)
                 Text("Acabo de hacerle la revisión completa", fontSize = 14.sp)
             }
             Hint("Si no, todo empieza en rojo como \"sin registro\" y lo vas marcando a medida que lo revisas. Los intervalos son genéricos para este tipo de moto; se pueden ajustar.")

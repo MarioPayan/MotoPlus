@@ -1,0 +1,9 @@
+# Flows share state: the first creates the bike the others use.
+flows:
+  - "0*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - 01_alta_moto
+    - 02_historial
+    - 03_informe
