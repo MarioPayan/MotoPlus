@@ -141,6 +141,16 @@ class HistoryTest {
         assertEquals(Status.none, partState(b.parts.first { it.id == "aceite" }, 12000.0, today).status)
     }
 
+    @Test fun alertsFireOncePerWorsening() {
+        val b = base.markDone("cadena_engrase", 11500, today)
+        val (first, baseline) = dueAlerts(b, 12000.0, today)
+        assertEquals(listOf("cadena_engrase"), first.map { it.first.id })
+        val again = dueAlerts(b.copy(notified = baseline), 12000.0, today).first
+        assertTrue(again.isEmpty())
+        val worse = dueAlerts(b.copy(notified = baseline), 12200.0, today).first
+        assertEquals(Status.bad, worse.single().second.status)
+    }
+
     @Test fun markDoneAddsRecord() {
         val b = base.markDone("cadena_engrase", 12000, today)
         assertEquals(1, b.recordsFor("cadena_engrase").size)

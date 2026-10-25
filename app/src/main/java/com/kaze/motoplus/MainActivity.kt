@@ -16,7 +16,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (savedInstanceState == null) handle(intent)
-        setContent { MotoTheme { App(vm) } }
+        setContent {
+            MotoTheme { App(vm) }
+            // Ask for notifications once the rider has a bike to be reminded about.
+            val hasBike = vm.garage.bikes.isNotEmpty()
+            val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+                if (ok) com.kaze.motoplus.work.ReminderWorker.runNow(this)
+            }
+            androidx.compose.runtime.LaunchedEffect(hasBike) {
+                val prefs = getPreferences(MODE_PRIVATE)
+                if (hasBike && android.os.Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("askedNotifications", false)) {
+                    prefs.edit().putBoolean("askedNotifications", true).apply()
+                    ask.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -31,6 +45,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> intent.dataString
             else -> null
         }
+        intent.getStringExtra("bike")?.let { vm.select(it) }
         if (!text.isNullOrBlank()) vm.incoming(text)
     }
 }

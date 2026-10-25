@@ -132,6 +132,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun saveReading(km: Int) {
         updateBike { it.withReading(km, today) }
+        com.kaze.motoplus.work.ReminderWorker.runNow(app)
         message = "Lectura guardada"
     }
 

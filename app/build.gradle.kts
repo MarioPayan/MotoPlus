@@ -38,5 +38,8 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.serialization.json)
     implementation(libs.mlkit.text)
+    implementation(libs.work)
+    implementation(libs.play.location)
+    implementation(libs.splash)
     testImplementation(libs.junit)
 }

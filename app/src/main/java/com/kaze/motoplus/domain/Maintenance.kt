@@ -111,3 +111,19 @@ fun Bike.withInterval(partId: String, km: Int?, days: Int?): Bike {
 fun Bike.suggested(partId: String): Part? = defaultParts(category, drive, cooling).firstOrNull { it.id == partId }
 
 fun fmtKm(n: Int): String = "%,d".format(java.util.Locale.ROOT, n).replace(',', '.')
+
+/**
+ * Parts that got worse since we last told the rider (ok → coming due → overdue), plus the new baseline.
+ * Never-recorded parts are not news: the rider sees them in red already.
+ */
+fun dueAlerts(bike: Bike, odo: Double, today: LocalDate): Pair<List<Pair<Part, PartState>>, Map<String, Status>> {
+    val now = bike.parts.associate { it.id to partState(it, odo, today) }
+    val sev = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2)
+    val worse = bike.parts.mapNotNull { p ->
+        val s = now.getValue(p.id)
+        val before = sev[bike.notified[p.id] ?: Status.ok] ?: 0
+        val after = sev[s.status] ?: return@mapNotNull null
+        if (after > before) p to s else null
+    }.sortedByDescending { it.second.used }
+    return worse to now.mapValues { it.value.status }
+}
