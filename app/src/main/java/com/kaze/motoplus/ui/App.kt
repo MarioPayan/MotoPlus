@@ -22,7 +22,7 @@ import com.kaze.motoplus.domain.estimate
 import com.kaze.motoplus.domain.fmtKm
 import com.kaze.motoplus.domain.suggested
 
-private val TABS = listOf(Tab.bike to ("MOTO" to "gauge"), Tab.km to ("KM" to "route"), Tab.report to ("IA" to "bulb"))
+private val TABS = listOf(Tab.bike to ("MOTO" to "gauge"), Tab.km to ("KM" to "route"), Tab.papers to ("PAPELES" to "doc"), Tab.report to ("IA" to "bulb"))
 
 @Composable
 fun App(vm: AppViewModel) {
@@ -48,6 +48,8 @@ fun App(vm: AppViewModel) {
                 Screen.parts -> PartsScreen(vm, bike)
                 Screen.part -> PartScreen(vm, bike, vm.openPart ?: "")
                 Screen.zone -> ZoneScreen(vm, bike, vm.selectedZone ?: "engine")
+                Screen.doc -> vm.docDraft?.let { DocScreen(vm, it) } ?: run { vm.screen = Screen.main }
+                Screen.control -> ControlScreen(vm, bike)
                 else -> HistoryScreen(vm, bike)
             }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }
@@ -77,6 +79,7 @@ fun App(vm: AppViewModel) {
             when (vm.tab) {
                 Tab.bike -> BikeScreen(vm, bike)
                 Tab.km -> KmScreen(vm, bike)
+                Tab.papers -> PapersScreen(vm, bike)
                 Tab.report -> ReportScreen(vm, bike)
             }
         }

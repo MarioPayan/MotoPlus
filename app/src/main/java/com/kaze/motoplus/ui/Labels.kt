@@ -64,3 +64,21 @@ val ReportError.message get() = when (this) {
     ReportError.invalid -> "El bloque está incompleto o no es JSON válido. Pide a la IA que repita solo el bloque motoplus."
     ReportError.incomplete -> "El bloque está incompleto: falta el resumen."
 }
+
+val DocType.label get() = when (this) {
+    DocType.transit_license -> "Licencia de tránsito"; DocType.soat -> "SOAT"; DocType.inspection -> "Revisión técnico-mecánica"
+    DocType.insurance -> "Seguro"; DocType.tax -> "Impuesto vehicular"; DocType.driving_license -> "Licencia de conducción"; DocType.other -> "Otro papel"
+}
+
+val DocType.icon get() = when (this) {
+    DocType.transit_license, DocType.tax, DocType.other -> "doc"; DocType.soat, DocType.insurance -> "shield"
+    DocType.inspection -> "wrench"; DocType.driving_license -> "helmet"
+}
+
+/** What the number field holds for each paper. */
+val DocType.numberLabel get() = when (this) {
+    DocType.transit_license -> "Placa"; DocType.soat, DocType.insurance -> "Número de póliza"; DocType.driving_license -> "Número y categoría"
+    DocType.inspection -> "Centro o certificado"; DocType.tax, DocType.other -> "Número o referencia"
+}
+
+fun Document.name() = title.ifBlank { type.label }

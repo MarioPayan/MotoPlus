@@ -39,6 +39,13 @@
                 <data android:scheme="https" android:host="motoplus.app" android:pathPrefix="/i" />
             </intent-filter>
         </activity>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
         <!-- OCR model comes from Google Play services instead of shipping inside the APK -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr" />
         <service android:name=".work.RideService" android:exported="false" android:foregroundServiceType="location" />

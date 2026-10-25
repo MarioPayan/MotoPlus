@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         intent.getStringExtra("bike")?.let { vm.select(it) }
+        intent.getStringExtra("papers")?.let { b -> if (b.isNotEmpty()) vm.select(b); vm.tab = Tab.papers }
         intent.getStringExtra("startRide")?.let { t -> com.kaze.motoplus.work.Tracker.start(this, runCatching { com.kaze.motoplus.domain.RideTrigger.valueOf(t) }.getOrDefault(com.kaze.motoplus.domain.RideTrigger.manual)); vm.tab = Tab.km }
         if (!text.isNullOrBlank()) vm.incoming(text)
     }

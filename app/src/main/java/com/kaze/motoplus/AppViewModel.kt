@@ -19,8 +19,8 @@ import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 
-enum class Tab { bike, km, report }
-enum class Screen { main, parts, part, history, zone }
+enum class Tab { bike, km, papers, report }
+enum class Screen { main, parts, part, history, zone, doc, control }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -45,6 +45,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<String?>(null)
     /** Zone that just had something marked done, plus a counter so the same zone can flash twice. */
     var flash by mutableStateOf<Pair<String, Int>?>(null); private set
+    /** The document being added or edited on Screen.doc. */
+    var docDraft by mutableStateOf<Document?>(null)
+    /** Which document control mode opens on. */
+    var showingDoc by mutableStateOf<String?>(null)
     /** Where the part screen goes back to. */
     var back by mutableStateOf(Screen.main); private set
 
@@ -79,6 +83,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val b = bike ?: return
         Repo.update { g -> g.copy(bikes = g.bikes.filter { it.id != b.id }, selectedId = g.bikes.firstOrNull { it.id != b.id }?.id) }
         b.history.mapNotNull { it.photo }.forEach { File(it).delete() }
+        garage.documents.filter { it.bikeId == b.id }.flatMap { it.photos }.forEach { File(it).delete() }
+        Repo.update { g -> g.copy(documents = g.documents.filter { it.bikeId != b.id }) }
         editingBike = false; screen = Screen.main; selectedZone = null; highlighted = emptySet()
         if (garage.bikes.isEmpty()) adding = true
         message = "Moto borrada"
@@ -186,3 +192,47 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 }
 
 data class RecordDraft(val id: String?, val partId: String, val date: String, val km: String, val cost: String, val notes: String, val photo: String?)
+
+// ---------- Papers ----------
+
+fun AppViewModel.newDoc(type: DocType) {
+    docDraft = Document(UUID.randomUUID().toString(), type, if (type.forRider) null else bike?.id)
+    screen = Screen.doc
+}
+
+fun AppViewModel.editDoc(d: Document) { docDraft = d; screen = Screen.doc }
+
+fun AppViewModel.saveDoc(d: Document) {
+    Repo.update { g ->
+        val old = g.documents.firstOrNull { it.id == d.id }
+        // A new expiry date restarts its reminders.
+        val fixed = d.copy(bikeId = if (d.type.forRider) null else d.bikeId ?: bike?.id, alerted = if (old != null && old.expires == d.expires) old.alerted else null)
+        old?.photos?.filter { it !in fixed.photos }?.forEach { File(it).delete() }
+        g.copy(documents = if (old == null) g.documents + fixed else g.documents.map { if (it.id == d.id) fixed else it })
+    }
+    com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
+    docDraft = null; screen = Screen.main
+    message = "Papel guardado"
+}
+
+fun AppViewModel.deleteDoc(id: String) {
+    garage.documents.firstOrNull { it.id == id }?.photos?.forEach { File(it).delete() }
+    Repo.update { g -> g.copy(documents = g.documents.filter { it.id != id }) }
+    docDraft = null; screen = Screen.main
+    message = "Papel borrado"
+}
+
+/** A new file for the camera to write a document photo into. */
+fun AppViewModel.newDocPhoto(): File = File(File(getApplication<Application>().filesDir, "documents").apply { mkdirs() }, "${UUID.randomUUID()}.jpg")
+
+/** Copies a picked image into app storage, as document photos must outlive the gallery. */
+fun AppViewModel.importDocPhoto(uri: Uri): String? = try {
+    val f = newDocPhoto()
+    getApplication<Application>().contentResolver.openInputStream(uri)!!.use { input -> f.outputStream().use { input.copyTo(it) } }
+    f.path
+} catch (e: Exception) {
+    message = "No pude guardar la foto"; null
+}
+
+/** The selected bike's papers, then the rider's own. */
+val AppViewModel.papers get() = garage.documents.filter { it.bikeId == bike?.id } + garage.documents.filter { it.bikeId == null }

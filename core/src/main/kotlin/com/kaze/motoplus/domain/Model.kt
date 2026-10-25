@@ -98,6 +98,7 @@ data class Garage(
     val bikes: List<Bike> = emptyList(),
     val selectedId: String? = null,
     val tracking: Tracking = Tracking(),
+    val documents: List<Document> = emptyList(),
 ) {
     val selected get() = bikes.firstOrNull { it.id == selectedId } ?: bikes.firstOrNull()
 
