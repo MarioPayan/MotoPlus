@@ -1,0 +1,782 @@
+<title>MotoPlus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: lámina técnica a todo el ancho arriba; debajo, prototipo en marco de móvil + notas; al final tablas de realismo, validación, stack y estrategia */
+:root{
+  --paper:#f3f4f1; --sheet:#ffffff; --ink:#1d2a33; --ink-2:#55636c; --line:#cfd5d3; --grid:#e3e7e4;
+  --accent:#d0661f; --accent-ink:#ffffff;
+  --ok:#2f8f5b; --warn:#c98d07; --bad:#cf3b2f;
+  --ok-bg:#e3f2e9; --warn-bg:#fbf0d4; --bad-bg:#fbe3e0;
+  --phone:#151c21; --screen:#f7f8f6;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#12171a; --sheet:#1a2125; --ink:#e4e9e7; --ink-2:#9aa7ad; --line:#33403f; --grid:#232c2f;
+  --accent:#ee8a45; --accent-ink:#1a1206;
+  --ok:#4cc483; --warn:#f0bb3c; --bad:#ff6a5c;
+  --ok-bg:#163126; --warn-bg:#34290f; --bad-bg:#3a1a17;
+  --phone:#05080a; --screen:#161d21; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#12171a; --sheet:#1a2125; --ink:#e4e9e7; --ink-2:#9aa7ad; --line:#33403f; --grid:#232c2f;
+  --accent:#ee8a45; --accent-ink:#1a1206;
+  --ok:#4cc483; --warn:#f0bb3c; --bad:#ff6a5c;
+  --ok-bg:#163126; --warn-bg:#34290f; --bad-bg:#3a1a17;
+  --phone:#05080a; --screen:#161d21; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.wrap{max-width:1160px;margin:0 auto;display:grid;gap:44px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.05}
+h1{font-size:clamp(40px,7vw,64px);text-transform:uppercase}
+h2{font-size:30px;text-transform:uppercase}
+h3{font-size:20px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+p{margin:0}
+.lede{max-width:66ch;color:var(--ink-2);font-size:16px}
+header{display:grid;gap:12px}
+.tag{display:inline-flex;gap:8px;align-items:center;font-family:var(--f-mono);font-size:12px;border:1px solid var(--ink);padding:3px 8px;width:max-content;max-width:100%;text-transform:uppercase;letter-spacing:.06em}
+
+/* Plate */
+.plate{background:var(--sheet);border:1.5px solid var(--ink);display:grid;grid-template-columns:minmax(0,1fr) 270px}
+@media (max-width:900px){.plate{grid-template-columns:minmax(0,1fr)}}
+.plate .draw{border-right:1.5px solid var(--ink);min-width:0;display:grid;grid-template-rows:auto 1fr}
+@media (max-width:900px){.plate .draw{border-right:0;border-bottom:1.5px solid var(--ink)}}
+.plate .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.plate svg{display:block;width:100%;height:auto}
+.side{display:grid;align-content:start}
+.side .blk{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:6px}
+.side .blk:last-child{border-bottom:0}
+.legend-list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.legend-list button{all:unset;cursor:pointer;display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;width:100%;font-size:13px;padding:3px 0;font-variant-numeric:tabular-nums}
+.legend-list button:focus-visible{outline:2px solid var(--accent)}
+.legend-list .n{font-family:var(--f-mono);font-size:11px;font-weight:600;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1.5px solid currentColor}
+.legend-list .pc{font-family:var(--f-mono);font-size:12px}
+.tb{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-family:var(--f-mono);font-size:11px}
+.tb dt{color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+.tb dd{margin:0}
+
+/* Drawing */
+svg.bike{--lc:var(--ink)}
+.l{fill:none;stroke:var(--lc);stroke-width:1.3;stroke-linejoin:round;stroke-linecap:round}
+.t{stroke-width:.75}
+.h{stroke-dasharray:5 4}
+.sf{fill:var(--sheet);stroke:var(--lc);stroke-width:1.3;stroke-linejoin:round}
+.po{fill:none;stroke:var(--lc);stroke-linecap:round;stroke-linejoin:round}
+.pi{fill:none;stroke:var(--sheet);stroke-linecap:round;stroke-linejoin:round}
+.rollers{fill:none;stroke:var(--lc);stroke-width:3.4;stroke-linecap:round;stroke-dasharray:0 7.1}
+.spring{stroke-width:2.6}
+.dim{stroke:var(--ink-2);stroke-width:.8;fill:none}
+.dimt{fill:var(--ink-2);font-family:var(--f-mono);font-size:12px}
+.mk circle{fill:var(--sheet);stroke:var(--zc,var(--ink));stroke-width:1.6}
+.mk text{fill:var(--zc,var(--ink));font-family:var(--f-mono);font-size:12px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+.zone{cursor:pointer;--zc:var(--ok);--lc:var(--zc)}
+.zone.ok{--zc:var(--ok)}.zone.warn{--zc:var(--warn)}.zone.bad{--zc:var(--bad)}
+.zone .sf{fill:color-mix(in srgb,var(--zc) 13%,var(--sheet))}
+.zone .pi{stroke:color-mix(in srgb,var(--zc) 13%,var(--sheet))}
+.zone.bad{animation:pulse 1.6s ease-in-out infinite}
+.zone.hl{animation:pulse .9s ease-in-out infinite}
+.zone.sel .l,.zone.sel .sf{stroke-width:2.2}
+.zone:focus-visible{outline:none}.zone:focus-visible .sf{stroke-width:2.6}
+.plain .zone,.plain .zone.ok,.plain .zone.warn,.plain .zone.bad{--zc:var(--ink);animation:none}
+.plain .mk{display:none}
+@keyframes pulse{0%,100%{filter:none}50%{filter:drop-shadow(0 0 5px var(--zc))}}
+.scan{fill:var(--accent);opacity:0}
+.scan.run{animation:scan 1.8s ease-out 1}
+@keyframes scan{0%{opacity:.3;transform:translateX(0)}90%{opacity:.2}100%{opacity:0;transform:translateX(1100px)}}
+@media (prefers-reduced-motion:reduce){.zone.bad,.zone.hl,.scan.run{animation:none}}
+
+/* Prototype */
+.proto{display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:860px){.proto{grid-template-columns:minmax(0,1fr)}}
+.phone{background:var(--phone);border-radius:38px;padding:12px;max-width:390px;width:100%;margin:0 auto;box-shadow:0 20px 50px -20px rgba(0,0,0,.45)}
+.screen{background:var(--screen);border-radius:28px;overflow:hidden;height:760px;display:flex;flex-direction:column;position:relative}
+.sbar{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;padding:10px 20px 4px;color:var(--ink-2)}
+.appbar{padding:4px 18px 10px;display:flex;justify-content:space-between;align-items:end;gap:8px}
+.appbar .name{font-family:var(--f-display);font-size:26px;font-weight:700;text-transform:uppercase;line-height:1}
+.appbar .bike{font-size:12px;color:var(--ink-2)}
+.odo-pill{font-family:var(--f-mono);font-size:12px;background:var(--ink);color:var(--paper);padding:4px 8px;border-radius:6px;white-space:nowrap}
+.view{flex:1;overflow-y:auto;padding:0 14px 14px;display:grid;gap:12px;align-content:start}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:var(--sheet)}
+.tabs button{all:unset;cursor:pointer;text-align:center;padding:10px 0 14px;font-family:var(--f-display);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);display:grid;gap:2px;justify-items:center}
+.tabs button[aria-selected="true"]{color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
+.tabs svg{width:22px;height:22px}
+.bikebox{background:var(--sheet);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.health{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 0}
+.health .score{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1}
+.health .score small{font-size:15px;color:var(--ink-2);font-weight:500;margin-left:4px}
+.legend{display:flex;gap:10px;font-size:11px;color:var(--ink-2)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{all:unset;cursor:pointer;flex:none;font-size:12px;border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 10px;display:inline-flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}
+.chip:focus-visible{outline:2px solid var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad,.dot.none{background:var(--bad)}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
+.card h3{font-size:19px;text-transform:uppercase}
+.item{display:grid;gap:4px;padding-top:8px;border-top:1px dashed var(--line)}
+.item:first-of-type{border-top:0;padding-top:0}
+.item .row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.item .nm{font-weight:600;font-size:14px}
+.item .meta{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pbar{height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
+.pbar>span{display:block;height:100%;border-radius:3px}
+.btn{all:unset;cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;border-radius:9px;background:var(--accent);color:var(--accent-ink);text-align:center}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.sm{font-size:13px;padding:5px 9px}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.hint{font-size:12px;color:var(--ink-2)}
+.odo{font-family:var(--f-mono);font-weight:600;font-size:38px;letter-spacing:.06em;display:flex;gap:3px;justify-content:center;font-variant-numeric:tabular-nums}
+.odo span{background:var(--ink);color:var(--paper);border-radius:5px;padding:2px 5px;min-width:30px;text-align:center}
+.odo .sep{background:none;color:var(--ink);min-width:auto;padding:0}
+.pm{text-align:center;font-family:var(--f-mono);font-size:13px;color:var(--ink-2)}
+input[type=number],textarea{font:inherit;font-size:14px;width:100%;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--screen);color:var(--ink)}
+textarea{resize:vertical;min-height:70px;font-size:13px}
+input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+.ride{display:flex;justify-content:space-between;font-size:13px;font-variant-numeric:tabular-nums;padding:6px 0;border-top:1px dashed var(--line)}
+.ride:first-child{border-top:0}
+.ride .src{font-size:11px;color:var(--ink-2)}
+.thumb{max-width:100%;border-radius:8px;max-height:140px;object-fit:cover}
+.urg{font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:13px;padding:3px 8px;border-radius:6px;width:max-content}
+.urg.baja{background:var(--ok-bg);color:var(--ok)}.urg.media{background:var(--warn-bg);color:var(--warn)}.urg.alta{background:var(--bad-bg);color:var(--bad)}
+.cause{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-top:1px dashed var(--line)}
+.cause b{font-weight:600}
+.prob{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);white-space:nowrap}
+.report ul{margin:0;padding-left:18px;font-size:13px;display:grid;gap:3px}
+pre.prompt{font-family:var(--f-mono);font-size:11px;white-space:pre-wrap;max-height:150px;overflow:auto;background:var(--screen);border:1px solid var(--line);border-radius:8px;padding:8px;margin:0}
+.toast{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:13px;padding:7px 12px;border-radius:8px;white-space:nowrap}
+.notes{display:grid;gap:22px;min-width:0}
+.note{display:grid;gap:8px;border-left:3px solid var(--ink);padding-left:14px}
+.note p{max-width:62ch;color:var(--ink-2)}
+.note p b{color:var(--ink);font-weight:600}
+.try{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:8px}
+.try ol{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+
+/* Tables */
+section.block{display:grid;gap:16px}
+.tbl{overflow-x:auto;background:var(--sheet);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:500;background:var(--screen)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+tr.pick td{background:color-mix(in srgb,var(--accent) 8%,var(--sheet))}
+.v{font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:13px;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.v.si{background:var(--ok-bg);color:var(--ok)}.v.ojo{background:var(--warn-bg);color:var(--warn)}.v.no{background:var(--bad-bg);color:var(--bad)}
+.meter{font-family:var(--f-mono);letter-spacing:2px;white-space:nowrap}
+code{font-family:var(--f-mono);font-size:12.5px}
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}}
+.step{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px;align-content:start}
+.step .k{font-family:var(--f-mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.step p{font-size:13px;color:var(--ink-2)}
+.verdict{background:var(--sheet);border:1.5px solid var(--ink);border-radius:12px;padding:16px;display:grid;gap:8px;max-width:80ch}
+.verdict p{color:var(--ink-2)}.verdict b{color:var(--ink)}
+footer{font-size:12px;color:var(--ink-2);max-width:84ch}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="tag">Prototipo v3 · datos de ejemplo · hoy = 24 oct 2026</span>
+    <h1>MotoPlus</h1>
+    <p class="lede">La moto como un plano de taller: cada conjunto mecánico se pinta según cuánto le queda. El kilometraje se calcula solo y, cuando algo suena raro, tu propia IA te hace el informe.</p>
+  </header>
+
+  <section class="block">
+    <span class="eyebrow">Validación del visual</span>
+    <h2>Lámina técnica, dibujada por código</h2>
+    <p class="lede">Las piezas repetitivas se generan con las medidas reales: dientes de piñón y corona, eslabones de cadena con su paso de 15,875 mm, discos perforados con flotantes, espiras del muelle, dibujo de la banda de rodadura. Lo que va al otro lado de la moto (disco y pinza traseros, batería) aparece en línea discontinua, como en un plano. Cambia a <b>Plano</b> para verlo sin colores.</p>
+    <div class="plate">
+      <div class="draw">
+        <div class="bar">
+          <span class="eyebrow">Vista lateral izquierda · escala 1:22</span>
+          <div class="seg" role="group" aria-label="Modo de la lámina"><button id="mState" aria-pressed="true">Estado</button><button id="mPlain" aria-pressed="false">Plano</button></div>
+        </div>
+        <div id="plateSvg"></div>
+      </div>
+      <div class="side">
+        <div class="blk"><span class="eyebrow">Conjuntos</span><ul class="legend-list" id="legend"></ul></div>
+        <div class="blk"><dl class="tb">
+          <dt>Modelo</dt><dd>Naked bicilíndrica genérica</dd>
+          <dt>Batalla</dt><dd id="tbWb">1.400 mm</dd>
+          <dt>Lanzamiento</dt><dd>25°</dd>
+          <dt>Neumáticos</dt><dd>120/70-17 · 180/55-17</dd>
+          <dt>Transmisión</dt><dd>16 / 43 · paso 520</dd>
+          <dt>Lámina</dt><dd>MP-001 · rev. C</dd>
+        </dl></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">¿Se puede llegar a "supremamente realista"?</span>
+    <h2>Sí, pero no a mano: con un modelo 3D</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Camino</th><th>Realismo</th><th>Coste</th><th>Tiempo</th><th>Zonas por id</th><th>Riesgo</th></tr></thead>
+      <tbody>
+        <tr><td>1 · Dibujo técnico generado por código (esta lámina)</td><td><span class="meter">●●●○○</span><br>Piezas creíbles, proporciones aproximadas</td><td>0 €</td><td>Hecho; se itera en horas</td><td>Nativas</td><td>No es "idéntico" a una moto real: el motor y el chasis son interpretación.</td></tr>
+        <tr class="pick"><td>2 · Modelo 3D real → Blender (Line Art o Freestyle SVG) → SVG por capas</td><td><span class="meter">●●●●●</span><br>Las líneas salen de geometría real</td><td>Modelo 0–150 € con licencia comercial</td><td>2–4 días de limpieza</td><td>Cada objeto del modelo es una capa: se renombran a nuestros ids</td><td>Elegir bien la licencia. SVG pesado: hay que simplificarlo (SVGO). Pocos modelos traen el motor con detalle.</td></tr>
+        <tr><td>3 · Ilustrador técnico por encargo</td><td><span class="meter">●●●●●</span><br>Y con estilo propio</td><td>300–1.000 €</td><td>1–3 semanas</td><td>Se exigen en el encargo</td><td>Coste, y cada silueta nueva vuelve a pasar por él.</td></tr>
+        <tr><td>4 · Vector de stock (Freepik, Adobe Stock)</td><td><span class="meter">●●●●○</span></td><td>0–80 €</td><td>1–2 días separando capas</td><td>A mano</td><td>Las licencias estándar suelen no cubrirlo como pieza central de una app. Casi siempre es un modelo reconocible.</td></tr>
+        <tr><td>5 · Vectorizar una foto (vectorizer.ai)</td><td><span class="meter">●●●○○</span><br>Contorno fiel, interior sucio</td><td>Pocos €</td><td>1 día</td><td>Muy difícil</td><td>Mal para zonas: salen miles de manchas, no piezas.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="verdict">
+      <span class="eyebrow">Recomendación</span>
+      <p><b>Camino 1 para el MVP y camino 2 para el gancho definitivo.</b> Lo que pides ("el esqueleto idéntico al de una moto") solo sale fiel si las líneas vienen de geometría real: un modelo 3D genérico de una naked, pasado a dibujo de líneas en Blender y exportado con un grupo por conjunto (<code>cadena</code>, <code>freno_del</code>…). Así se puede renderizar desde cualquier ángulo, generar una silueta nueva (trail, scooter) cambiando de modelo y, más adelante, girar la moto en 3D sin cambiar el diseño. Que sea <b>genérica</b> importa: copiar la silueta exacta de una moto de una marca puede chocar con sus derechos de diseño.</p>
+      <p><b>En Android:</b> un script de build convierte cada grupo del SVG en un <code>Path</code> de Compose, y la app pinta cada zona con su color animado sobre un <code>Canvas</code>. No hace falta ninguna librería.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Prototipo</span>
+    <h2>La app con la lámina dentro</h2>
+    <div class="proto">
+      <div class="phone" aria-label="Prototipo de la app">
+        <div class="screen" id="screen">
+          <div class="sbar"><span>9:41</span><span>4G ▮▮▮ 82%</span></div>
+          <div class="appbar">
+            <div><div class="name">Mi moto</div><div class="bike">Naked 700 cc · 2021 (ejemplo)</div></div>
+            <div class="odo-pill" id="odoPill">~12.473 km</div>
+          </div>
+          <div class="view" id="view"></div>
+          <nav class="tabs" role="tablist">
+            <button role="tab" data-tab="moto" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16l4-6h5l4 6M9.5 10l-1-3h-2M14.5 10l1.5-4h2"/></svg>Moto</button>
+            <button role="tab" data-tab="km" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></svg>Km</button>
+            <button role="tab" data-tab="ia" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg>Informe IA</button>
+          </nav>
+          <div class="toast" id="toast" hidden></div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="try">
+          <span class="eyebrow">Pruébalo</span>
+          <ol>
+            <li>Toca la <b>cadena</b> (roja, late) en la lámina o en el móvil y pulsa <b>Hecho hoy</b>: se vuelve verde en los dos sitios.</li>
+            <li>En <b>Km</b>, corrige el odómetro: la estimación y la calibración del GPS se ajustan.</li>
+            <li>En <b>Informe IA</b>, escribe un síntoma, abre tu ChatGPT o Claude con el informe ya escrito y pega su respuesta. Si no quieres salir, usa <b>Respuesta de ejemplo</b>.</li>
+          </ol>
+        </div>
+        <div class="note">
+          <span class="eyebrow">Kilometraje</span>
+          <h3>A + B + C en una sola cifra</h3>
+          <p><b>C</b> suma las salidas detectadas por GPS desde la última lectura, multiplicadas por un factor de calibración. Sin salidas, <b>A</b> estima con tu media de km/día. <b>B</b> (foto del cuadro) es una lectura real que corrige las dos y recalibra el factor. El margen ± dice cuánto fiarse.</p>
+        </div>
+        <div class="note">
+          <span class="eyebrow">Informe IA</span>
+          <h3>La IA la pone el usuario; el informe vuelve a la app</h3>
+          <p>La app arma el prompt con el estado de la moto y lo comparte a la IA que tenga el usuario. La IA contesta y cierra con un <b>bloque <code>motoplus</code> en JSON</b>. El usuario lo comparte de vuelta a MotoPlus (Android lo admite de forma nativa) o lo pega; la app lo guarda y <b>marca en la moto las zonas sospechosas</b>. Coste para nosotros: 0 €.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Validación</span>
+    <h2>¿Tiene sentido lo que estamos diciendo?</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Idea</th><th>Veredicto</th><th>Por qué</th><th>Qué hacemos</th></tr></thead>
+      <tbody>
+        <tr><td>App 100 % gratuita</td><td><span class="v si">Sí</span></td><td>Si todo vive en el móvil y la IA la paga el usuario, el coste fijo es casi cero.</td><td>Room en local y copia automática de Android en el Google Drive del usuario. Costes: Google Play (25 $ una vez) y un dominio (~10 €/año).</td></tr>
+        <tr><td>Solo Android, en nativo</td><td><span class="v si">Sí</span></td><td>Sin iOS, Expo no aporta nada que compense: lo crítico (GPS en segundo plano, sensores, compartir) es nativo.</td><td>Kotlin + Jetpack Compose.</td></tr>
+        <tr><td>Visual de la moto como gancho</td><td><span class="v si">Sí</span></td><td>No encontré ninguna app con la moto entera coloreada por conjuntos. El nivel de "plano técnico" es difícil de copiar si sale de un modelo 3D propio.</td><td>Lámina 1 en el MVP, lámina 2 (3D → líneas) antes de publicar.</td></tr>
+        <tr><td>Mandar el informe a la IA del usuario</td><td><span class="v si">Sí</span></td><td>Compartir de Android manda texto largo a la app de ChatGPT, Claude o Gemini. <code>chatgpt.com/?q=</code> y <code>claude.ai/new?q=</code> funcionan, pero no están documentados.</td><td>Compartir como camino principal; enlace web como alternativa.</td></tr>
+        <tr><td>Volver a la app desde el chat</td><td><span class="v si">Sí</span></td><td>Un <code>intent-filter</code> de <code>ACTION_SEND</code> con <code>text/plain</code> es estándar en Android: MotoPlus aparece en el menú Compartir del chat.</td><td>Tres entradas: compartir a MotoPlus, pegar, o tocar el enlace (App Link en nuestro dominio).</td></tr>
+        <tr><td>Que la IA devuelva un enlace con el informe en un query param</td><td><span class="v ojo">Con matices</span></td><td>Los modelos se equivocan al codificar a mano URLs largas. Con herramienta de código (ChatGPT y Claude la tienen) lo hacen bien. Un query param además llega al servidor.</td><td>Pedir <b>bloque JSON</b> siempre y enlace solo si puede ejecutar código. Datos en el <b>fragmento</b> (<code>#r=…</code>): no llegan al servidor.</td></tr>
+        <tr><td>Km automático en segundo plano</td><td><span class="v ojo">Con matices</span></td><td>Activity Recognition no tiene tipo "moto" (sale como vehículo). Xiaomi y Samsung cierran las apps en segundo plano.</td><td>Disparar también al conectar el casco por Bluetooth. Pantalla de ajustes de batería por marca.</td></tr>
+        <tr><td>Ubicación en segundo plano en Google Play</td><td><span class="v ojo">Con matices</span></td><td>Google la revisa a mano y solo la acepta si es función principal y está explicada.</td><td>Aviso propio antes del permiso y un vídeo para la revisión.</td></tr>
+        <tr><td>Diagnóstico por IA</td><td><span class="v ojo">Con matices</span></td><td>Orienta bien en averías comunes, pero puede equivocarse en algo de seguridad (frenos).</td><td>Aviso fijo "orientativo, no sustituye al taller". Si la urgencia es alta: "no ruedes".</td></tr>
+        <tr><td>Leer el odómetro con foto (OCR)</td><td><span class="v ojo">Con matices</span></td><td>ML Kit falla a menudo con los dígitos de 7 segmentos de las pantallas LCD.</td><td>OCR en el móvil y confirmación siempre. Probar con 30 fotos reales antes de prometerlo.</td></tr>
+        <tr><td>Afiliación con marcas locales</td><td><span class="v ojo">Más adelante</span></td><td>Una marca querrá ver usuarios activos antes de firmar nada.</td><td>Registrar desde el día 1, en local y con permiso, qué piezas se cambian y cuándo.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Flujo del informe</span>
+    <h2>Ida y vuelta sin servidor</h2>
+    <div class="flow">
+      <div class="step"><span class="k">1 · App</span><h3>Arma el prompt</h3><p>Estado de cada pieza, km, salidas recientes, síntoma y el formato de respuesta pedido.</p></div>
+      <div class="step"><span class="k">2 · Compartir</span><h3>A la IA del usuario</h3><p>Menú Compartir de Android a ChatGPT, Claude o Gemini. Alternativa: enlace con <code>?q=</code>.</p></div>
+      <div class="step"><span class="k">3 · IA</span><h3>Explica y cierra con JSON</h3><p>Texto para la persona y un bloque <code>motoplus</code> con urgencia, causas y zonas.</p></div>
+      <div class="step"><span class="k">4 · Vuelta</span><h3>Compartir, pegar o enlace</h3><p>Compartir a MotoPlus desde el chat, o enlace <code>motoplus.app/i#r=…</code> si la IA pudo generarlo.</p></div>
+      <div class="step"><span class="k">5 · App</span><h3>Guarda y pinta</h3><p>Valida el JSON, lo guarda en el historial y marca las zonas en la lámina.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Stack · solo Android</span>
+    <h2>Herramientas y por qué</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Capa</th><th>Elección</th><th>Por qué aguanta a largo plazo</th><th>Descartado</th></tr></thead>
+      <tbody>
+        <tr><td>Lenguaje y UI</td><td>Kotlin + Jetpack Compose (Material 3)</td><td>Es lo que Google recomienda y mantiene. El GPS, los sensores y el Bluetooth se usan directamente, sin puente con JavaScript.</td><td>Expo (sin iOS, no compensa); Flutter (otro lenguaje); PWA (sin GPS en segundo plano).</td></tr>
+        <tr><td>Estructura</td><td>Un módulo de app + un paquete de dominio en Kotlin puro</td><td>El cálculo de km, meses y estados se prueba en la JVM sin emulador.</td><td>Multimódulo y Hilt: cuando el tamaño lo pida.</td></tr>
+        <tr><td>Navegación y enlaces</td><td>Navigation Compose + Android App Links</td><td>Los enlaces <code>https://</code> de nuestro dominio abren la app directamente, también desde el chat.</td><td>Esquema propio <code>motoplus://</code> (los chats no siempre lo dejan pulsar).</td></tr>
+        <tr><td>Datos</td><td>Room (SQLite) + kotlinx.serialization</td><td>Todo en el móvil y sin coste. La copia automática de Android guarda la base en el Google Drive del usuario.</td><td>Firebase o Supabase: solo si hace falta sincronizar entre móviles.</td></tr>
+        <tr><td>Avisos</td><td>WorkManager + notificaciones locales</td><td>Sin servidor de push. Se disparan al acabar una salida o al cruzar un umbral.</td><td>Push remoto.</td></tr>
+        <tr><td>Km automático (C)</td><td>Activity Recognition (transiciones) + FusedLocationProvider en servicio en primer plano de tipo <code>location</code></td><td>API oficial y estable. Controlamos batería y precisión.</td><td>GPS siempre encendido (gasta demasiado).</td></tr>
+        <tr><td>"Estoy en la moto"</td><td>Evento de conexión Bluetooth del casco (<code>ACTION_ACL_CONNECTED</code>); baliza BLE en v2</td><td>Una línea de código y muy fiable para quien lleva intercomunicador.</td><td>—</td></tr>
+        <tr><td>Foto del odómetro (B)</td><td>CameraX + reconocimiento de texto de ML Kit</td><td>En el propio móvil, gratis y sin conexión.</td><td>OCR en la nube (cuesta por foto).</td></tr>
+        <tr><td>Visual</td><td>Compose <code>Canvas</code> con un <code>Path</code> por zona, generado desde el SVG en el build</td><td>Cambiar la lámina es sustituir el SVG; los ids de zona son el contrato.</td><td>WebView con SVG (lento, poco nativo).</td></tr>
+        <tr><td>Informe IA</td><td><code>Intent.ACTION_SEND</code> (enviar) + <code>intent-filter text/plain</code> (recibir) + portapapeles + validación con kotlinx.serialization</td><td>Todo nativo, sin claves de API ni coste.</td><td>API de IA propia (coste por uso).</td></tr>
+        <tr><td>Compilar y publicar</td><td>Gradle con version catalog + GitHub Actions + Gradle Play Publisher</td><td>Cada push genera el build y lo sube a la pista de pruebas de Google Play.</td><td>Sin actualizaciones por aire: cada cambio pasa por la revisión de Google Play.</td></tr>
+        <tr><td>Calidad</td><td>JUnit (dominio) + pruebas de UI de Compose + Maestro (flujos)</td><td>Las IAs escriben bien las tres; Maestro prueba en un móvil real.</td><td>Espresso a mano.</td></tr>
+        <tr><td>Web</td><td>Cloudflare (ya lo usas en Agenda): landing + <code>assetlinks.json</code> + visor web del informe</td><td>Plan gratuito. El visor lee el <code>#r=</code> en el navegador, sin guardar nada.</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Estrategia</span>
+    <h2>Por fases, todo gratis</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Fase</th><th>Qué incluye</th><th>Tiempo estimado</th><th>Coste</th><th>Para pasar a la siguiente</th></tr></thead>
+      <tbody>
+        <tr><td>0 · Prototipo</td><td>Esta página</td><td>Hecho</td><td>0 €</td><td>Que te convenzan la lámina y el flujo del informe.</td></tr>
+        <tr><td>1 · MVP personal</td><td>Lámina 1, catálogo de piezas, A (estimación), B (foto + confirmar), informe IA de ida y vuelta</td><td>~2 semanas</td><td>0 €</td><td>Usarlo tú 2 semanas sin volver a Agenda.</td></tr>
+        <tr><td>2 · Km automático</td><td>C con detección por actividad y por casco, calibración, ajustes de batería</td><td>1–2 semanas de IA + 1 mes rodando</td><td>0 €</td><td>Error &lt; 3 % frente al odómetro real en tu móvil.</td></tr>
+        <tr><td>3 · Lámina definitiva</td><td>Modelo 3D genérico → líneas en Blender → SVG con nuestros ids</td><td>~1 semana</td><td>0–150 €</td><td>Que la lámina se vea "de verdad" en un móvil de gama media.</td></tr>
+        <tr><td>4 · Prueba cerrada</td><td>Google Play con ~12 testers durante 14 días; declaración de ubicación</td><td>3–4 semanas</td><td>25 $ + dominio</td><td>Que 6 de cada 10 testers sigan usándolo a las 2 semanas.</td></tr>
+        <tr><td>5 · Público</td><td>Ficha en español; compartir en Instagram la lámina de tu moto (como el resumen anual de Strava)</td><td>Continuo</td><td>0 €</td><td>Usuarios activos suficientes para hablar con marcas.</td></tr>
+        <tr><td>6 · Afiliación local</td><td>"Te quedan 300 km de pastillas → estas, de una marca local". Más adelante: historial para vender la moto, talleres, flotas</td><td>Cuando haya usuarios</td><td>0 €</td><td>Primer acuerdo firmado.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>Las cifras de tiempo y coste son estimaciones propias, sin presupuestos reales. Dominio <code>motoplus.app</code> usado como ejemplo, sin comprobar si está libre. La lámina es una interpretación genérica y no reproduce ningún modelo comercial.</footer>
+</div>
+
+<script>
+const TODAY = new Date('2026-10-24T12:00:00');
+const DAY = 864e5;
+const ZONES = {
+  rueda_tras:'Rueda trasera', freno_tras:'Freno trasero', cadena:'Transmisión', suspension_tras:'Amortiguador',
+  bateria:'Batería', admision:'Admisión', motor:'Motor', radiador:'Refrigeración',
+  horquilla:'Horquilla', freno_del:'Freno delantero', rueda_del:'Rueda delantera', faro:'Luces'
+};
+const ZKEYS = Object.keys(ZONES);
+const S = {
+  readings:[{d:'2026-08-02',km:11020},{d:'2026-09-14',km:11750},{d:'2026-10-10',km:12210}],
+  rides:[{d:'2026-10-12',km:34,src:'Casco Bluetooth'},{d:'2026-10-15',km:61,src:'Sensor de movimiento'},{d:'2026-10-18',km:142,src:'Casco Bluetooth',wet:true},{d:'2026-10-22',km:18,src:'Casco Bluetooth'}],
+  factor:1.03,
+  parts:[
+    {id:'eng',z:'cadena',n:'Engrase de cadena',km:600,lk:11900,ld:'2026-10-02'},
+    {id:'tens',z:'cadena',n:'Tensión de cadena',km:1000,lk:11300,ld:'2026-08-20'},
+    {id:'kit',z:'cadena',n:'Kit de arrastre',km:20000,lk:4000,ld:'2024-05-10'},
+    {id:'ace',z:'motor',n:'Aceite de motor',km:6000,days:365,lk:9000,ld:'2026-03-10'},
+    {id:'fac',z:'motor',n:'Filtro de aceite',km:6000,days:365,lk:9000,ld:'2026-03-10'},
+    {id:'buj',z:'motor',n:'Bujías',km:12000,days:730,lk:null,ld:null},
+    {id:'fai',z:'admision',n:'Filtro de aire',km:12000,days:730,lk:6000,ld:'2025-06-01'},
+    {id:'pdel',z:'freno_del',n:'Pastillas delanteras',km:8000,lk:5500,ld:'2025-04-12'},
+    {id:'liq',z:'freno_del',n:'Líquido de frenos',days:730,lk:6800,ld:'2024-09-15'},
+    {id:'ptra',z:'freno_tras',n:'Pastillas traseras',km:12000,lk:5500,ld:'2025-04-12'},
+    {id:'ndel',z:'rueda_del',n:'Neumático delantero',km:12000,days:1825,lk:4000,ld:'2024-05-10'},
+    {id:'pres',z:'rueda_tras',n:'Presión de neumáticos',days:14,lk:12350,ld:'2026-10-20'},
+    {id:'ntra',z:'rueda_tras',n:'Neumático trasero',km:9000,days:1825,lk:4000,ld:'2024-05-10'},
+    {id:'hor',z:'horquilla',n:'Aceite de horquilla',km:20000,days:730,lk:null,ld:null},
+    {id:'amo',z:'suspension_tras',n:'Revisión del amortiguador',km:20000,days:730,lk:9800,ld:'2025-08-01'},
+    {id:'ref',z:'radiador',n:'Refrigerante',days:730,lk:8000,ld:'2025-03-20'},
+    {id:'bat',z:'bateria',n:'Revisión de batería',days:180,lk:12000,ld:'2026-09-05'},
+    {id:'luz',z:'faro',n:'Luces e intermitentes',days:30,lk:12300,ld:'2026-10-15'}
+  ],
+  reports:[], hl:[], sel:null, tab:'moto', prompt:'', plain:false
+};
+try{const r=JSON.parse(localStorage.getItem('motoplus-reports')||'[]');if(Array.isArray(r))S.reports=r}catch(e){}
+
+const fmt = n => Math.round(n).toLocaleString('es-ES');
+const days = (a,b=TODAY) => Math.max(0,(b - new Date(a+'T12:00:00'))/DAY);
+const iso = d => d.toISOString().slice(0,10);
+
+function odometer(){
+  const last=S.readings[S.readings.length-1];
+  const after=S.rides.filter(r=>r.d>last.d);
+  if(after.length){
+    const gps=after.reduce((s,r)=>s+r.km,0);
+    return {km:last.km+gps*S.factor,pm:Math.max(5,Math.round(gps*0.02)),src:`${after.length} salidas detectadas desde la última lectura (GPS ×${S.factor.toFixed(3)})`,gps,last};
+  }
+  const first=S.readings[0];
+  const span=days(first.d,new Date(last.d+'T12:00:00'))||1;
+  const rate=(last.km-first.km)/span, d=days(last.d);
+  return {km:last.km+rate*d,pm:Math.max(0,Math.round(rate*d*0.3)),src:d<1?'Lectura de hoy':`Estimado con tu media de ${rate.toFixed(1)} km/día`,gps:0,last};
+}
+function partState(p,odo){
+  if(p.lk==null&&p.ld==null) return {st:'none',pct:1,txt:'Sin registro'};
+  const pk=p.km?(odo-p.lk)/p.km:0, pt=p.days?days(p.ld)/p.days:0, pct=Math.max(pk,pt);
+  const st=pct>=1?'bad':pct>=0.75?'warn':'ok';
+  let txt;
+  if(pk>=pt&&p.km){const left=p.km-(odo-p.lk);txt=left>=0?`Quedan ${fmt(left)} km`:`Pasado por ${fmt(-left)} km`}
+  else {const left=Math.round(p.days-days(p.ld));txt=left>=0?`Quedan ${left} días`:`Pasado por ${-left} días`}
+  return {st,pct,txt};
+}
+function zoneStates(odo){
+  const rank={ok:0,warn:1,bad:2,none:3}, z={};
+  for(const k of ZKEYS) z[k]={st:'ok',worst:0,parts:[]};
+  for(const p of S.parts){const s=partState(p,odo);z[p.z].parts.push({p,s});
+    if(rank[s.st]>rank[z[p.z].st]) z[p.z].st=s.st; z[p.z].worst=Math.max(z[p.z].worst,s.pct)}
+  return z;
+}
+const color = st => st==='ok'?'var(--ok)':st==='warn'?'var(--warn)':'var(--bad)';
+
+/* ---------- Lámina: geometría ---------- */
+// ponytail: proporciones a ojo sobre medidas típicas de una naked 700; el camino 2 (3D → líneas) sustituye esto conservando los ids de zona
+const SC=0.45;                       // unidades por mm
+const R=[300,500], F=[930,500], PV=[520,425], CS=[548,438], GROUND=640;
+const rad=d=>d*Math.PI/180, f=n=>n.toFixed(1);
+const pol=(c,r,a)=>[c[0]+r*Math.cos(rad(a)),c[1]+r*Math.sin(rad(a))];
+const pt=p=>f(p[0])+' '+f(p[1]);
+const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+const rotAbout=(p,c,deg)=>{const a=rad(deg),dx=p[0]-c[0],dy=p[1]-c[1];return [c[0]+dx*Math.cos(a)-dy*Math.sin(a),c[1]+dx*Math.sin(a)+dy*Math.cos(a)]};
+const Lc=(x,y)=>rotAbout([x,y],F,-25);   // coordenadas locales de la dirección (lanzamiento 25°)
+const circ=(c,r,cls='l')=>`<circle class="${cls}" cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}"/>`;
+const ln=(a,b,cls='l')=>`<path class="${cls}" d="M${pt(a)} L${pt(b)}"/>`;
+const poly=(ps,cls='sf')=>`<path class="${cls}" d="M${ps.map(pt).join(' L')} Z"/>`;
+const lpoly=(ps,cls='sf')=>poly(ps.map(p=>Lc(p[0],p[1])),cls);
+const path=(d,cls='l')=>`<path class="${cls}" d="${d}"/>`;
+const pipe=(d,w)=>`<path class="po" d="${d}" stroke-width="${w}"/><path class="pi" d="${d}" stroke-width="${(w-2.6).toFixed(1)}"/>`;
+const hex=(c,r)=>poly([0,60,120,180,240,300].map(a=>pol(c,r,a+30)),'sf');
+const ring=(c,R1,r)=>`M${f(c[0]-R1)} ${f(c[1])} a${R1} ${R1} 0 1 0 ${2*R1} 0 a${R1} ${R1} 0 1 0 ${-2*R1} 0 Z M${f(c[0]-r)} ${f(c[1])} a${r} ${r} 0 1 0 ${2*r} 0 a${r} ${r} 0 1 0 ${-2*r} 0 Z`;
+
+function wheel(c,Rt,Rr){
+  let s=circ(c,Rt,'sf')+circ(c,Rt-5,'l t')+circ(c,Rr+9,'l t');
+  for(let a=0;a<360;a+=7.5){ s+=ln(pol(c,Rt-1.5,a),pol(c,Rt-10,a+3.5),'l t'); }
+  s+=circ(c,Rr,'l')+circ(c,Rr-5,'l');
+  for(let k=0;k<5;k++){const a=k*72-90;
+    s+=poly([pol(c,24,a-11),pol(c,56,a-4),pol(c,Rr-5,a-14),pol(c,Rr-5,a-5),pol(c,68,a),pol(c,Rr-5,a+5),pol(c,Rr-5,a+14),pol(c,56,a+4),pol(c,24,a+11)]);}
+  s+=circ(c,27,'sf')+circ(c,15,'l t')+hex(c,8)+circ(c,3,'l t');
+  s+=ln(pol(c,Rr-5,-20),pol(c,Rr-15,-20),'l');
+  return s;
+}
+function disc(c,Rd,hid){
+  const k=hid?'l h':'l';
+  let s=hid?'':`<path class="sf" fill-rule="evenodd" d="${ring(c,Rd,Rd-15)}"/>`;
+  s+=circ(c,Rd,k)+circ(c,Rd-15,k);
+  if(!hid) for(let a=0;a<360;a+=10){ s+=circ(pol(c,Rd-5,a),1.4,'l t')+circ(pol(c,Rd-10,a+5),1.4,'l t'); }
+  for(let a=0;a<360;a+=45) s+=circ(pol(c,Rd-18,a),2.6,k);
+  for(let a=22.5;a<360;a+=45) s+=ln(pol(c,30,a),pol(c,Rd-18,a+12),k+' t');
+  return s;
+}
+function sprocket(c,r,n,holes){
+  const ps=[], st=360/n;
+  for(let i=0;i<n;i++){const a=i*st; ps.push(pol(c,r+3.6,a-st*.16),pol(c,r+3.6,a+st*.16),pol(c,r-1.6,a+st*.5));}
+  let s=poly(ps)+circ(c,r-6,'l t');
+  if(holes) for(let k=0;k<5;k++) s+=circ(pol(c,r*.56,k*72+36),r*.17,'l');
+  for(let k=0;k<5;k++) s+=circ(pol(c,Math.min(19,r*.45),k*72),1.8,'l');
+  return s;
+}
+function chainPath(c1,r1,c2,r2){
+  const dx=c2[0]-c1[0], dy=c2[1]-c1[1], d=Math.hypot(dx,dy), th=Math.atan2(dy,dx), al=Math.acos((r1-r2)/d);
+  const t=(c,r,a)=>[c[0]+r*Math.cos(a),c[1]+r*Math.sin(a)];
+  const p1=t(c1,r1,th-al),p2=t(c2,r2,th-al),p3=t(c2,r2,th+al),p4=t(c1,r1,th+al);
+  return `M${pt(p1)} L${pt(p2)} A${r2} ${r2} 0 0 1 ${pt(p3)} L${pt(p4)} A${r1} ${r1} 0 1 1 ${pt(p1)} Z`;
+}
+function shock(a,b){
+  const v=[b[0]-a[0],b[1]-a[1]], Lh=Math.hypot(...v), n=[-v[1]/Lh,v[0]/Lh];
+  const at=(t,o=0)=>[a[0]+v[0]*t+n[0]*o,a[1]+v[1]*t+n[1]*o];
+  let s=pipe(`M${pt(at(0))} L${pt(at(1))}`,9);
+  s+=poly([at(.5,-8),at(.95,-8),at(.95,8),at(.5,8)]);
+  s+=poly([at(.86,-10),at(.98,-10),at(.98,10),at(.86,10)]);
+  let d=`M${pt(at(.14,0))}`; const N=8;
+  for(let i=1;i<=N*2;i++) d+=` L${pt(at(.14+(.7-.14)*i/(N*2),i%2?12:-12))}`;
+  s+=path(d,'l spring');
+  s+=poly([at(.70,-13),at(.74,-13),at(.74,13),at(.70,13)])+poly([at(.10,-13),at(.14,-13),at(.14,13),at(.10,13)]);
+  s+=circ(at(0),6,'sf')+circ(at(0),2.4,'l')+circ(at(1),6,'sf')+circ(at(1),2.4,'l');
+  return s;
+}
+function swingarm(){
+  const v=[R[0]-PV[0],R[1]-PV[1]], Lh=Math.hypot(...v), n=[-v[1]/Lh,v[0]/Lh];
+  const at=(t,o)=>[PV[0]+v[0]*t+n[0]*o,PV[1]+v[1]*t+n[1]*o];
+  let s=poly([at(-.04,-19),at(.9,-12),at(1.04,-9),at(1.04,9),at(.9,12),at(-.04,19)]);
+  s+=poly([at(.12,-12),at(.8,-7),at(.8,7),at(.12,12)],'l t');
+  s+=ln(at(.3,13),at(.32,-14),'l t');
+  return s;
+}
+function adjuster(){
+  const v=[R[0]-PV[0],R[1]-PV[1]], Lh=Math.hypot(...v), n=[-v[1]/Lh,v[0]/Lh];
+  const at=(t,o)=>[PV[0]+v[0]*t+n[0]*o,PV[1]+v[1]*t+n[1]*o];
+  let s=poly([at(.86,-8),at(1.02,-8),at(1.02,8),at(.86,8)]);
+  for(let i=0;i<5;i++) s+=ln(at(.88+i*.025,-8),at(.88+i*.025,-3),'l t');
+  s+=ln(at(.78,0),at(.86,0),'l')+hex(at(.8,0),3.2);
+  return s;
+}
+
+function bikeSVG(opts){
+  const plate=opts.plate;
+  const HT=Lc(898,146), HB=Lc(898,212), clamp=Lc(916,134);
+  const grip=[clamp[0]-104,clamp[1]-10];
+  const shockA=lerp(PV,R,.28), shockB=[506,292];
+  const Z=(id,inner)=>`<g class="zone" data-z="${id}" tabindex="0" role="button" aria-label="${ZONES[id]}">${inner}</g>`;
+  const seatTop=248;
+  let s='';
+  // Rueda trasera + freno trasero (oculto: lado derecho)
+  s+=Z('rueda_tras',wheel(R,140,97));
+  s+=Z('freno_tras',disc(R,55,true)+poly([pol(R,50,118),pol(R,66,112),pol(R,72,140),pol(R,58,146)],'l h')+path(`M${pt(pol(R,64,128))} L${pt(lerp(PV,R,.55))}`,'l h'));
+  // Basculante
+  s+=path(`M${pt(pol(R,152,-125))} A152 152 0 0 1 ${pt(pol(R,152,-50))} L${pt(pol(R,146,-50))} A146 146 0 0 0 ${pt(pol(R,146,-125))} Z`,'sf');
+  s+=swingarm();
+  // Transmisión: corona, piñón, cadena, tensor
+  s+=Z('cadena',sprocket(R,48,43,true)+sprocket(CS,18,16,false)+pipe(chainPath(R,49.5,CS,19.5),8.5)+`<path class="rollers" d="${chainPath(R,49.5,CS,19.5)}"/>`+adjuster());
+  // Amortiguador
+  s+=poly([[496,282],[546,276],[556,298],[512,304]])+circ([506,292],3,'l');
+  s+=Z('suspension_tras',shock(shockA,shockB));
+  // Subchasis
+  s+=pipe('M568 262 L250 238',9)+pipe('M548 345 L330 262',8)+pipe('M430 290 L412 382',6)+circ([412,384],6,'sf')+ln([396,387],[428,381],'l');
+  // Pletina del basculante + estribo y cambio
+  s+=poly([[520,330],[566,326],[578,392],[556,452],[506,452],[494,392]])+circ(PV,10,'sf')+hex(PV,6)+circ([545,346],5,'sf');
+  s+=pipe('M540 455 L528 480',8)+pipe('M512 482 L546 482',7)+pipe('M552 452 L610 472',5)+circ([612,473],5,'sf');
+  // Motor
+  s+=Z('motor',`<g transform="translate(0,8)">
+    ${poly([[556,334],[715,324],[748,412],[722,464],[590,470],[560,446]])}
+    ${poly([[598,470],[716,464],[708,486],[606,490]])}
+    ${poly([[640,326],[726,320],[752,262],[664,264]])}
+    ${[0,1,2,3].map(i=>ln([650+i*5,312-i*13],[733+i*5,307-i*13],'l t')).join('')}
+    ${poly([[660,264],[756,260],[772,224],[670,222]])}
+    ${path('M668 222 L774 224 C780 208 772 200 760 200 L684 198 C672 198 664 208 668 222 Z','sf')}
+    ${[684,704,724,744,762].map(x=>circ([x,214],2.2,'l')).join('')}
+    ${poly([[694,198],[706,198],[704,182],[696,182]])}${poly([[730,199],[742,199],[740,183],[732,183]])}
+    ${circ([640,400],40,'sf')}${circ([640,400],31,'l t')}${[...Array(10)].map((_,i)=>circ(pol([640,400],36,i*36),1.8,'l')).join('')}
+    ${poly([[570,412],[598,406],[604,440],[574,446]],'l h')}
+    ${poly([[724,432],[748,426],[756,458],[732,464]])}${[0,1,2,3].map(i=>ln([727+i*5,431-i*1.2],[735+i*5,462-i*1.2],'l t')).join('')}
+    ${hex([658,482],4)}${circ([690,454],5,'l')}
+  </g>`);
+  // Admisión (caja de filtro bajo el depósito)
+  s+=Z('admision',path('M566 270 L652 262 C660 280 664 296 658 306 L578 314 C568 300 564 284 566 270 Z','sf')+ln([582,284],[648,278],'l t')+ln([584,296],[652,290],'l t')+pipe('M652 282 L668 280',9));
+  // Escape
+  s+=pipe('M766 262 C804 312 792 436 742 492 C714 520 660 518 610 510',12)+pipe('M752 268 C784 318 774 432 730 484 C704 510 660 508 616 502',10);
+  s+=path('M556 494 L700 502 L712 530 L586 536 L548 516 Z','sf')+ln([570,506],[700,512],'l t')+ln([572,520],[702,524],'l t')+pipe('M556 512 L534 516',9);
+  // Refrigeración
+  s+=Z('radiador',poly([[786,272],[812,276],[802,376],[776,372]])+[...Array(12)].map((_,i)=>ln(lerp([788,280],[778,368],i/11),lerp([809,284],[800,372],i/11),'l t')).join('')+pipe('M772 236 C784 242 792 252 794 272',7)+pipe('M780 374 C768 390 752 392 744 380',7)+circ([795,306],8,'l t'));
+  // Batería (oculta bajo el asiento)
+  s+=Z('bateria',poly([[428,252],[482,250],[484,288],[430,290]],'l h')+ln([440,250],[440,244],'l h')+ln([470,249],[470,243],'l h')+path('M436 270 h8 M440 266 v8 M466 270 h8','l t h'));
+  // Chasis multitubular
+  s+=pipe(`M${pt(HT)} L568 262 L540 334`,13)+pipe(`M${pt(HB)} L705 304 L600 316 L548 346`,12)+pipe('M690 220 L705 304',9)+pipe('M628 242 L650 312',9)+pipe('M590 256 L600 316',8);
+  s+=circ([705,304],6,'sf')+circ([600,316],5,'sf');
+  // Depósito, asiento, colín
+  s+=path('M572 258 C576 220 600 194 640 180 L742 162 C760 160 772 168 778 180 L794 216 L708 238 L604 254 Z','sf');
+  s+=path('M742 164 L770 216','l t')+path('M652 204 C690 196 722 198 750 210','l t')+path('M604 244 C640 238 680 232 716 226','l t')+`<ellipse class="sf" cx="690" cy="172" rx="14" ry="4"/>`;
+  s+=path(`M574 262 C556 252 530 ${seatTop+2} 500 ${seatTop+2} L420 ${seatTop} C404 244 392 236 376 230 L300 220 L296 236 L378 252 C420 264 480 272 574 276 Z`,'sf')+path(`M420 ${seatTop} C410 252 396 254 380 252`,'l t');
+  s+=path('M300 220 L216 206 L208 222 L296 238 Z','sf')+path('M300 262 C280 290 250 310 236 330','po')+poly([[214,330],[262,330],[262,366],[214,366]]);
+  // Dirección: tijas, pipa, cuadro de instrumentos, manillar
+  s+=lpoly([[890,146],[906,146],[906,212],[890,212]])+lpoly([[884,198],[950,198],[950,216],[884,216]])+lpoly([[886,136],[948,136],[948,152],[886,152]]);
+  s+=lpoly([[904,112],[950,106],[952,124],[906,128]])+circ(Lc(944,144),2.4,'l')+circ(Lc(944,206),2.4,'l');
+  s+=pipe(`M${pt(clamp)} L${pt([clamp[0]-4,clamp[1]-20])} C${pt([clamp[0]-30,clamp[1]-26])} ${pt([clamp[0]-70,clamp[1]-16])} ${pt(grip)}`,7);
+  s+=poly([[grip[0]-4,grip[1]-6],[grip[0]+30,grip[1]-12],[grip[0]+32,grip[1]-2],[grip[0]-2,grip[1]+4]]);
+  s+=pipe(`M${pt([clamp[0]-46,clamp[1]-20])} L${pt([clamp[0]-56,clamp[1]-60])}`,4)+`<ellipse class="sf" cx="${f(clamp[0]-60)}" cy="${f(clamp[1]-68)}" rx="22" ry="9" transform="rotate(-8 ${f(clamp[0]-60)} ${f(clamp[1]-68)})"/>`;
+  // Rueda delantera, freno, horquilla, faro
+  s+=Z('rueda_del',wheel(F,136,97));
+  s+=path(`M${pt(pol(F,150,-165))} A150 150 0 0 1 ${pt(pol(F,150,-40))} L${pt(pol(F,143,-40))} A143 143 0 0 0 ${pt(pol(F,143,-165))} Z`,'sf');
+  const cal=[[882,452],[908,446],[912,504],[886,508]];
+  s+=Z('freno_del',disc(F,66,false)+lpoly(cal)+circ(Lc(914,458),3,'sf')+circ(Lc(914,496),3,'sf')+ln(Lc(888,470),Lc(908,467),'l t')+ln(Lc(889,488),Lc(909,485),'l t')+
+     path(`M${pt(Lc(895,448))} C${pt(Lc(898,410))} ${pt(Lc(906,370))} ${pt(Lc(914,340))}`,'l'));
+  s+=poly([[grip[0]+32,grip[1]-14],[grip[0]+48,grip[1]-16],[grip[0]+50,grip[1]-4],[grip[0]+34,grip[1]-2]])+path(`M${pt([grip[0]+34,grip[1]-4])} C${pt([grip[0]+14,grip[1]+6])} ${pt([grip[0]-14,grip[1]+8])} ${pt([grip[0]-28,grip[1]+6])}`,'l');
+  s+=Z('horquilla',lpoly([[921,152],[939,152],[939,334],[921,334]])+ln(Lc(926,160),Lc(926,320),'l t')+lpoly([[916,328],[944,328],[946,500],[940,516],[920,516],[914,500]])+lpoly([[914,322],[946,322],[946,334],[914,334]])+circ(Lc(930,146),5,'sf')+ln(Lc(918,490),Lc(942,490),'l t'));
+  s+=circ(F,8,'sf')+hex(F,5);
+  s+=Z('faro',circ(Lc(982,176),30,'sf')+circ(Lc(982,176),22,'l t')+circ(Lc(982,176),9,'l')+ln(Lc(944,168),Lc(954,174),'l')+
+     lpoly([[958,206],[984,204],[986,212],[960,214]])+poly([[204,214],[214,212],[212,224],[203,226]])+poly([[226,300],[246,298],[247,306],[227,308]]));
+  // Suelo, cotas y marcas
+  s+=ln([60,GROUND],[1080,GROUND],'l');
+  for(let x=70;x<1080;x+=16) s+=ln([x,GROUND],[x-8,GROUND+8],'l t');
+  if(plate){
+    const wb=Math.round((F[0]-R[0])/SC/10)*10, sh=Math.round((GROUND-seatTop)/SC/5)*5;
+    document.getElementById('tbWb').textContent=fmt(wb)+' mm';
+    s+=`<g>${ln([R[0],GROUND+14],[R[0],GROUND+42],'dim')}${ln([F[0],GROUND+14],[F[0],GROUND+42],'dim')}
+      ${path(`M${R[0]} ${GROUND+34} L${F[0]} ${GROUND+34} M${R[0]+8} ${GROUND+30} L${R[0]} ${GROUND+34} L${R[0]+8} ${GROUND+38} M${F[0]-8} ${GROUND+30} L${F[0]} ${GROUND+34} L${F[0]-8} ${GROUND+38}`,'dim')}
+      <text class="dimt" x="${(R[0]+F[0])/2}" y="${GROUND+28}" text-anchor="middle">${fmt(wb)}</text>
+      ${ln([300,seatTop],[150,seatTop],'dim')}${path(`M160 ${GROUND} L160 ${seatTop} M156 ${seatTop+8} L160 ${seatTop} L164 ${seatTop+8} M156 ${GROUND-8} L160 ${GROUND} L164 ${GROUND-8}`,'dim')}
+      <text class="dimt" transform="translate(152 ${(GROUND+seatTop)/2}) rotate(-90)" text-anchor="middle">${fmt(sh)}</text>
+      ${ln(F,Lc(930,96),'dim')}${ln(F,[F[0],F[1]-404],'dim')}${path(`M${F[0]} ${F[1]-380} A380 380 0 0 0 ${pt(Lc(930,120))}`,'dim')}
+      <text class="dimt" x="${F[0]-58}" y="${F[1]-388}">25°</text></g>`;
+    const MK={rueda_tras:pol(R,124,205),freno_tras:pol(R,40,135),cadena:lerp(R,CS,.5).map((v,i)=>v+(i?24:0)),suspension_tras:lerp(shockA,shockB,.45).map((v,i)=>v+(i?0:-22)),
+      bateria:[456,270],admision:[612,290],motor:[690,412],radiador:[796,336],horquilla:Lc(930,260),freno_del:pol(F,58,205),rueda_del:pol(F,120,-35),faro:Lc(982,176)};
+    ZKEYS.forEach((k,i)=>{s+=`<g class="mk" data-mk="${k}"><circle cx="${f(MK[k][0])}" cy="${f(MK[k][1])}" r="10"/><text x="${f(MK[k][0])}" y="${f(MK[k][1])}">${i+1}</text></g>`});
+  }
+  s+=`<rect class="scan" x="40" y="60" width="44" height="600" rx="22"/>`;
+  return `<svg class="bike" viewBox="${plate?'90 50 1000 690':'150 60 940 600'}" role="img" aria-label="Lámina técnica de la moto por zonas">${s}</svg>`;
+}
+
+function paint(svg,z){
+  svg.querySelectorAll('.zone').forEach(g=>{const k=g.dataset.z;g.classList.remove('ok','warn','bad','sel','hl');
+    g.classList.add(z[k].st==='none'?'bad':z[k].st); if(S.sel===k)g.classList.add('sel'); if(S.hl.includes(k))g.classList.add('hl')});
+  svg.querySelectorAll('.mk').forEach(m=>{const k=m.dataset.mk;m.style.setProperty('--zc',color(z[k].st))});
+}
+function wire(svg){
+  svg.querySelectorAll('.zone').forEach(g=>{const k=g.dataset.z;
+    g.addEventListener('click',()=>pick(k)); g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(k)}})});
+}
+
+/* ---------- Lámina grande ---------- */
+const plateHost=document.getElementById('plateSvg');
+plateHost.innerHTML=bikeSVG({plate:true});
+const plateSvg=plateHost.querySelector('svg'); wire(plateSvg);
+function renderPlate(){
+  const o=odometer(), z=zoneStates(o.km);
+  paint(plateSvg,z); plateSvg.classList.toggle('plain',S.plain);
+  document.getElementById('legend').innerHTML=ZKEYS.map((k,i)=>`<li><button data-z="${k}" style="color:${S.plain?'var(--ink)':color(z[k].st)}"><span class="n">${i+1}</span><span style="color:var(--ink)">${ZONES[k]}</span><span class="pc">${z[k].st==='none'?'sin registro':Math.round(z[k].worst*100)+' %'}</span></button></li>`).join('');
+  document.querySelectorAll('#legend button').forEach(b=>b.onclick=()=>pick(b.dataset.z));
+}
+document.getElementById('mState').onclick=()=>{S.plain=false;syncSeg();renderPlate()};
+document.getElementById('mPlain').onclick=()=>{S.plain=true;syncSeg();renderPlate()};
+function syncSeg(){document.getElementById('mState').setAttribute('aria-pressed',!S.plain);document.getElementById('mPlain').setAttribute('aria-pressed',S.plain)}
+
+/* ---------- App ---------- */
+function renderMoto(v){
+  const o=odometer(), z=zoneStates(o.km);
+  const counts={ok:0,warn:0,bad:0};
+  S.parts.forEach(p=>{const s=partState(p,o.km).st;counts[s==='none'?'bad':s]++});
+  const score=Math.round(100*(counts.ok+counts.warn*.5)/S.parts.length);
+  const order=ZKEYS.slice().sort((a,b)=>z[b].worst-z[a].worst);
+  v.innerHTML=`<div class="bikebox"><div class="health"><div class="score">${score}<small>/ 100 salud</small></div>
+    <div class="legend"><span><i style="background:var(--ok)"></i>Bien</span><span><i style="background:var(--warn)"></i>Pronto</span><span><i style="background:var(--bad)"></i>Toca</span></div></div>${bikeSVG({plate:false})}</div>
+    <div class="chips">${order.map(k=>`<button class="chip" data-z="${k}"><span class="dot ${z[k].st}"></span>${ZONES[k]} · ${z[k].st==='none'?'sin registro':Math.round(z[k].worst*100)+' %'}</button>`).join('')}</div>
+    <div id="sheet"></div>`;
+  const svg=v.querySelector('svg.bike'); wire(svg); paint(svg,z);
+  v.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>pick(c.dataset.z)));
+  const sheet=v.querySelector('#sheet');
+  if(S.sel){
+    const k=S.sel;
+    sheet.innerHTML=`<div class="card"><div class="item row" style="border:0;padding:0"><h3>${ZONES[k]}</h3><button class="btn ghost sm" id="closeSel">Cerrar</button></div>${z[k].parts.sort((a,b)=>b.s.pct-a.s.pct).map(itemHTML).join('')}</div>`;
+    sheet.querySelector('#closeSel').onclick=()=>{S.sel=null;render()};
+  } else sheet.innerHTML=`<div class="card"><h3>Lo próximo</h3>${z[order[0]].parts.sort((a,b)=>b.s.pct-a.s.pct).slice(0,3).map(itemHTML).join('')}<p class="hint">Toca una zona de la moto para ver sus piezas.</p></div>`;
+}
+function itemHTML({p,s}){
+  const w=Math.min(100,Math.round(s.pct*100));
+  const last=p.ld?`Última: ${p.lk!=null?fmt(p.lk)+' km · ':''}${new Date(p.ld+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}`:'Nunca registrada';
+  const iv=[p.km?`cada ${fmt(p.km)} km`:'',p.days?`cada ${p.days>=60?Math.round(p.days/30.4)+' meses':p.days+' días'}`:''].filter(Boolean).join(' o ');
+  return `<div class="item"><div class="row"><span class="nm">${p.n}</span><span class="meta" style="color:${color(s.st)};font-weight:600">${s.txt}</span></div>
+  <div class="pbar"><span style="width:${w}%;background:${color(s.st)}"></span></div>
+  <div class="row"><span class="meta">${last} · ${iv}</span><button class="btn sm" data-done="${p.id}">Hecho hoy</button></div></div>`;
+}
+function pick(k){S.sel=k;S.hl=S.hl.filter(x=>x!==k);if(S.tab!=='moto')setTab('moto');else render();document.getElementById('sheet')?.scrollIntoView({behavior:'smooth',block:'nearest'})}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-done]');if(!b)return;
+  const p=S.parts.find(x=>x.id===b.dataset.done);p.lk=Math.round(odometer().km);p.ld=iso(TODAY);toast(`${p.n}: registrado a ${fmt(p.lk)} km`);render()});
+
+function renderKm(v){
+  const o=odometer(), digits=fmt(o.km).split('');
+  v.innerHTML=`<div class="card"><span class="eyebrow">Odómetro estimado</span>
+   <div class="odo">${digits.map(c=>c==='.'?`<span class="sep">.</span>`:`<span>${c}</span>`).join('')}</div>
+   <div class="pm">± ${o.pm} km · ${o.src}</div>
+   <p class="hint">¿Es lo que marca tu moto?</p>
+   <div class="btns"><button class="btn" id="okKm">Sí, ${fmt(o.km)}</button><button class="btn ghost" id="fixKm">Corregir</button></div>
+   <div id="fixBox" hidden style="display:grid;gap:8px">
+     <label class="hint" for="kmIn">Lo que marca el cuadro</label><input id="kmIn" type="number" inputmode="numeric" value="${Math.round(o.km)}">
+     <label class="btn ghost sm" for="photo" style="width:max-content">Foto del cuadro</label><input id="photo" type="file" accept="image/*" hidden>
+     <div id="ph"></div><button class="btn" id="saveKm">Guardar lectura</button></div></div>
+  <div class="card"><h3>Salidas detectadas</h3>
+   <div>${S.rides.slice().reverse().map(r=>`<div class="ride"><span>${new Date(r.d+'T12:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})}${r.wet?' · lluvia':''}<br><span class="src">${r.src}${r.d>o.last.d?'':' · ya contada'}</span></span><b>${r.km} km</b></div>`).join('')}</div>
+   <p class="hint">En la app: empieza sola cuando el móvil se conecta al casco o detecta que vas en vehículo. GPS ×${S.factor.toFixed(3)} calibrado con tus lecturas.</p></div>
+  <div class="card"><h3>Lecturas reales</h3>${S.readings.slice().reverse().map(r=>`<div class="ride"><span>${new Date(r.d+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</span><b>${fmt(r.km)} km</b></div>`).join('')}</div>`;
+  const box=v.querySelector('#fixBox');
+  v.querySelector('#fixKm').onclick=()=>{box.hidden=!box.hidden};
+  v.querySelector('#okKm').onclick=()=>saveReading(Math.round(o.km),o);
+  v.querySelector('#saveKm').onclick=()=>{const n=+v.querySelector('#kmIn').value;if(!n||n<o.last.km){toast('Debe ser mayor que la última lectura');return}saveReading(n,o)};
+  v.querySelector('#photo').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const u=URL.createObjectURL(fl);
+    v.querySelector('#ph').innerHTML=`<img class="thumb" src="${u}" alt="Foto del cuadro"><p class="hint">En la app, el número se lee solo de la foto. Aquí, revísalo arriba.</p>`};
+}
+function saveReading(km,o){
+  if(o.gps>0){const fc=(km-o.last.km)/o.gps;if(fc>0.85&&fc<1.15)S.factor=fc}
+  S.readings.push({d:iso(TODAY),km});
+  toast(`Lectura guardada · GPS ×${S.factor.toFixed(3)}`); render();
+}
+
+const SCHEMA=`{"v":1,"titulo":"…","urgencia":"baja|media|alta","resumen":"…","causas":[{"causa":"…","probabilidad":"alta|media|baja","zona":"…"}],"comprobaciones":["…"],"recomendacion":"…"}`;
+function buildPrompt(sym){
+  const o=odometer();
+  const lines=S.parts.map(p=>{const s=partState(p,o.km);return `- ${p.n} [${p.z}]: ${p.ld?`última a ${p.lk!=null?fmt(p.lk)+' km':'?'} el ${p.ld}`:'sin registro'} → ${s.txt}`}).join('\n');
+  const rides=S.rides.slice(-4).map(r=>`- ${r.d}: ${r.km} km${r.wet?' con lluvia':''}`).join('\n');
+  return `Eres un mecánico de motos con experiencia. Te paso el estado de mi moto desde la app MotoPlus. Explícame en lenguaje sencillo qué puede estar pasando y qué revisar. Sé claro si debo dejar de usarla. No sustituyes una revisión en taller.
+
+MOTO: Naked 700 cc, 2021. Odómetro: ~${fmt(o.km)} km (± ${o.pm}).
+SÍNTOMA: ${sym||'(sin síntoma: revisión general)'}
+
+MANTENIMIENTO:
+${lines}
+
+SALIDAS RECIENTES:
+${rides}
+
+FORMATO: primero la explicación para mí. Al final, un bloque de código con la etiqueta motoplus que contenga solo este JSON:
+${SCHEMA}
+Zonas válidas: ${ZKEYS.join(', ')}.
+Si puedes ejecutar código, añade debajo un enlace https://motoplus.app/i#r=<ese JSON en base64url>. Si no puedes, no lo inventes.`;
+}
+const SAMPLE={v:1,titulo:'Chirrido al frenar delante',urgencia:'media',resumen:'Lo más probable es que las pastillas delanteras estén cerca del final (llevan casi 7.000 km de 8.000) o cristalizadas. El líquido de frenos tiene más de 2 años y conviene cambiarlo. Puedes rodar con prudencia hasta revisarlo esta semana.',
+  causas:[{causa:'Pastillas delanteras gastadas o cristalizadas',probabilidad:'alta',zona:'freno_del'},{causa:'Disco con suciedad o restos tras la lluvia',probabilidad:'media',zona:'freno_del'},{causa:'Líquido de frenos viejo (más de 24 meses)',probabilidad:'media',zona:'freno_del'},{causa:'Holgura en la horquilla',probabilidad:'baja',zona:'horquilla'}],
+  comprobaciones:['Mira el grosor de las pastillas por la pinza: menos de 2 mm, cámbialas','Pasa la uña por el disco buscando surcos','Mira el color del líquido en el depósito: oscuro = cambiar','Frena en parado y empuja la moto: si la horquilla golpea, revísala'],
+  recomendacion:'Cambia las pastillas delanteras y el líquido de frenos en la misma visita.'};
+const b64u={enc:s=>btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec:s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)))};
+function sampleAnswer(){return `Por lo que cuentas, el chirrido viene casi seguro del freno delantero…\n\n\`\`\`motoplus\n${JSON.stringify(SAMPLE,null,1)}\n\`\`\`\n\nhttps://motoplus.app/i#r=${b64u.enc(JSON.stringify(SAMPLE))}`}
+function parseReport(t){
+  let raw=null;
+  const m=t.match(/```motoplus\s*([\s\S]*?)```/); if(m) raw=m[1];
+  if(!raw){const l=t.match(/#r=([A-Za-z0-9_-]+)/); if(l){try{raw=b64u.dec(l[1])}catch(e){}}}
+  if(!raw){const j=t.match(/\{[\s\S]*"v"\s*:\s*1[\s\S]*\}/); if(j) raw=j[0]}
+  if(!raw) return {err:'No encuentro el bloque motoplus ni el enlace. Copia la respuesta completa de la IA.'};
+  try{const r=JSON.parse(raw);
+    if(r.v!==1||!r.resumen||!Array.isArray(r.causas)) return {err:'El bloque está incompleto: falta resumen o causas.'};
+    r.urgencia=['baja','media','alta'].includes(r.urgencia)?r.urgencia:'media';
+    r.causas=r.causas.filter(c=>c&&c.causa).map(c=>({...c,zona:ZONES[c.zona]?c.zona:null}));
+    r.comprobaciones=Array.isArray(r.comprobaciones)?r.comprobaciones.map(String):[];
+    return {r};
+  }catch(e){return {err:'El JSON no es válido. Pide a la IA que repita solo el bloque motoplus.'}}
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function reportHTML(r){
+  const lab={baja:'Urgencia baja · puedes rodar',media:'Urgencia media · revísalo pronto',alta:'Urgencia alta · no ruedes'};
+  return `<div class="card report"><span class="urg ${r.urgencia}">${lab[r.urgencia]}</span><h3>${esc(r.titulo||'Informe')}</h3><p style="font-size:13px">${esc(r.resumen)}</p>
+   <div>${r.causas.map(c=>`<div class="cause"><span><b>${esc(c.causa)}</b>${c.zona?`<br><span class="hint">${ZONES[c.zona]}</span>`:''}</span><span class="prob">${esc(c.probabilidad||'')}</span></div>`).join('')}</div>
+   ${r.comprobaciones.length?`<span class="eyebrow">Qué mirar</span><ul>${r.comprobaciones.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+   ${r.recomendacion?`<p style="font-size:13px"><b>Recomendación:</b> ${esc(r.recomendacion)}</p>`:''}
+   <p class="hint">Orientativo, generado por tu IA. No sustituye la revisión en taller.</p>
+   <div class="btns"><button class="btn sm" data-see="${r.causas.map(c=>c.zona).filter(Boolean).join(',')}">Ver en la moto</button></div></div>`;
+}
+function renderIA(v){
+  v.innerHTML=`<div class="card"><h3>¿Qué le pasa?</h3>
+   <label class="hint" for="sym">Describe el síntoma con tus palabras</label>
+   <textarea id="sym">Chirría al frenar con el freno delantero, sobre todo en frío</textarea>
+   <button class="btn" id="gen">Preparar informe para mi IA</button>
+   <div id="out" hidden style="display:grid;gap:8px"><pre class="prompt" id="pr"></pre>
+     <div class="btns"><button class="btn sm" id="cp">Copiar</button><a class="btn ghost sm" id="gpt" target="_blank" rel="noopener">ChatGPT</a><a class="btn ghost sm" id="cl" target="_blank" rel="noopener">Claude</a></div>
+     <p class="hint">En la app: botón Compartir de Android, a la IA que tengas instalada.</p></div></div>
+  <div class="card"><h3>Traer la respuesta</h3>
+   <label class="hint" for="ans">Pega la respuesta completa o el enlace que te dio la IA</label>
+   <textarea id="ans" placeholder="…\`\`\`motoplus { … }\`\`\` o https://motoplus.app/i#r=…"></textarea>
+   <div class="btns"><button class="btn" id="imp">Guardar informe</button><button class="btn ghost sm" id="smp">Respuesta de ejemplo</button></div>
+   <p class="hint" id="err" style="color:var(--bad)" hidden></p></div>
+  <div style="display:grid;gap:12px">${S.reports.slice().reverse().map(x=>`<span class="eyebrow">${esc(x.at)}</span>${reportHTML(x.r)}`).join('')}</div>`;
+  const out=v.querySelector('#out');
+  v.querySelector('#gen').onclick=()=>{S.prompt=buildPrompt(v.querySelector('#sym').value.trim());v.querySelector('#pr').textContent=S.prompt;
+    v.querySelector('#gpt').href='https://chatgpt.com/?q='+encodeURIComponent(S.prompt);v.querySelector('#cl').href='https://claude.ai/new?q='+encodeURIComponent(S.prompt);out.hidden=false};
+  v.querySelector('#cp').onclick=()=>{navigator.clipboard.writeText(S.prompt).then(()=>toast('Informe copiado'),()=>{const r=document.createRange();r.selectNodeContents(v.querySelector('#pr'));const sl=getSelection();sl.removeAllRanges();sl.addRange(r);toast('Selecciónalo y cópialo')})};
+  v.querySelector('#smp').onclick=()=>{v.querySelector('#ans').value=sampleAnswer()};
+  v.querySelector('#imp').onclick=()=>{const {r,err}=parseReport(v.querySelector('#ans').value);const e=v.querySelector('#err');
+    if(err){e.textContent=err;e.hidden=false;return}
+    S.reports.push({at:TODAY.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' · '+fmt(odometer().km)+' km',r});
+    try{localStorage.setItem('motoplus-reports',JSON.stringify(S.reports.slice(-20)))}catch(_){}
+    S.hl=[...new Set(r.causas.map(c=>c.zona).filter(Boolean))];toast('Informe guardado');render()};
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-see]');if(!b)return;S.hl=b.dataset.see.split(',').filter(Boolean);S.sel=S.hl[0]||null;setTab('moto')});
+
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+function setTab(t){S.tab=t;document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));render(true)}
+function render(scan){
+  const v=document.getElementById('view'),o=odometer();
+  document.getElementById('odoPill').textContent=`~${fmt(o.km)} km`;
+  ({moto:renderMoto,km:renderKm,ia:renderIA})[S.tab](v);
+  renderPlate();
+  if(scan) document.querySelectorAll('.scan').forEach(s=>{s.classList.remove('run');void s.getBBox();s.classList.add('run')});
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+render(true);
+</script>
