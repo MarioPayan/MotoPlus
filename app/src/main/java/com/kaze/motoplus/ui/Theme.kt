@@ -67,6 +67,9 @@ val Accent.label get() = when (this) { Accent.cyan -> "Cian señal"; Accent.viol
 
 val LocalShop = staticCompositionLocalOf { Dark }
 
+/** The palette outside Compose (widgets), with the bike's accent. */
+fun shopFor(dark: Boolean, accent: Accent): Shop = (if (dark) Dark else Light).copy(accent = accent.color(dark), onAccent = if (dark) Color(0xFF04131F) else Color.White)
+
 @OptIn(ExperimentalTextApi::class)
 private val Plex = FontFamily(
     listOf(400, 500, 600, 700).map { w ->
@@ -96,7 +99,7 @@ private val Body = Typography().let { t ->
 @Composable
 fun MotoTheme(accent: Accent = Accent.cyan, content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
-    val s = (if (dark) Dark else Light).let { it.copy(accent = accent.color(dark), onAccent = if (dark) Color(0xFF04131F) else Color.White) }
+    val s = shopFor(dark, accent)
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
         primary = s.accent, onPrimary = s.onAccent, secondaryContainer = s.accent.copy(alpha = .16f), onSecondaryContainer = s.ink,
         background = s.paper, surface = s.sheet, onBackground = s.ink, onSurface = s.ink,

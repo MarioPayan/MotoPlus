@@ -6,3 +6,6 @@
 # ML Kit text recognition finds its components by reflection; R8 stripped them (NPE in TextRecognition.getClient).
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_** { *; }
+
+# Glance builds widget action callbacks by reflection (NoSuchMethodException on LubeAction.<init> in release).
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }

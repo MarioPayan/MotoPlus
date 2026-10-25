@@ -1,0 +1,4 @@
+<resources>
+    <string name="widget_small">La pieza más urgente de tu moto</string>
+    <string name="widget_large">Tu moto en la lámina, con los km y accesos rápidos</string>
+</resources>

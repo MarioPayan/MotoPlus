@@ -66,5 +66,6 @@ dependencies {
     implementation(libs.work)
     implementation(libs.play.location)
     implementation(libs.splash)
+    implementation(libs.glance)
     testImplementation(libs.junit)
 }
