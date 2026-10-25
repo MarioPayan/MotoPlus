@@ -56,7 +56,7 @@ fun PartScreen(vm: AppViewModel, bike: Bike, partId: String) {
         LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Sheet {
-                    Pill(ZONES.getValue(part.zone).uppercase(), shop.status(state.status))
+                    Pill(zoneLabel(part.zone).uppercase(), shop.status(state.status))
                     PartRow(part, state, { vm.markDone(part.id) }, { vm.editing = part.id })
                     OutlinedButton({ vm.newRecord(part.id) }, Modifier.fillMaxWidth()) { Text("Registrar con fecha, coste o factura") }
                 }

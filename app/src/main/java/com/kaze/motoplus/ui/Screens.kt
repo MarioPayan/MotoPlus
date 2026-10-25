@@ -134,7 +134,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
 // ---------- Moto ----------
 
 @Composable
-fun MotoScreen(vm: AppViewModel, bike: Bike) {
+fun BikeScreen(vm: AppViewModel, bike: Bike) {
     val shop = LocalShop.current
     val today = vm.today
     val odo = estimate(bike, today).km
@@ -158,7 +158,7 @@ fun MotoScreen(vm: AppViewModel, bike: Bike) {
         Sheet {
             if (sel != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { SectionTitle(ZONES.getValue(sel)) }
+                    Box(Modifier.weight(1f)) { SectionTitle(zoneLabel(sel)) }
                     TextButton({ vm.selectedZone = null }) { Text("Cerrar") }
                 }
                 zones.getValue(sel).parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
@@ -258,7 +258,7 @@ fun PartsScreen(vm: AppViewModel, bike: Bike) {
                 val st = zones.getValue(z)
                 Sheet {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) { Pill(ZONES.getValue(z).uppercase(), shop.status(st.status)) }
+                        Box(Modifier.weight(1f)) { Pill(zoneLabel(z).uppercase(), shop.status(st.status)) }
                         TextButton({ vm.selectedZone = z; vm.screen = Screen.main }) { Text("Ver en la moto") }
                     }
                     st.parts.forEach { (p, s) -> PartRow(p, s, { vm.markDone(p.id) }, { vm.editing = p.id }, { vm.openPart(p.id) }) }
@@ -273,7 +273,7 @@ fun PartsScreen(vm: AppViewModel, bike: Bike) {
 fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, onDismiss: () -> Unit) {
     val shop = LocalShop.current
     var km by remember { mutableStateOf(part.km?.toString() ?: "") }
-    val monthsUnit = part.days == null || part.days >= 60
+    val monthsUnit = (part.days ?: 60) >= 60
     var months by remember { mutableStateOf(monthsUnit) }
     var time by remember { mutableStateOf(part.days?.let { if (monthsUnit) Math.round(it / 30.4).toString() else it.toString() } ?: "") }
     val kmN = km.toIntOrNull()?.takeIf { it > 0 }
@@ -294,7 +294,7 @@ fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, o
                         Hint("Sugerido: ${intervalText(sp)}", Modifier.weight(1f))
                         TextButton({
                             km = sp.km?.toString() ?: ""
-                            months = sp.days == null || sp.days >= 60
+                            months = (sp.days ?: 60) >= 60
                             time = sp.days?.let { if (months) Math.round(it / 30.4).toString() else it.toString() } ?: ""
                         }) { Text("Usar sugerido") }
                     }
@@ -363,7 +363,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
             if (bike.rides.isEmpty()) Hint("Aún no hay salidas registradas. Mientras tanto, la app estima con tu media de km por día.")
             bike.rides.takeLast(20).reversed().forEach { r ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(prettyDate(r.date), fontSize = 13.sp); Hint(r.source) }
+                    Column(Modifier.weight(1f)) { Text(prettyDate(r.date), fontSize = 13.sp); Hint(r.sourceLabel) }
                     Text("${"%.1f".format(r.km)} km", fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -409,7 +409,7 @@ fun ReportScreen(vm: AppViewModel, bike: Bike) {
             }
             error?.let { Hint(it, shop.bad) }
         }
-        bike.reports.reversed().forEach { r -> ReportCard(r) { vm.showZones(r.data.causas.mapNotNull { it.zona }.toSet()) } }
+        bike.reports.reversed().forEach { r -> ReportCard(r) { vm.showZones(r.data.causes.mapNotNull { it.zone }.toSet()) } }
         Spacer(Modifier.height(4.dp))
     }
 }
@@ -418,33 +418,33 @@ fun ReportScreen(vm: AppViewModel, bike: Bike) {
 private fun ReportCard(r: SavedReport, onSee: () -> Unit) {
     val shop = LocalShop.current
     val d = r.data
-    val (label, c) = when (d.urgencia) {
-        "baja" -> "Urgencia baja · puedes rodar" to shop.ok
-        "alta" -> "Urgencia alta · no ruedes" to shop.bad
-        else -> "Urgencia media · revísalo pronto" to shop.warn
+    val (label, c) = when (d.urgency) {
+        Level.low -> "Urgencia baja · puedes rodar" to shop.ok
+        Level.high -> "Urgencia alta · no ruedes" to shop.bad
+        Level.medium -> "Urgencia media · revísalo pronto" to shop.warn
     }
     Sheet {
         Hint("${prettyDate(r.at)} · ${fmtKm(r.km)} km")
         Text(label.uppercase(), style = Display.copy(fontSize = 13.sp), color = c,
             modifier = Modifier.background(c.copy(alpha = 0.14f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
-        SectionTitle(d.titulo)
-        Text(d.resumen, fontSize = 13.sp)
-        d.causas.forEach { k ->
+        SectionTitle(d.title.ifBlank { "Informe" })
+        Text(d.summary, fontSize = 13.sp)
+        d.causes.forEach { k ->
             HorizontalDivider(color = shop.line)
             Row {
                 Column(Modifier.weight(1f)) {
-                    Text(k.causa, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    k.zona?.let { Hint(ZONES.getValue(it)) }
+                    Text(k.cause, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    k.zone?.let { Hint(zoneLabel(it)) }
                 }
-                Text(k.probabilidad, style = Mono.copy(fontSize = 11.sp), color = shop.ink2)
+                Text(k.likelihood.label, style = Mono.copy(fontSize = 11.sp), color = shop.ink2)
             }
         }
-        if (d.comprobaciones.isNotEmpty()) {
+        if (d.checks.isNotEmpty()) {
             Hint("QUÉ MIRAR")
-            d.comprobaciones.forEach { Text("• $it", fontSize = 13.sp) }
+            d.checks.forEach { Text("• $it", fontSize = 13.sp) }
         }
-        if (d.recomendacion.isNotBlank()) Text("Recomendación: ${d.recomendacion}", fontSize = 13.sp)
+        if (d.advice.isNotBlank()) Text("Recomendación: ${d.advice}", fontSize = 13.sp)
         Hint("Orientativo, generado por tu IA. No sustituye la revisión en taller.")
-        if (d.causas.any { it.zona != null }) OutlinedButton(onSee) { Text("Ver en la moto") }
+        if (d.causes.any { it.zone != null }) OutlinedButton(onSee) { Text("Ver en la moto") }
     }
 }

@@ -54,7 +54,7 @@ fun TrackingCard(vm: AppViewModel) {
     }
     val askLocationForManual = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         tick++
-        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) Tracker.start(ctx, "Manual")
+        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) Tracker.start(ctx, com.kaze.motoplus.domain.RideTrigger.manual)
     }
     val askBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) picking = true }
 
@@ -62,10 +62,10 @@ fun TrackingCard(vm: AppViewModel) {
         SectionTitle("Detección de salidas")
         live?.let { r ->
             Text("Registrando salida · ${"%.1f".format(r.km)} km", fontWeight = FontWeight.SemiBold, color = shop.accent)
-            Hint(r.source)
+            Hint(r.label)
             Button({ Tracker.stop(ctx) }, Modifier.fillMaxWidth()) { Text("Terminar salida") }
         } ?: OutlinedButton({
-            if (loc) Tracker.start(ctx, "Manual")
+            if (loc) Tracker.start(ctx, com.kaze.motoplus.domain.RideTrigger.manual)
             else askLocationForManual.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }, Modifier.fillMaxWidth()) { Text("Empezar salida ahora") }
 

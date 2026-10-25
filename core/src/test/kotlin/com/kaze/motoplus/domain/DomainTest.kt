@@ -1,6 +1,5 @@
-package com.kaze.motoplus
+package com.kaze.motoplus.domain
 
-import com.kaze.motoplus.domain.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -17,7 +16,7 @@ class DomainTest {
     )
 
     @Test fun estimateUsesRidesSinceLastReading() {
-        val e = estimate(bike(listOf(Ride("2026-10-09", 99.0, "x"), Ride("2026-10-12", 34.0, "x"), Ride("2026-10-18", 142.0, "x"))), today)
+        val e = estimate(bike(listOf(Ride("2026-10-09", 99.0), Ride("2026-10-12", 34.0), Ride("2026-10-18", 142.0))), today)
         assertEquals(12210 + 176 * 1.03, e.km, 0.01)
         assertEquals(176.0, e.gpsSinceReading, 0.0)
     }
@@ -35,61 +34,61 @@ class DomainTest {
     }
 
     @Test fun readingRecalibratesGps() {
-        val b = bike(listOf(Ride("2026-10-12", 100.0, "x"))).withReading(12315, today)
+        val b = bike(listOf(Ride("2026-10-12", 100.0))).withReading(12315, today)
         assertEquals(1.05, b.gpsFactor, 1e-9)
         assertEquals(12315.0, estimate(b, today).km, 0.0)
     }
 
     @Test fun sameDayRideCountsAfterReading() {
         val b = bike().copy(readings = listOf(Reading("2026-10-24", 12000, at = 1_000)),
-            rides = listOf(Ride("2026-10-24", 10.0, "x", at = 500), Ride("2026-10-24", 20.0, "x", at = 2_000)))
+            rides = listOf(Ride("2026-10-24", 10.0, at = 500), Ride("2026-10-24", 20.0, at = 2_000)))
         assertEquals(12000 + 20 * 1.03, estimate(b, today).km, 1e-9)
     }
 
     @Test fun absurdReadingKeepsFactor() {
-        val b = bike(listOf(Ride("2026-10-12", 100.0, "x"))).withReading(13000, today)
+        val b = bike(listOf(Ride("2026-10-12", 100.0))).withReading(13000, today)
         assertEquals(1.03, b.gpsFactor, 1e-9)
     }
 
     @Test fun partStateTakesWorstDimension() {
-        val p = Part("a", "motor", "Aceite", km = 6000, days = 365, lastKm = 9000, lastDate = "2025-10-01")
+        val p = Part("a", "engine", "Aceite", km = 6000, days = 365, lastKm = 9000, lastDate = "2025-10-01")
         val s = partState(p, 10000.0, today)
         assertEquals(Status.bad, s.status)
-        assertTrue(s.text.startsWith("Pasado por"))
-        assertEquals(Status.none, partState(Part("b", "motor", "Bujías", km = 1), 0.0, today).status)
-        assertEquals(Status.warn, partState(Part("c", "cadena", "Engrase", km = 600, lastKm = 11500), 11980.0, today).status)
+        assertEquals(Measure.days, s.measure); assertEquals(-23, s.left)
+        assertEquals(Status.none, partState(Part("b", "engine", "Bujías", km = 1), 0.0, today).status)
+        assertEquals(Status.warn, partState(Part("c", "drivetrain", "Engrase", km = 600, lastKm = 11500), 11980.0, today).status)
     }
 
     @Test fun zoneTakesWorstPart() {
         val b = bike(parts = listOf(
-            Part("x", "cadena", "Engrase", km = 600, lastKm = 12100),
-            Part("y", "cadena", "Tensión", km = 1000, lastKm = 11000),
+            Part("x", "drivetrain", "Engrase", km = 600, lastKm = 12100),
+            Part("y", "drivetrain", "Tensión", km = 1000, lastKm = 11000),
         ))
         val z = zoneStates(b, 12300.0, today)
-        assertEquals(Status.bad, z.getValue("cadena").status)
-        assertEquals(Status.ok, z.getValue("motor").status)
-        assertEquals("y", z.getValue("cadena").parts.first().first.id)
+        assertEquals(Status.bad, z.getValue("drivetrain").status)
+        assertEquals(Status.ok, z.getValue("engine").status)
+        assertEquals("y", z.getValue("drivetrain").parts.first().first.id)
     }
 
     @Test fun templatesOnlyUseDrawnZones() {
         for (c in Category.entries) for (d in Drive.entries) for (k in Cooling.entries) {
-            val drawn = File("src/main/assets/bike_${silhouette(c)}.json").readText()
+            val drawn = File("../app/src/main/assets/bike_${silhouette(c)}.json").readText()
             for (p in defaultParts(c, d, k)) {
-                assertTrue(p.zone in ZONES)
+                assertTrue(p.zone in Zone.ids)
                 assertTrue("zone ${p.zone} missing in drawing", drawn.contains("\"z\":\"${p.zone}\""))
                 assertTrue(p.km != null || p.days != null)
             }
         }
-        assertTrue(defaultParts(Category.naked, Drive.chain, Cooling.air).none { it.zone == "radiador" })
+        assertTrue(defaultParts(Category.naked, Drive.chain, Cooling.air).none { it.zone == "cooling" })
     }
 
-    private val sample = """{"v":1,"titulo":"Chirrido","urgencia":"altísima","resumen":"Pastillas","causas":[{"causa":"Pastillas","probabilidad":"alta","zona":"freno_del"},{"causa":"Otra","zona":"inventada"}],"extra":1}"""
+    private val sample = """{"v":2,"title":"Chirrido","urgency":"altísima","summary":"Pastillas","causes":[{"cause":"Pastillas","likelihood":"high","zone":"front_brake"},{"cause":"Otra","zone":"inventada"}],"extra":1}"""
 
     @Test fun parsesFencedBlock() {
         val r = parseReport("Texto…\n```motoplus\n$sample\n```\nfin") as ParseResult.Ok
-        assertEquals("media", r.report.urgencia)
-        assertEquals("freno_del", r.report.causas[0].zona)
-        assertNull(r.report.causas[1].zona)
+        assertEquals(Level.medium, r.report.urgency)
+        assertEquals("front_brake", r.report.causes[0].zone)
+        assertNull(r.report.causes[1].zone)
     }
 
     @Test fun parsesLink() {
@@ -98,16 +97,8 @@ class DomainTest {
     }
 
     @Test fun rejectsGarbage() {
-        assertTrue(parseReport("hola") is ParseResult.Error)
-        assertTrue(parseReport("```motoplus\n{\"v\":1,\n```") is ParseResult.Error)
-    }
-
-    @Test fun promptListsPartsAndZones() {
-        val b = bike(parts = defaultParts(Category.naked, Drive.chain, Cooling.liquid))
-        val p = buildPrompt(b, "chirría", today)
-        assertTrue(p.contains("Engrase de cadena [cadena]"))
-        assertTrue(p.contains("SÍNTOMA: chirría"))
-        assertTrue(p.contains("freno_del"))
+        assertEquals(ParseResult.Error(ReportError.notFound), parseReport("hola"))
+        assertEquals(ParseResult.Error(ReportError.invalid), parseReport("```motoplus\n{\"v\":2,\n```"))
     }
 
     @Test fun picksOdometerClosestToEstimate() {
@@ -117,10 +108,10 @@ class DomainTest {
     }
 
     @Test fun customIntervalAndSuggestion() {
-        val b = bike(parts = defaultParts(Category.naked, Drive.chain, Cooling.liquid)).withInterval("aceite", 5000, null)
-        val p = b.parts.first { it.id == "aceite" }
+        val b = bike(parts = defaultParts(Category.naked, Drive.chain, Cooling.liquid)).withInterval("engine_oil", 5000, null)
+        val p = b.parts.first { it.id == "engine_oil" }
         assertEquals(5000, p.km); assertNull(p.days)
-        assertEquals(6000, b.suggested("aceite")!!.km)
+        assertEquals(6000, b.suggested("engine_oil")!!.km)
         assertNull(b.suggested("inventada"))
     }
 
@@ -135,23 +126,23 @@ class HistoryTest {
     )
 
     @Test fun lastDoneFollowsNewestRecord() {
-        var b = base.addRecord(ServiceRecord("1", "aceite", "2026-01-10", 8000, cost = 60.0))
-            .addRecord(ServiceRecord("2", "aceite", "2026-06-01", 10500, cost = 55.5))
-        assertEquals(10500, b.parts.first { it.id == "aceite" }.lastKm)
+        var b = base.addRecord(ServiceRecord("1", "engine_oil", "2026-01-10", 8000, cost = 60.0))
+            .addRecord(ServiceRecord("2", "engine_oil", "2026-06-01", 10500, cost = 55.5))
+        assertEquals(10500, b.parts.first { it.id == "engine_oil" }.lastKm)
         assertEquals(115.5, b.totalCost, 1e-9)
         b = b.deleteRecord("2")
-        assertEquals("2026-01-10", b.parts.first { it.id == "aceite" }.lastDate)
-        b = b.updateRecord(ServiceRecord("1", "aceite", "2026-02-10", 8100))
-        assertEquals(8100, b.parts.first { it.id == "aceite" }.lastKm)
+        assertEquals("2026-01-10", b.parts.first { it.id == "engine_oil" }.lastDate)
+        b = b.updateRecord(ServiceRecord("1", "engine_oil", "2026-02-10", 8100))
+        assertEquals(8100, b.parts.first { it.id == "engine_oil" }.lastKm)
         b = b.deleteRecord("1")
-        assertNull(b.parts.first { it.id == "aceite" }.lastKm)
-        assertEquals(Status.none, partState(b.parts.first { it.id == "aceite" }, 12000.0, today).status)
+        assertNull(b.parts.first { it.id == "engine_oil" }.lastKm)
+        assertEquals(Status.none, partState(b.parts.first { it.id == "engine_oil" }, 12000.0, today).status)
     }
 
     @Test fun alertsFireOncePerWorsening() {
-        val b = base.markDone("cadena_engrase", 11500, today)
+        val b = base.markDone("chain_lube", 11500, today)
         val (first, baseline) = dueAlerts(b, 12000.0, today)
-        assertEquals(listOf("cadena_engrase"), first.map { it.first.id })
+        assertEquals(listOf("chain_lube"), first.map { it.first.id })
         val again = dueAlerts(b.copy(notified = baseline), 12000.0, today).first
         assertTrue(again.isEmpty())
         val worse = dueAlerts(b.copy(notified = baseline), 12200.0, today).first
@@ -159,9 +150,9 @@ class HistoryTest {
     }
 
     @Test fun markDoneAddsRecord() {
-        val b = base.markDone("cadena_engrase", 12000, today)
-        assertEquals(1, b.recordsFor("cadena_engrase").size)
-        assertEquals(12000, b.parts.first { it.id == "cadena_engrase" }.lastKm)
+        val b = base.markDone("chain_lube", 12000, today)
+        assertEquals(1, b.recordsFor("chain_lube").size)
+        assertEquals(12000, b.parts.first { it.id == "chain_lube" }.lastKm)
     }
 }
 

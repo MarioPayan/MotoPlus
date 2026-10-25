@@ -39,6 +39,11 @@ function translatePath(d, dx, dy) {
   });
 }
 
+// design/prototipo.html keeps its original Spanish zone keys; the app uses these ids.
+const ZONE_IDS = { rueda_tras: 'rear_wheel', freno_tras: 'rear_brake', cadena: 'drivetrain', suspension_tras: 'rear_shock', bateria: 'battery',
+  admision: 'intake', motor: 'engine', radiador: 'cooling', horquilla: 'fork', freno_del: 'front_brake', rueda_del: 'front_wheel', faro: 'lights' };
+const ZONE_LIST = Object.keys(ZONES).map(z => ZONE_IDS[z]);
+
 function toItems(svg) {
 const items = [];
   const zoneStack = [], trStack = [];
@@ -72,7 +77,7 @@ const items = [];
     const sw = style.match(/stroke-width:([\d.]+)/);
     const dash = style.match(/stroke-dasharray:([\d. ]+)/);
     items.push({
-      z: zoneStack.filter(Boolean).at(-1) ?? null,
+      z: (z => z ? ZONE_IDS[z] ?? z : null)(zoneStack.filter(Boolean).at(-1)),
       k: cls.filter(c => c && c !== 'zone').join(' '),
       d,
       ...(w || sw ? { w: +(w ?? sw[1]) } : {}),
@@ -89,8 +94,8 @@ for (const [name, fn] of Object.entries(PLATES)) {
   out[name] = { items: toItems(`<svg viewBox="${viewBox.join(' ')}">${svg}</svg>`), viewBox };
 }
 for (const [name, { items, viewBox }] of Object.entries(out)) {
-  const missing = Object.keys(ZONES).filter(z => !items.some(i => i.z === z));
+  const missing = ZONE_LIST.filter(z => !items.some(i => i.z === z));
   if (missing.length) throw new Error(`${name}: zones without drawing: ${missing}`);
-  writeFileSync(new URL(`../../app/src/main/assets/bike_${name}.json`, import.meta.url), JSON.stringify({ viewBox, zones: Object.keys(ZONES), items }));
+  writeFileSync(new URL(`../../app/src/main/assets/bike_${name}.json`, import.meta.url), JSON.stringify({ viewBox, zones: ZONE_LIST, items }));
   console.log(`${name}: items=${items.length} viewBox=${viewBox}`);
 }

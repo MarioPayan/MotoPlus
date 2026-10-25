@@ -8,11 +8,17 @@ import kotlin.math.roundToInt
 @kotlinx.serialization.Serializable
 enum class Status { ok, warn, bad, none }
 
-data class PartState(val status: Status, val used: Double, val text: String)
+enum class Measure { km, days }
+
+/** How far a part is through its interval. [left] counts in [measure] and goes negative once overdue; null measure = never recorded. */
+data class PartState(val status: Status, val used: Double, val measure: Measure?, val left: Int)
 
 data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair<Part, PartState>>)
 
-data class OdoEstimate(val km: Double, val margin: Int, val source: String, val gpsSinceReading: Double)
+enum class EstimateBasis { rides, todayReading, lastReading, average }
+
+/** [rides] counts GPS rides since the last reading; [kmPerDay] is the rider's average when [basis] is average. */
+data class OdoEstimate(val km: Double, val margin: Int, val basis: EstimateBasis, val gpsSinceReading: Double, val rides: Int = 0, val kmPerDay: Double = 0.0)
 
 private fun daysBetween(from: String, to: LocalDate) =
     max(0L, ChronoUnit.DAYS.between(LocalDate.parse(from), to)).toDouble()
@@ -29,25 +35,27 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
         return OdoEstimate(
             km = last.km + gps * bike.gpsFactor,
             margin = max(5, (gps * 0.02).roundToInt()),
-            source = if (after.size == 1) "1 salida desde la última lectura" else "${after.size} salidas desde la última lectura",
+            basis = EstimateBasis.rides,
             gpsSinceReading = gps,
+            rides = after.size,
         )
     }
     val first = bike.readings.minBy { it.date }
     val span = daysBetween(first.date, LocalDate.parse(last.date))
     val d = daysBetween(last.date, today)
-    if (span < 1) return OdoEstimate(last.km.toDouble(), 0, if (d < 1) "Lectura de hoy" else "Última lectura", 0.0)
+    if (span < 1) return OdoEstimate(last.km.toDouble(), 0, if (d < 1) EstimateBasis.todayReading else EstimateBasis.lastReading, 0.0)
     val rate = (last.km - first.km) / span
     return OdoEstimate(
         km = last.km + rate * d,
         margin = (rate * d * 0.3).roundToInt(),
-        source = if (d < 1) "Lectura de hoy" else "Estimado con tu media de ${"%.1f".format(rate)} km/día",
+        basis = if (d < 1) EstimateBasis.todayReading else EstimateBasis.average,
         gpsSinceReading = 0.0,
+        kmPerDay = rate,
     )
 }
 
 fun partState(p: Part, odo: Double, today: LocalDate): PartState {
-    if (p.lastKm == null && p.lastDate == null) return PartState(Status.none, 1.0, "Sin registro")
+    if (p.lastKm == null && p.lastDate == null) return PartState(Status.none, 1.0, null, 0)
     val byKm = if (p.km != null && p.lastKm != null) (odo - p.lastKm) / p.km else 0.0
     val byTime = if (p.days != null && p.lastDate != null) daysBetween(p.lastDate, today) / p.days else 0.0
     val used = max(byKm, byTime)
@@ -56,20 +64,17 @@ fun partState(p: Part, odo: Double, today: LocalDate): PartState {
         used >= 0.75 -> Status.warn
         else -> Status.ok
     }
-    val text = if (byKm >= byTime && p.km != null && p.lastKm != null) {
-        val left = (p.km - (odo - p.lastKm)).roundToInt()
-        if (left >= 0) "Quedan ${fmtKm(left)} km" else "Pasado por ${fmtKm(-left)} km"
+    return if (byKm >= byTime && p.km != null && p.lastKm != null) {
+        PartState(status, used, Measure.km, (p.km - (odo - p.lastKm)).roundToInt())
     } else {
-        val left = (p.days!! - daysBetween(p.lastDate!!, today)).roundToInt()
-        if (left >= 0) "Quedan $left días" else "Pasado por ${-left} días"
+        PartState(status, used, Measure.days, (p.days!! - daysBetween(p.lastDate!!, today)).roundToInt())
     }
-    return PartState(status, used, text)
 }
 
 private val rank = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2, Status.none to 3)
 
 fun zoneStates(bike: Bike, odo: Double, today: LocalDate): Map<String, ZoneState> =
-    ZONES.keys.associateWith { z ->
+    Zone.entries.map { it.id }.associateWith { z ->
         val parts = bike.parts.filter { it.zone == z }.map { it to partState(it, odo, today) }
             .sortedByDescending { it.second.used }
         ZoneState(

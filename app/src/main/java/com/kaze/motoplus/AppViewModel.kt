@@ -11,6 +11,7 @@ import com.kaze.motoplus.data.Catalog
 import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
+import com.kaze.motoplus.ui.message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -18,7 +19,7 @@ import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 
-enum class Tab { moto, km, informe }
+enum class Tab { bike, km, report }
 enum class Screen { main, parts, part, history }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
@@ -31,7 +32,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     var garage by mutableStateOf(Repo.garage.value); private set
     var catalog by mutableStateOf<Catalog?>(null); private set
-    var tab by mutableStateOf(Tab.moto)
+    var tab by mutableStateOf(Tab.bike)
     var screen by mutableStateOf(Screen.main)
     var openPart by mutableStateOf<String?>(null)
     var editing by mutableStateOf<String?>(null)
@@ -60,8 +61,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val d = today.toString()
         var b = Bike(UUID.randomUUID().toString(), brand.trim(), model.trim(), year, category, drive, cooling, defaultParts(category, drive, cooling), listOf(Reading(d, km, System.currentTimeMillis())))
         if (allDoneToday) b.parts.forEach { p -> b = b.addRecord(ServiceRecord(UUID.randomUUID().toString(), p.id, d, km, notes = "Revisión completa al dar de alta la moto")) }
-        Repo.update { Garage(it.bikes + b, b.id) }
-        adding = false; tab = Tab.moto; screen = Screen.main; selectedZone = null
+        Repo.update { it.copy(bikes = it.bikes + b, selectedId = b.id) }
+        adding = false; tab = Tab.bike; screen = Screen.main; selectedZone = null
     }
 
     fun editBike(brand: String, model: String, year: Int?) {
@@ -116,7 +117,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Copies a picked invoice photo into app storage so it survives the gallery deleting it. */
     fun importPhoto(uri: Uri): String? = try {
-        val dir = File(app.filesDir, "facturas").apply { mkdirs() }
+        val dir = File(app.filesDir, "invoices").apply { mkdirs() }
         val f = File(dir, "${UUID.randomUUID()}.jpg")
         app.contentResolver.openInputStream(uri)!!.use { input -> f.outputStream().use { input.copyTo(it) } }
         f.path
@@ -140,10 +141,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun importReport(text: String): String? {
         val b = bike ?: return "Primero añade una moto."
         return when (val r = parseReport(text)) {
-            is ParseResult.Error -> r.message
+            is ParseResult.Error -> r.error.message
             is ParseResult.Ok -> {
                 updateBike { it.copy(reports = it.reports + SavedReport(today.toString(), estimate(b, today).km.toInt(), r.report)) }
-                highlighted = r.report.causas.mapNotNull { it.zona }.toSet()
+                highlighted = r.report.causes.mapNotNull { it.zone }.toSet()
                 pendingImport = ""
                 message = "Informe guardado"
                 null
@@ -152,12 +153,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun incoming(text: String) {
-        tab = Tab.informe; screen = Screen.main
+        tab = Tab.report; screen = Screen.main
         if (importReport(text) != null) pendingImport = text
     }
 
     fun showZones(zones: Set<String>) {
-        highlighted = zones; selectedZone = zones.firstOrNull(); tab = Tab.moto; screen = Screen.main
+        highlighted = zones; selectedZone = zones.firstOrNull(); tab = Tab.bike; screen = Screen.main
     }
 
     fun setTracking(enabled: Boolean) {

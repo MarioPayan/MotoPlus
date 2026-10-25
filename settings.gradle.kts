@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "MotoPlus"
-include(":app")
+include(":app", ":core")

@@ -87,7 +87,7 @@ fun App(vm: AppViewModel) {
         },
         bottomBar = {
             NavigationBar(containerColor = shop.sheet) {
-                listOf(Tab.moto to "MOTO", Tab.km to "KM", Tab.informe to "INFORME IA").forEach { (t, label) ->
+                listOf(Tab.bike to "MOTO", Tab.km to "KM", Tab.report to "INFORME IA").forEach { (t, label) ->
                     NavigationBarItem(
                         selected = vm.tab == t, onClick = { vm.tab = t },
                         icon = { TabIcon(t, if (vm.tab == t) shop.accent else shop.ink2) },
@@ -100,9 +100,9 @@ fun App(vm: AppViewModel) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (vm.tab) {
-                Tab.moto -> MotoScreen(vm, bike)
+                Tab.bike -> BikeScreen(vm, bike)
                 Tab.km -> KmScreen(vm, bike)
-                Tab.informe -> ReportScreen(vm, bike)
+                Tab.report -> ReportScreen(vm, bike)
             }
         }
     }
@@ -113,7 +113,7 @@ private fun TabIcon(t: Tab, c: Color) = Canvas(Modifier.size(24.dp)) {
     val s = Stroke(2.dp.toPx())
     val w = size.width
     when (t) {
-        Tab.moto -> {
+        Tab.bike -> {
             drawCircle(c, w * .17f, Offset(w * .22f, w * .66f), style = s)
             drawCircle(c, w * .17f, Offset(w * .78f, w * .66f), style = s)
             drawLine(c, Offset(w * .22f, w * .66f), Offset(w * .42f, w * .4f), s.width)
@@ -125,7 +125,7 @@ private fun TabIcon(t: Tab, c: Color) = Canvas(Modifier.size(24.dp)) {
             drawArc(c, 180f, 180f, false, Offset(w * .1f, w * .25f), androidx.compose.ui.geometry.Size(w * .8f, w * .8f), style = s)
             drawLine(c, Offset(w * .5f, w * .65f), Offset(w * .7f, w * .42f), s.width)
         }
-        Tab.informe -> {
+        Tab.report -> {
             drawRoundRect(c, Offset(w * .12f, w * .18f), androidx.compose.ui.geometry.Size(w * .76f, w * .52f), androidx.compose.ui.geometry.CornerRadius(3f), style = s)
             drawLine(c, Offset(w * .3f, w * .7f), Offset(w * .2f, w * .88f), s.width)
             drawLine(c, Offset(w * .3f, w * .38f), Offset(w * .7f, w * .38f), s.width)

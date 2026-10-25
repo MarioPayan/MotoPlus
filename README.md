@@ -4,11 +4,14 @@ App Android para llevar el mantenimiento de la moto por piezas. La moto se dibuj
 
 Kotlin + Jetpack Compose, solo Android. Todo vive en el móvil (`garage.json` en el almacenamiento de la app); no hay servidor.
 
+- `core/`: el modelo y sus reglas en Kotlin puro, sin Android. `GarageCodec` es el único formato de datos (archivo local, exportaciones, copias) y migra versiones viejas al leer.
+- `app/`: pantallas, avisos y registro de salidas. Los textos que lee el usuario viven en `ui/Labels.kt` y en las pantallas; el código y los ids van en inglés.
+
 ## Comandos
 
 ```sh
 export JAVA_HOME=~/.local/share/motoplus-tools/jdk-21.0.13+9
-./gradlew :app:testDebugUnitTest      # dominio: km, estados, plantillas, informe IA
+./gradlew :core:test :app:testDebugUnitTest   # dominio (km, estados, plantillas, informe IA, migraciones) y textos
 ./gradlew :app:assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
 ~/Android/Sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
 

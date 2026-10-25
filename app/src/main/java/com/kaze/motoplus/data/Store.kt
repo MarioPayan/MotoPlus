@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.util.AtomicFile
 import com.kaze.motoplus.domain.Category
 import com.kaze.motoplus.domain.Garage
+import com.kaze.motoplus.domain.GarageCodec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -16,7 +17,7 @@ class GarageStore(context: Context) {
     private val file = AtomicFile(File(context.filesDir, "garage.json"))
 
     fun load(): Garage = try {
-        json.decodeFromString(file.readFully().decodeToString())
+        GarageCodec.decode(file.readFully().decodeToString())
     } catch (e: java.io.FileNotFoundException) {
         Garage()
     }
@@ -24,7 +25,7 @@ class GarageStore(context: Context) {
     fun save(g: Garage) {
         val out = file.startWrite()
         try {
-            out.write(json.encodeToString(g).encodeToByteArray())
+            out.write(GarageCodec.encode(g).encodeToByteArray())
             file.finishWrite(out)
         } catch (e: Exception) {
             file.failWrite(out)

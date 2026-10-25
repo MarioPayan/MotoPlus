@@ -2,33 +2,26 @@ package com.kaze.motoplus.domain
 
 import kotlinx.serialization.Serializable
 
-/** Zones of the bike drawing. Ids are the contract with assets/bike_*.json. */
-val ZONES: Map<String, String> = linkedMapOf(
-    "rueda_tras" to "Rueda trasera",
-    "freno_tras" to "Freno trasero",
-    "cadena" to "Transmisión",
-    "suspension_tras" to "Amortiguador",
-    "bateria" to "Batería",
-    "admision" to "Admisión",
-    "motor" to "Motor",
-    "radiador" to "Refrigeración",
-    "horquilla" to "Horquilla",
-    "freno_del" to "Freno delantero",
-    "rueda_del" to "Rueda delantera",
-    "faro" to "Luces",
-)
+/** Zones of the bike drawing, in drawing order. Ids are the contract with assets/bike_*.json and with AI reports. */
+enum class Zone(val id: String) {
+    RearWheel("rear_wheel"), RearBrake("rear_brake"), Drivetrain("drivetrain"), RearShock("rear_shock"),
+    Battery("battery"), Intake("intake"), Engine("engine"), Cooling("cooling"), Fork("fork"),
+    FrontBrake("front_brake"), FrontWheel("front_wheel"), Lights("lights");
 
-@Serializable
-enum class Category(val label: String) {
-    naked("Naked"), sport("Deportiva"), trail("Trail"), scooter("Scooter"),
-    custom("Custom"), touring("Turismo"), offroad("Enduro / cross")
+    companion object {
+        val ids = entries.map { it.id }.toSet()
+        fun of(id: String) = entries.firstOrNull { it.id == id }
+    }
 }
 
 @Serializable
-enum class Drive(val label: String) { chain("Cadena"), belt("Correa"), shaft("Cardán"), cvt("Variador (CVT)") }
+enum class Category { naked, sport, trail, scooter, custom, touring, offroad }
 
 @Serializable
-enum class Cooling(val label: String) { liquid("Líquida"), air("Aire") }
+enum class Drive { chain, belt, shaft, cvt }
+
+@Serializable
+enum class Cooling { liquid, air }
 
 /** A maintenance item. Interval by distance, by time, or both: whichever comes first. */
 @Serializable
@@ -46,7 +39,18 @@ data class Part(
 data class Reading(val date: String, val km: Int, val at: Long = 0)
 
 @Serializable
-data class Ride(val date: String, val km: Double, val source: String, val wet: Boolean = false, val at: Long = 0) {
+enum class RideTrigger { manual, motion, bluetooth }
+
+@Serializable
+data class Ride(
+    val date: String,
+    val km: Double,
+    val trigger: RideTrigger = RideTrigger.manual,
+    /** Name of the Bluetooth device that started the ride, if any. */
+    val device: String? = null,
+    val wet: Boolean = false,
+    val at: Long = 0,
+) {
     /** Rides on the reading's own day count only if they ended after it was taken. */
     fun after(r: Reading) = date > r.date || (date == r.date && at > 0 && r.at > 0 && at > r.at)
 }
@@ -79,11 +83,18 @@ data class Bike(
 @Serializable
 data class Tracking(
     val enabled: Boolean = false,
-    /** Bluetooth devices (helmet intercom, bike) whose connection means "I'm riding". */
+    /** Bluetooth devices (helmet intercom, bike) whose connection means "I'm riding", address to name. */
     val devices: Map<String, String> = emptyMap(),
 )
 
 @Serializable
-data class Garage(val bikes: List<Bike> = emptyList(), val selectedId: String? = null, val tracking: Tracking = Tracking()) {
+data class Garage(
+    val schema: Int = SCHEMA,
+    val bikes: List<Bike> = emptyList(),
+    val selectedId: String? = null,
+    val tracking: Tracking = Tracking(),
+) {
     val selected get() = bikes.firstOrNull { it.id == selectedId } ?: bikes.firstOrNull()
+
+    companion object { const val SCHEMA = 2 }
 }

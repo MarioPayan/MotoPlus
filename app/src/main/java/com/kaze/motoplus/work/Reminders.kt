@@ -17,10 +17,11 @@ import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.Status
 import com.kaze.motoplus.domain.dueAlerts
 import com.kaze.motoplus.domain.estimate
+import com.kaze.motoplus.ui.text
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
-const val CHANNEL_MAINTENANCE = "mantenimiento"
+const val CHANNEL_MAINTENANCE = "maintenance"
 
 /** Twice a day, and after each ride: tells the rider about parts that just came due or went overdue. */
 class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
@@ -46,6 +47,7 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
 
 fun createChannels(ctx: Context) {
     val nm = ctx.getSystemService(NotificationManager::class.java)
+    listOf("mantenimiento", "salida").forEach(nm::deleteNotificationChannel) // ids used up to 0.9.0
     nm.createNotificationChannel(NotificationChannel(CHANNEL_MAINTENANCE, "Mantenimiento", NotificationManager.IMPORTANCE_DEFAULT).apply {
         description = "Piezas que toca revisar o cambiar"
     })

@@ -22,15 +22,19 @@ import com.kaze.motoplus.R
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.DistanceMeter
 import com.kaze.motoplus.domain.Ride
+import com.kaze.motoplus.domain.RideTrigger
+import com.kaze.motoplus.ui.sourceLabel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDate
 
-const val CHANNEL_RIDE = "salida"
+const val CHANNEL_RIDE = "rides"
 private const val ID_LIVE = 4100
 private const val ID_DONE = 4101
 
-data class LiveRide(val source: String, val km: Double, val startedAt: Long)
+data class LiveRide(val trigger: RideTrigger, val device: String?, val km: Double, val startedAt: Long) {
+    val label get() = Ride("", km, trigger, device).sourceLabel
+}
 
 /** Starts and stops ride recording; the UI watches [live]. */
 object Tracker {
@@ -43,14 +47,14 @@ object Tracker {
     fun hasActivity(ctx: Context) = granted(ctx, Manifest.permission.ACTIVITY_RECOGNITION)
     private fun granted(ctx: Context, p: String) = ContextCompat.checkSelfPermission(ctx, p) == PackageManager.PERMISSION_GRANTED
 
-    fun start(ctx: Context, source: String) {
+    fun start(ctx: Context, trigger: RideTrigger, device: String? = null) {
         if (state.value != null || !hasLocation(ctx)) return
-        val i = Intent(ctx, RideService::class.java).putExtra("source", source)
+        val i = Intent(ctx, RideService::class.java).putExtra("trigger", trigger.name).putExtra("device", device)
         try {
             ContextCompat.startForegroundService(ctx, i)
         } catch (e: Exception) {
             // Android refused a background start (battery optimisation on): ask the rider to start it.
-            val open = PendingIntent.getActivity(ctx, 7, Intent(ctx, MainActivity::class.java).putExtra("startRide", source), PendingIntent.FLAG_IMMUTABLE)
+            val open = PendingIntent.getActivity(ctx, 7, Intent(ctx, MainActivity::class.java).putExtra("startRide", trigger.name), PendingIntent.FLAG_IMMUTABLE)
             notify(ctx, ID_DONE, NotificationCompat.Builder(ctx, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
                 .setContentTitle("¿Sales en moto?").setContentText("Toca para registrar la salida. Quita la optimización de batería para que empiece sola.")
                 .setContentIntent(open).setAutoCancel(true).build())
@@ -96,13 +100,14 @@ class RideService : Service() {
     companion object { const val STOP = "com.kaze.motoplus.STOP_RIDE" }
 
     private val meter = DistanceMeter()
-    private var source = ""
+    private var trigger = RideTrigger.manual
+    private var device: String? = null
     private var startedAt = 0L
     private lateinit var client: FusedLocationProviderClient
     private val callback = object : LocationCallback() {
         override fun onLocationResult(r: LocationResult) {
             for (l in r.locations) meter.add(l.latitude, l.longitude, l.accuracy, l.time)
-            Tracker.set(LiveRide(source, meter.km, startedAt))
+            Tracker.set(LiveRide(trigger, device, meter.km, startedAt))
             Tracker.notify(this@RideService, ID_LIVE, liveNotification())
             val idle = System.currentTimeMillis() - maxOf(meter.lastMovingAt, startedAt)
             if (idle > 6 * 60_000) finish()
@@ -116,11 +121,12 @@ class RideService : Service() {
         if (intent?.action == STOP) { finish(); return START_NOT_STICKY }
         if (startedAt != 0L) return START_NOT_STICKY
         Repo.init(this)
-        source = intent?.getStringExtra("source") ?: "Manual"
+        trigger = intent?.getStringExtra("trigger")?.let { runCatching { RideTrigger.valueOf(it) }.getOrNull() } ?: RideTrigger.manual
+        device = intent?.getStringExtra("device")
         startedAt = System.currentTimeMillis()
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         ServiceCompat.startForeground(this, ID_LIVE, liveNotification(), type)
-        Tracker.set(LiveRide(source, 0.0, startedAt))
+        Tracker.set(LiveRide(trigger, device, 0.0, startedAt))
         client = LocationServices.getFusedLocationProviderClient(this)
         client.requestLocationUpdates(
             LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).setMinUpdateDistanceMeters(15f).build(),
@@ -134,7 +140,7 @@ class RideService : Service() {
         val open = PendingIntent.getActivity(this, 4, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
             .setContentTitle("Registrando salida · ${"%.1f".format(meter.km)} km")
-            .setContentText(source).setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+            .setContentText(Tracker.live.value?.label ?: "").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .addAction(0, "Terminar", stop).build()
     }
 
@@ -147,10 +153,10 @@ class RideService : Service() {
         Tracker.set(null)
         val bike = Repo.garage.value.selected
         if (km >= 0.3 && bike != null) {
-            Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, source, at = System.currentTimeMillis())) }
+            Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis())) }
             ReminderWorker.runNow(this)
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("Salida registrada: ${"%.1f".format(km)} km").setContentText("${bike.brand} ${bike.model} · ${source.lowercase()}")
+                .setContentTitle("Salida registrada: ${"%.1f".format(km)} km").setContentText("${bike.brand} ${bike.model} · ${Ride("", km, trigger, device).sourceLabel.lowercase()}")
                 .setContentIntent(PendingIntent.getActivity(this, 5, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
                 .setAutoCancel(true).build())
         }
@@ -167,8 +173,8 @@ class TransitionReceiver : BroadcastReceiver() {
         Repo.init(ctx)
         if (!Repo.garage.value.tracking.enabled) return
         val last = ActivityTransitionResult.extractResult(intent)!!.transitionEvents.lastOrNull { it.activityType == DetectedActivity.IN_VEHICLE } ?: return
-        if (last.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) Tracker.start(ctx, "Sensor de movimiento")
-        else if (Tracker.live.value?.source == "Sensor de movimiento") Tracker.stop(ctx)
+        if (last.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) Tracker.start(ctx, RideTrigger.motion)
+        else if (Tracker.live.value?.trigger == RideTrigger.motion) Tracker.stop(ctx)
     }
 }
 
@@ -182,8 +188,8 @@ class BluetoothReceiver : BroadcastReceiver() {
             else @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)) ?: return
         if (!t.enabled || dev.address !in t.devices) return
         when (intent.action) {
-            BluetoothDevice.ACTION_ACL_CONNECTED -> Tracker.start(ctx, "Bluetooth: ${t.devices[dev.address]}")
-            BluetoothDevice.ACTION_ACL_DISCONNECTED -> if (Tracker.live.value?.source?.startsWith("Bluetooth") == true) Tracker.stop(ctx)
+            BluetoothDevice.ACTION_ACL_CONNECTED -> Tracker.start(ctx, RideTrigger.bluetooth, t.devices[dev.address])
+            BluetoothDevice.ACTION_ACL_DISCONNECTED -> if (Tracker.live.value?.trigger == RideTrigger.bluetooth) Tracker.stop(ctx)
         }
     }
 }
