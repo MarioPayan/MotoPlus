@@ -53,11 +53,11 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
             states.sortedByDescending { it.second.used }.take(3).forEach { (p, s) -> PartRow(vm, p, s) }
             HorizontalDivider(color = shop.line)
             val open = bike.openOrder()
-            Btn(
-                if (open != null) "Orden nº ${open.number} abierta · volví del taller" else "Lista para el taller",
-                { vm.screen = if (open != null) Screen.orderReturn else Screen.order },
-                Modifier.fillMaxWidth().padding(top = 10.dp), ghost = true, icon = "wrench",
-            )
+            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Btn("Antes de salir", { vm.screen = Screen.check }, Modifier.weight(1f), ghost = true, icon = "helmet")
+                Btn(if (open != null) "Volví del taller" else "Para el taller", { vm.screen = if (open != null) Screen.orderReturn else Screen.order },
+                    Modifier.weight(1f), ghost = true, icon = "wrench")
+            }
         }
         Spacer(Modifier.height(4.dp))
     }

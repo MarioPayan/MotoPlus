@@ -53,6 +53,7 @@ fun App(vm: AppViewModel) {
                 Screen.fuel -> FuelScreen(vm, bike)
                 Screen.order -> OrderScreen(vm, bike)
                 Screen.orderReturn -> OrderReturnScreen(vm, bike)
+                Screen.check -> CheckScreen(vm, bike)
                 else -> HistoryScreen(vm, bike)
             }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }

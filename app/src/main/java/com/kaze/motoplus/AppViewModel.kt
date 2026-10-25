@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -276,4 +276,20 @@ fun AppViewModel.closeOrder(done: Map<String, Double?>, photo: String?) {
     com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
     screen = Screen.main
     message = "${done.size} ${if (done.size == 1) "trabajo guardado" else "trabajos guardados"} en el historial"
+}
+
+// ---------- Pre-ride check ----------
+
+/** Saves the check; failed steps' parts go onto the workshop list when [toOrder] is not empty. */
+fun AppViewModel.saveCheck(ok: List<String>, failed: List<String>, toOrder: List<String>) {
+    val b = bike ?: return
+    updateBike { it.withCheck(PreRideCheck(today.toString(), System.currentTimeMillis(), ok, failed), estimate(b, today).km.toInt(), today) }
+    if (toOrder.isNotEmpty()) {
+        val current = bike?.openOrder()
+        saveOrder(((current?.partIds ?: emptyList()) + toOrder).distinct(), current?.notes ?: "")
+        screen = Screen.order
+    } else {
+        screen = Screen.main
+        message = if (failed.isEmpty()) "Chequeo hecho. Buena ruta" else "Chequeo guardado con ${failed.size} ${if (failed.size == 1) "fallo" else "fallos"}"
+    }
 }

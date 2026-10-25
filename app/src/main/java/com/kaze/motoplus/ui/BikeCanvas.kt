@@ -58,6 +58,17 @@ class Plate(drawing: Drawing) {
     }
     val bounds: Map<String, Rect> = regions.mapValues { (_, r) -> r.bounds.let { Rect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) } }
 
+    /**
+     * Where a pin for [zone] goes: the centre of its biggest piece (the headlight, not halfway to the tail light),
+     * or the top of the tyre for wheels so it does not sit on the brake disc.
+     */
+    fun anchor(zone: String): Offset? {
+        val mine = prims.filter { it.zone == zone }
+        // Filled shapes are the part itself; long strokes (hoses, cables) would drag the pin away.
+        val big = (mine.filter { "sf" in it.kind }.ifEmpty { mine }).map { it.path.getBounds() }.maxByOrNull { it.width * it.height } ?: return null
+        return if (zone == "front_wheel" || zone == "rear_wheel") Offset(big.center.x, big.top + big.height * .1f) else big.center
+    }
+
     /** A square window around [zones], for the zoomed "detail" view. */
     fun detail(zones: Collection<String>, pad: Float = .08f): Rect {
         val b = zones.mapNotNull { bounds[it] }.reduce { a, c -> Rect(minOf(a.left, c.left), minOf(a.top, c.top), maxOf(a.right, c.right), maxOf(a.bottom, c.bottom)) }
@@ -143,8 +154,8 @@ fun BikeCanvas(
         fun toScreen(x: Float, y: Float) = Offset((x - view.left) * s, (y - view.top) * s)
         drawCallouts(plate, callouts, view, ::toScreen, measurer, labelStyle, shop)
         for (pin in pins) {
-            val b = plate.bounds[pin.zone] ?: continue
-            val o = toScreen(b.center.x, if (pin.zone == "front_wheel" || pin.zone == "rear_wheel") b.top + 30f else b.center.y)
+            val a = plate.anchor(pin.zone) ?: continue
+            val o = toScreen(a.x, a.y)
             val c = pin.status?.let { shop.status(it) } ?: shop.accent
             val r = 11.sp.toPx()
             if (pin.active) drawCircle(c.copy(alpha = .25f + .25f * pulse), r * 1.7f, o)
