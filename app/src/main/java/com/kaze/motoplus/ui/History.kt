@@ -136,7 +136,7 @@ fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
         title = { Text(bike.parts.firstOrNull { it.id == d.partId }?.name ?: "Mantenimiento") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton({ picking = true }, Modifier.fillMaxWidth()) { Text("Fecha: ${prettyDate(d.date)}") }
+                Btn(prettyDate(d.date), { picking = true }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
                 OutlinedTextField(d.km, { d = d.copy(km = it.filter(Char::isDigit).take(7)) }, Modifier.fillMaxWidth(), label = { Text("Kilómetros") },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 OutlinedTextField(d.cost, { d = d.copy(cost = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(9)) }, Modifier.fillMaxWidth(),
@@ -202,7 +202,7 @@ fun BikeDialog(vm: AppViewModel, bike: Bike) {
                 if (!confirmDelete) TextButton({ confirmDelete = true }, contentPadding = PaddingValues(0.dp)) { Text("Borrar esta moto", color = shop.bad) }
                 else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Hint("Se borran su historial, lecturas, informes y fotos. No se puede deshacer.", shop.bad)
-                    Button({ vm.deleteBike() }, colors = ButtonDefaults.buttonColors(containerColor = shop.bad)) { Text("Sí, borrar ${bike.brand} ${bike.model}") }
+                    Button({ vm.deleteBike() }, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp), colors = ButtonDefaults.buttonColors(containerColor = shop.bad)) { Text("SÍ, BORRAR ${bike.model.uppercase()}") }
                 }
             }
         },

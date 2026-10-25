@@ -1,0 +1,16 @@
+appId: com.kaze.motoplus
+name: Repostar queda en el registro como lectura del odómetro
+---
+- launchApp
+- tapOn: "KM"
+- tapOn: "Repostar"
+- tapOn: "Litros"
+- inputText: "10"
+- hideKeyboard
+- tapOn: "Total pagado"
+- inputText: "160000"
+- hideKeyboard
+- tapOn: "Guardar"
+- assertVisible: "Repostaje guardado.*"
+- scrollUntilVisible:
+    element: "Repostaje · 10.*"

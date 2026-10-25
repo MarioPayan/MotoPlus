@@ -2,13 +2,13 @@ appId: com.kaze.motoplus
 name: Pegar la respuesta de la IA y marcar zonas en la moto
 ---
 - launchApp
-- tapOn: "INFORME IA"
+- tapOn: "IA"
 - tapOn: "Respuesta completa o enlace de la IA"
-- inputText: '{"v":1,"titulo":"Chirrido","urgencia":"media","resumen":"Pastillas delanteras al limite","causas":[{"causa":"Pastillas gastadas","probabilidad":"alta","zona":"freno_del"}]}'
+- inputText: '{"v":2,"title":"Chirrido","urgency":"medium","summary":"Pastillas delanteras al limite","causes":[{"cause":"Pastillas gastadas","likelihood":"high","zone":"front_brake"}]}'
 - hideKeyboard
 - tapOn: "Guardar informe"
 - assertVisible: "URGENCIA MEDIA.*"
 - scrollUntilVisible:
     element: "Ver en la moto"
 - tapOn: "Ver en la moto"
-- assertVisible: "FRENO DELANTERO"
+- assertVisible: "FIG. 1 · VISTA LATERAL"

@@ -7,3 +7,5 @@ executionOrder:
     - 01_alta_moto
     - 02_historial
     - 03_informe
+    - 04_papeles
+    - 05_repostaje

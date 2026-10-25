@@ -2,16 +2,14 @@ appId: com.kaze.motoplus
 name: Registrar un mantenimiento con coste y verlo en el historial
 ---
 - launchApp
-- tapOn: "Ver todas las piezas.*"
-- assertVisible: "PIEZAS Y PLAZOS"
-- tapOn: "Neumático trasero  ›"
+- tapOn: "Aceite de motor"
 - tapOn: "Registrar con fecha, coste o factura"
 - tapOn: "Coste (opcional)"
 - inputText: "120"
 - tapOn: "Guardar"
 - assertVisible: "Gastado:.*"
 - back
-- back
-- tapOn: "MI MOTO ▾"
+- tapOn: "MI MOTO"
 - tapOn: "Historial y gastos"
 - assertVisible: "GASTADO EN .*"
+- back

@@ -1,0 +1,14 @@
+appId: com.kaze.motoplus
+name: Guardar el SOAT con número y vencimiento
+---
+- launchApp
+- tapOn: "PAPELES"
+- tapOn: "SOAT"
+- tapOn: "Número de póliza"
+- inputText: "1234-5678"
+- hideKeyboard
+- tapOn: "Elegir fecha"
+- tapOn: "Aceptar"
+- tapOn: "Guardar"
+- assertVisible: "1234-5678"
+- assertVisible: "Vence .*"

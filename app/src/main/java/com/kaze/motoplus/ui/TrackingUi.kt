@@ -63,11 +63,11 @@ fun TrackingCard(vm: AppViewModel) {
         live?.let { r ->
             Text("Registrando salida · ${"%.1f".format(r.km)} km", fontWeight = FontWeight.SemiBold, color = shop.accent)
             Hint(r.label)
-            Button({ Tracker.stop(ctx) }, Modifier.fillMaxWidth()) { Text("Terminar salida") }
-        } ?: OutlinedButton({
+            Btn("Terminar salida", { Tracker.stop(ctx) }, Modifier.fillMaxWidth())
+        } ?: Btn("Empezar salida ahora", {
             if (loc) Tracker.start(ctx, com.kaze.motoplus.domain.RideTrigger.manual)
             else askLocationForManual.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        }, Modifier.fillMaxWidth()) { Text("Empezar salida ahora") }
+        }, Modifier.fillMaxWidth(), ghost = true, icon = "route")
 
         HorizontalDivider(color = shop.line)
         Row(verticalAlignment = Alignment.CenterVertically) {

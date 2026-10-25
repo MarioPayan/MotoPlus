@@ -46,6 +46,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
     var fixing by remember { mutableStateOf(false) }
     var value by remember(bike.readings) { mutableStateOf(est.km.toInt().toString()) }
     var ocrNote by remember { mutableStateOf<String?>(null) }
+    var confirmJump by remember { mutableStateOf(false) }
     val photo = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp: Bitmap? ->
         if (bmp == null) return@rememberLauncherForActivityResult
         fixing = true; ocrNote = "Leyendo el cuadro…"
@@ -81,7 +82,8 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
             if (n != null && n < last) {
                 Hint("Es menos que la última lectura (${fmtKm(last)} km). Si aquella estaba mal, reemplázala.", shop.warn)
                 Btn("Reemplazar la última lectura", { vm.replaceLastReading(n); fixing = false; ocrNote = null }, Modifier.fillMaxWidth(), ghost = true)
-            } else Btn("Guardar lectura", { vm.saveReading(n!!); fixing = false; ocrNote = null }, Modifier.fillMaxWidth(), enabled = n != null)
+            } else Btn("Guardar lectura", { if (suspiciousJump(n!!, est.km)) confirmJump = true else { vm.saveReading(n); fixing = false; ocrNote = null } }, Modifier.fillMaxWidth(), enabled = n != null)
+            if (confirmJump && n != null) JumpDialog(n, est.km, { confirmJump = false }) { confirmJump = false; vm.saveReading(n); fixing = false; ocrNote = null }
         }
         if (stats.kmPerLiter != null || stats.costPerKm != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat(stats.kmPerLiter?.let { "%.1f".format(it) } ?: "—", "km/l media", Modifier.weight(1f))
@@ -228,7 +230,10 @@ fun FuelScreen(vm: AppViewModel, bike: Bike) {
             if (kmN != null && kmN < last) Hint("Debe ser mayor o igual que la última lectura (${fmtKm(last)} km).", shop.bad)
             if (kmN != null && suspiciousJump(kmN, est.km)) Hint("Son ${fmtKm(kmN - est.km.toInt())} km más de lo estimado. Revisa que no sobre un dígito.", shop.warn)
         }
-        Btn("Guardar", { vm.saveFuel(kmN!!, litersN!!, totalN, full) }, Modifier.fillMaxWidth().padding(16.dp), enabled = kmN != null && kmN >= last && litersN != null)
+        var confirm by remember { mutableStateOf(false) }
+        Btn("Guardar", { if (suspiciousJump(kmN!!, est.km)) confirm = true else vm.saveFuel(kmN, litersN!!, totalN, full) },
+            Modifier.fillMaxWidth().padding(16.dp), enabled = kmN != null && kmN >= last && litersN != null)
+        if (confirm) JumpDialog(kmN!!, est.km, { confirm = false }) { confirm = false; vm.saveFuel(kmN, litersN!!, totalN, full) }
     }
 }
 
@@ -237,3 +242,13 @@ private fun PreviewStat(v: String, l: String) = Column(horizontalAlignment = Ali
     Text(v, style = Mono.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold), color = LocalShop.current.ink)
     Cap(l)
 }
+
+/** A typed odometer far above the estimate is usually an extra digit: ask before saving it. */
+@Composable
+private fun JumpDialog(km: Int, estimate: Double, onFix: () -> Unit, onSave: () -> Unit) = AlertDialog(
+    onDismissRequest = onFix,
+    title = { Text("¿${fmtKm(km)} KM?") },
+    text = { Text("Son ${fmtKm(km - estimate.toInt())} km más de lo que la app estimaba (${fmtKm(estimate.toInt())}). Si sobra un dígito, corrígelo.") },
+    confirmButton = { TextButton(onSave) { Text("SÍ, ES CORRECTO") } },
+    dismissButton = { TextButton(onFix) { Text("CORREGIR") } },
+)

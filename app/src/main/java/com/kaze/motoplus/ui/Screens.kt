@@ -67,7 +67,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
         Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding().imePadding().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("AÑADE TU MOTO", style = Display.copy(fontSize = 30.sp), color = shop.ink)
+        SectionTitle("Añade tu moto", 24)
         if (pick == null && !manual) {
             Hint("Busca por marca y modelo. ${vm.catalog?.brands?.size ?: "…"} marcas en el catálogo.")
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Ej.: yamaha mt-07") }, singleLine = true)
@@ -122,11 +122,9 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
             Hint("Si no, todo empieza en rojo como \"sin registro\" y lo vas marcando a medida que lo revisas. Los intervalos son genéricos para este tipo de moto; se pueden ajustar.")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ pick = null; manual = false }) { Text("Atrás") }
-            Button(
-                { vm.addBike(brand, model, year.toIntOrNull(), category, drive, cooling, km.toInt(), allDone) },
-                Modifier.weight(1f), enabled = brand.isNotBlank() && model.isNotBlank() && km.isNotEmpty(),
-            ) { Text("Guardar moto") }
+            Btn("Atrás", { pick = null; manual = false }, ghost = true)
+            Btn("Guardar moto", { vm.addBike(brand, model, year.toIntOrNull(), category, drive, cooling, km.toInt(), allDone) },
+                Modifier.weight(1f), enabled = brand.isNotBlank() && model.isNotBlank() && km.isNotEmpty())
         }
     }
 }
@@ -183,21 +181,21 @@ fun ReportScreen(vm: AppViewModel, bike: Bike) {
         Sheet {
             SectionTitle("¿Qué le pasa?")
             OutlinedTextField(symptom, { symptom = it }, Modifier.fillMaxWidth(), label = { Text("Describe el síntoma con tus palabras") }, minLines = 2)
-            Button({
+            Btn("Compartir con mi IA", {
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, buildPrompt(bike, symptom, vm.today))
                 ctx.startActivity(Intent.createChooser(send, "Enviar el informe a tu IA"))
-            }, Modifier.fillMaxWidth()) { Text("Compartir con mi IA") }
+            }, Modifier.fillMaxWidth(), icon = "share")
             Hint("Se abre el menú Compartir: elige ChatGPT, Claude, Gemini o la que uses. Cuando conteste, comparte su respuesta de vuelta a MotoPlus o cópiala y pégala abajo.")
         }
         Sheet {
             SectionTitle("Traer la respuesta")
             OutlinedTextField(answer, { answer = it; error = null }, Modifier.fillMaxWidth(), label = { Text("Respuesta completa o enlace de la IA") }, minLines = 3, maxLines = 8)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button({ error = vm.importReport(answer); if (error == null) answer = "" }, enabled = answer.isNotBlank()) { Text("Guardar informe") }
-                OutlinedButton({
+                Btn("Guardar informe", { error = vm.importReport(answer); if (error == null) answer = "" }, Modifier.weight(1f), enabled = answer.isNotBlank())
+                Btn("Pegar", {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     answer = cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty(); error = null
-                }) { Text("Pegar") }
+                }, ghost = true)
             }
             error?.let { Hint(it, shop.bad) }
         }
@@ -217,7 +215,7 @@ private fun ReportCard(r: SavedReport, onSee: () -> Unit) {
     }
     Sheet {
         Hint("${prettyDate(r.at)} · ${fmtKm(r.km)} km")
-        Text(label.uppercase(), style = Display.copy(fontSize = 13.sp), color = c,
+        Text(label.uppercase(), style = Caption.copy(fontSize = 11.sp), color = c,
             modifier = Modifier.background(c.copy(alpha = 0.14f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
         SectionTitle(d.title.ifBlank { "Informe" })
         Text(d.summary, fontSize = 13.sp)
@@ -237,6 +235,6 @@ private fun ReportCard(r: SavedReport, onSee: () -> Unit) {
         }
         if (d.advice.isNotBlank()) Text("Recomendación: ${d.advice}", fontSize = 13.sp)
         Hint("Orientativo, generado por tu IA. No sustituye la revisión en taller.")
-        if (d.causes.any { it.zone != null }) OutlinedButton(onSee) { Text("Ver en la moto") }
+        if (d.causes.any { it.zone != null }) Btn("Ver en la moto", onSee, ghost = true, icon = "bike")
     }
 }
