@@ -9,7 +9,8 @@ const start = html.indexOf('/* ---------- Lámina: geometría ---------- */');
 const end = html.indexOf('function paint(');
 const zonesSrc = html.slice(html.indexOf('const ZONES = {'), html.indexOf('const ZKEYS'));
 const code = zonesSrc + 'const ZKEYS=Object.keys(ZONES);const fmt=n=>String(n);' + html.slice(start, end) + 'return {svg:bikeSVG({plate:false}), ZONES};';
-const { svg, ZONES } = new Function(code)();
+const { svg: nakedSvg, ZONES } = new Function(code)();
+import { PLATES } from './bikes.mjs';
 
 const num = (tag, a) => { const m = tag.match(new RegExp(`\\s${a}="([^"]*)"`)); return m ? m[1] : null; };
 const f = n => +n.toFixed(2);
@@ -38,46 +39,58 @@ function translatePath(d, dx, dy) {
   });
 }
 
+function toItems(svg) {
 const items = [];
-const zoneStack = [], trStack = [];
-for (const tag of svg.match(/<[^>]+>/g)) {
-  if (tag.startsWith('</g')) { zoneStack.pop(); trStack.pop(); continue; }
-  if (tag.startsWith('</')) continue;
-  if (tag.startsWith('<g')) {
-    zoneStack.push(num(tag, 'data-z'));
-    const t = (num(tag, 'transform') ?? '').match(/translate\(([-\d.]+),([-\d.]+)\)/);
-    trStack.push(t ? [+t[1], +t[2]] : [0, 0]);
-    continue;
+  const zoneStack = [], trStack = [];
+  for (const tag of svg.match(/<[^>]+>/g)) {
+    if (tag.startsWith('</g')) { zoneStack.pop(); trStack.pop(); continue; }
+    if (tag.startsWith('</')) continue;
+    if (tag.startsWith('<g')) {
+      zoneStack.push(num(tag, 'data-z'));
+      const t = (num(tag, 'transform') ?? '').match(/translate\(([-\d.]+),([-\d.]+)\)/);
+      trStack.push(t ? [+t[1], +t[2]] : [0, 0]);
+      continue;
+    }
+    const kind = tag.match(/^<(\w+)/)[1];
+    if (!['path', 'circle', 'ellipse'].includes(kind)) continue;
+    const cls = (num(tag, 'class') ?? '').split(/\s+/);
+    if (cls.includes('dim') || cls.includes('scan')) continue;
+    const fill = num(tag, 'fill');
+    if (fill === 'transparent') continue; // hit areas: the app computes its own
+    let d;
+    if (kind === 'path') d = num(tag, 'd');
+    else if (kind === 'circle') d = circlePath(+num(tag, 'cx'), +num(tag, 'cy'), +num(tag, 'r'));
+    else {
+      const rot = (num(tag, 'transform') ?? '').match(/rotate\(([-\d.]+)/);
+      d = ellipsePath(+num(tag, 'cx'), +num(tag, 'cy'), +num(tag, 'rx'), +num(tag, 'ry'), rot ? +rot[1] : 0);
+    }
+    if (!d) continue;
+    const [dx, dy] = trStack.reduce((s, t) => [s[0] + t[0], s[1] + t[1]], [0, 0]);
+    d = translatePath(d, dx, dy);
+    const w = num(tag, 'stroke-width');
+    const style = num(tag, 'style') ?? '';
+    const sw = style.match(/stroke-width:([\d.]+)/);
+    const dash = style.match(/stroke-dasharray:([\d. ]+)/);
+    items.push({
+      z: zoneStack.filter(Boolean).at(-1) ?? null,
+      k: cls.filter(c => c && c !== 'zone').join(' '),
+      d,
+      ...(w || sw ? { w: +(w ?? sw[1]) } : {}),
+      ...(dash ? { dash: dash[1].trim().split(/\s+/).map(Number) } : {}),
+      ...(num(tag, 'fill-rule') === 'evenodd' ? { eo: true } : {}),
+    });
   }
-  const kind = tag.match(/^<(\w+)/)[1];
-  if (!['path', 'circle', 'ellipse'].includes(kind)) continue;
-  const cls = (num(tag, 'class') ?? '').split(/\s+/);
-  if (cls.includes('dim') || cls.includes('scan')) continue;
-  const fill = num(tag, 'fill');
-  if (fill === 'transparent') continue; // hit areas: the app computes its own
-  let d;
-  if (kind === 'path') d = num(tag, 'd');
-  else if (kind === 'circle') d = circlePath(+num(tag, 'cx'), +num(tag, 'cy'), +num(tag, 'r'));
-  else {
-    const rot = (num(tag, 'transform') ?? '').match(/rotate\(([-\d.]+)/);
-    d = ellipsePath(+num(tag, 'cx'), +num(tag, 'cy'), +num(tag, 'rx'), +num(tag, 'ry'), rot ? +rot[1] : 0);
-  }
-  if (!d) continue;
-  const [dx, dy] = trStack.reduce((s, t) => [s[0] + t[0], s[1] + t[1]], [0, 0]);
-  d = translatePath(d, dx, dy);
-  const w = num(tag, 'stroke-width');
-  const style = num(tag, 'style') ?? '';
-  const sw = style.match(/stroke-width:([\d.]+)/);
-  const dash = style.match(/stroke-dasharray:([\d. ]+)/);
-  items.push({
-    z: zoneStack.filter(Boolean).at(-1) ?? null,
-    k: cls.filter(c => c && c !== 'zone').join(' '),
-    d,
-    ...(w || sw ? { w: +(w ?? sw[1]) } : {}),
-    ...(dash ? { dash: dash[1].trim().split(/\s+/).map(Number) } : {}),
-    ...(num(tag, 'fill-rule') === 'evenodd' ? { eo: true } : {}),
-  });
+    return items;
 }
-const vb = svg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
-writeFileSync(new URL('../../app/src/main/assets/bike_naked.json', import.meta.url), JSON.stringify({ viewBox: vb, zones: Object.keys(ZONES), items }));
-console.log(`items=${items.length} zones=${new Set(items.map(i => i.z)).size - 1} viewBox=${vb}`);
+
+const out = { naked: { items: toItems(nakedSvg), viewBox: nakedSvg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number) } };
+for (const [name, fn] of Object.entries(PLATES)) {
+  const { svg, viewBox } = fn();
+  out[name] = { items: toItems(`<svg viewBox="${viewBox.join(' ')}">${svg}</svg>`), viewBox };
+}
+for (const [name, { items, viewBox }] of Object.entries(out)) {
+  const missing = Object.keys(ZONES).filter(z => !items.some(i => i.z === z));
+  if (missing.length) throw new Error(`${name}: zones without drawing: ${missing}`);
+  writeFileSync(new URL(`../../app/src/main/assets/bike_${name}.json`, import.meta.url), JSON.stringify({ viewBox, zones: Object.keys(ZONES), items }));
+  console.log(`${name}: items=${items.length} viewBox=${viewBox}`);
+}

@@ -66,13 +66,14 @@ class DomainTest {
     }
 
     @Test fun templatesOnlyUseDrawnZones() {
-        val drawn = File("src/main/assets/bike_naked.json").readText()
-        for (c in Category.entries) for (d in Drive.entries) for (k in Cooling.entries)
+        for (c in Category.entries) for (d in Drive.entries) for (k in Cooling.entries) {
+            val drawn = File("src/main/assets/bike_${silhouette(c)}.json").readText()
             for (p in defaultParts(c, d, k)) {
                 assertTrue(p.zone in ZONES)
                 assertTrue("zone ${p.zone} missing in drawing", drawn.contains("\"z\":\"${p.zone}\""))
                 assertTrue(p.km != null || p.days != null)
             }
+        }
         assertTrue(defaultParts(Category.naked, Drive.chain, Cooling.air).none { it.zone == "radiador" })
     }
 

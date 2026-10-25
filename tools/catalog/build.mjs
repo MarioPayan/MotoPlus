@@ -4,6 +4,7 @@
 //   seed-latam.json         — hand-curated models popular in Spain and Latin America
 // Run: node tools/catalog/build.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
+import { category } from './category.mjs';
 
 const UA = 'MotoPlusCatalog/0.1 (personal project)';
 const OUT = new URL('../../app/src/main/assets/catalog.json', import.meta.url);
@@ -30,17 +31,6 @@ const OFFROAD_4W = /grizzly|kodiak|viking|wolverine|raptor|yfz|yxz|rhino|big bea
 const norm = s => s.normalize('NFKC').replace(/\s+/g, ' ').trim();
 const brandOf = b => BRAND_ALIASES[b] ?? b;
 const key = s => norm(s).toLowerCase().replace(/[\s-]/g, '');
-
-function category(model) {
-  const m = model;
-  if (/nmax|xmax|tmax|pcx|agility|zuma|vespa|\bdio\b|navi|ntorq|burgman|\bsh ?\d|forza|jupiter|wego|scooter|\blead\b|activa|liberty|beverly|mp3|medley|people|downtown|\blike\b|fiddle|symphony|address|aerox|x-?max|ciao|gts|primavera|sprint|ruckus|majesty|morphous|silver ?wing|reflex|helix|elite|metropolic|adv ?\d{3}|x-?adv/i.test(m)) return 'scooter';
-  if (/^(yz|wr|crf|kx|rm-?z?|tt-?r|exc|sx|mc|ec|pw|klx|xr\d|tc|te|fe|fc|rr \d)/i.test(m)) return 'offroad';
-  if (/t[ée]n[ée]r[ée]|xtz|\bxr ?\d{3}l|v-?strom|africa|\bgs\b|adventure|himalayan|xpulse|tiger|multistrada|desertx|transalp|klr|versys|tracer|norden|scrambler|\badv\b/i.test(m)) return 'trail';
-  if (/gold ?wing|fjr|\bgtr\b|\brt\b|k ?1600|electra|ultra|road glide|street glide|tour|roadmaster|chieftain|pursuit/i.test(m)) return 'touring';
-  if (/shadow|rebel|vulcan|bolt|v-?star|intruder|boulevard|avenger|meteor|softail|sportster|fat ?bo[by]|breakout|scout|chief|eliminator|diavel|bobber|classic|low ?rider|heritage|super 73|cruiser|nightster|super meteor|springfield/i.test(m)) return 'custom';
-  if (/\br ?[13679]\b|\br1[5-9]|cbr|ninja|gsx-?r|\bzx-?\d|\brs ?\d|panigale|\brc ?\d|yzf|rsv|daytona|hayabusa|supersport|\brr\b|tuono v4 rr|s ?1000 ?rr|f4|ns ?200 ?rs|rs ?200/i.test(m)) return 'sport';
-  return 'naked';
-}
 
 async function getJson(url, opts = {}, tries = 3) {
   for (let i = 0; i < tries; i++) {
