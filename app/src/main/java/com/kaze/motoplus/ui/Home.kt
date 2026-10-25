@@ -51,6 +51,13 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
                 TextButton({ vm.screen = Screen.parts }) { Text("VER LAS ${bike.parts.size} →", style = Mono.copy(fontSize = 12.sp), color = shop.accent) }
             }
             states.sortedByDescending { it.second.used }.take(3).forEach { (p, s) -> PartRow(vm, p, s) }
+            HorizontalDivider(color = shop.line)
+            val open = bike.openOrder()
+            Btn(
+                if (open != null) "Orden nº ${open.number} abierta · volví del taller" else "Lista para el taller",
+                { vm.screen = if (open != null) Screen.orderReturn else Screen.order },
+                Modifier.fillMaxWidth().padding(top = 10.dp), ghost = true, icon = "wrench",
+            )
         }
         Spacer(Modifier.height(4.dp))
     }

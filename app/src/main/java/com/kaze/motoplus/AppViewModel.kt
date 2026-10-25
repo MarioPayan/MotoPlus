@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -255,4 +255,25 @@ fun AppViewModel.replaceLastReading(km: Int) {
 fun AppViewModel.deleteFuel(id: String) {
     updateBike { it.deleteFuel(id) }
     message = "Repostaje borrado"
+}
+
+// ---------- Workshop ----------
+
+/** Creates the open work order, or updates it, and returns it. */
+fun AppViewModel.saveOrder(partIds: List<String>, notes: String): WorkOrder? {
+    val b = bike ?: return null
+    val open = b.openOrder()
+    val o = open?.copy(partIds = partIds, notes = notes)
+        ?: WorkOrder(UUID.randomUUID().toString(), b.nextOrderNumber(), today.toString(), estimate(b, today).km.toInt(), partIds, notes)
+    updateBike { it.copy(orders = if (open == null) it.orders + o else it.orders.map { x -> if (x.id == o.id) o else x }) }
+    return o
+}
+
+fun AppViewModel.closeOrder(done: Map<String, Double?>, photo: String?) {
+    val b = bike ?: return
+    val o = b.openOrder() ?: return
+    updateBike { it.closeOrder(o.id, done, today.toString(), estimate(b, today).km.toInt(), photo) { UUID.randomUUID().toString() } }
+    com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
+    screen = Screen.main
+    message = "${done.size} ${if (done.size == 1) "trabajo guardado" else "trabajos guardados"} en el historial"
 }

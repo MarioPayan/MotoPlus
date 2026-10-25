@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Camera writes document photos straight into app storage -->
+<!-- Camera writes document photos into app storage; shared work orders go through the cache -->
 <paths>
     <files-path name="documents" path="documents/" />
+    <cache-path name="share" path="share/" />
 </paths>

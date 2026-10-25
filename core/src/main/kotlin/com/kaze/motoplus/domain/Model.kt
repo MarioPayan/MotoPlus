@@ -81,6 +81,7 @@ data class Bike(
     val notified: Map<String, Status> = emptyMap(),
     val accent: Accent = Accent.cyan,
     val fuel: List<FuelEntry> = emptyList(),
+    val orders: List<WorkOrder> = emptyList(),
 ) {
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }

@@ -51,6 +51,8 @@ fun App(vm: AppViewModel) {
                 Screen.doc -> vm.docDraft?.let { DocScreen(vm, it) } ?: run { vm.screen = Screen.main }
                 Screen.control -> ControlScreen(vm, bike)
                 Screen.fuel -> FuelScreen(vm, bike)
+                Screen.order -> OrderScreen(vm, bike)
+                Screen.orderReturn -> OrderReturnScreen(vm, bike)
                 else -> HistoryScreen(vm, bike)
             }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }
@@ -110,6 +112,7 @@ private fun TopBar(vm: AppViewModel, bike: Bike) {
                 HorizontalDivider(color = shop.line)
                 MenuItem("wrench", "Plazos de todas las piezas") { vm.screen = Screen.parts; open = false }
                 MenuItem("history", "Historial y gastos") { vm.screen = Screen.history; open = false }
+                MenuItem("share", "Lista para el taller") { vm.screen = Screen.order; open = false }
                 MenuItem("edit", "Editar esta moto") { vm.editingBike = true; open = false }
                 MenuItem("plus", "Añadir moto") { vm.adding = true; open = false }
             }
