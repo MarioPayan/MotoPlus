@@ -87,13 +87,23 @@ data class Bike(
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }
 
-/** Automatic ride detection settings for this phone. */
+/** How this phone keeps the odometer estimate current: each ride detector and each car exclusion is switched on its own. */
 @Serializable
 data class Tracking(
-    val enabled: Boolean = false,
+    /** Start a ride when the activity sensor says the phone is in a vehicle. */
+    val motion: Boolean = false,
+    /** Start a ride when one of [devices] connects. */
+    val bluetooth: Boolean = false,
     /** Bluetooth devices (helmet intercom, bike) whose connection means "I'm riding", address to name. */
     val devices: Map<String, String> = emptyMap(),
-)
+    /** The rider's cars, address to name: while one is connected, a motion ride is a car trip. Empty turns the rule off. */
+    val carDevices: Map<String, String> = emptyMap(),
+    /** While the phone projects to Android Auto, a motion ride is a car trip. */
+    val androidAuto: Boolean = false,
+) {
+    /** Some detector can start a ride without the rider. */
+    val detects get() = motion || bluetooth
+}
 
 @Serializable
 data class Garage(
@@ -105,5 +115,5 @@ data class Garage(
 ) {
     val selected get() = bikes.firstOrNull { it.id == selectedId } ?: bikes.firstOrNull()
 
-    companion object { const val SCHEMA = 2 }
+    companion object { const val SCHEMA = 3 }
 }

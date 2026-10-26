@@ -59,6 +59,12 @@ val Ride.sourceLabel get() = when (trigger) {
     RideTrigger.bluetooth -> "Bluetooth" + (device?.let { ": $it" } ?: "")
 }
 
+/** Ends "Salida descartada · …". */
+val DiscardReason.label get() = when (this) {
+    DiscardReason.carBluetooth -> "coche conectado"
+    DiscardReason.androidAuto -> "Android Auto"
+}
+
 val ReportError.message get() = when (this) {
     ReportError.notFound -> "No encuentro el bloque motoplus ni el enlace. Copia la respuesta completa de la IA."
     ReportError.invalid -> "El bloque está incompleto o no es JSON válido. Pide a la IA que repita solo el bloque motoplus."

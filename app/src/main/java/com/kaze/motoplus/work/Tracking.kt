@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.*
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -15,7 +17,10 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
+import androidx.car.app.connection.CarConnection
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
 import com.google.android.gms.location.*
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.R
@@ -23,6 +28,8 @@ import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.DistanceMeter
 import com.kaze.motoplus.domain.Ride
 import com.kaze.motoplus.domain.RideTrigger
+import com.kaze.motoplus.domain.discardReason
+import com.kaze.motoplus.ui.label
 import com.kaze.motoplus.ui.sourceLabel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,11 +73,11 @@ object Tracker {
         ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.STOP))
     }
 
-    /** Listens for "in vehicle" start/stop from the phone's activity sensor. */
+    /** Listens for "in vehicle" start/stop from the phone's activity sensor while motion detection is on, and stops listening when it's off. */
     @SuppressLint("MissingPermission")
     fun register(ctx: Context) {
-        val g = Repo.garage.value.tracking
-        if (!g.enabled || !hasActivity(ctx)) return
+        if (!Repo.garage.value.tracking.motion) { unregister(ctx); return }
+        if (!hasActivity(ctx)) return
         val req = ActivityTransitionRequest(listOf(
             ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
             ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build(),
@@ -81,6 +88,12 @@ object Tracker {
     @SuppressLint("MissingPermission")
     fun unregister(ctx: Context) {
         if (hasActivity(ctx)) ActivityRecognition.getClient(ctx).removeActivityTransitionUpdates(transitionIntent(ctx))
+    }
+
+    /** One of the rider's cars connected: the live ride checks again whether it is a car trip. */
+    fun carConnected(ctx: Context) {
+        if (state.value == null) return
+        runCatching { ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.CAR)) }
     }
 
     private fun transitionIntent(ctx: Context) = PendingIntent.getBroadcast(
@@ -94,15 +107,26 @@ object Tracker {
 
 /**
  * Foreground GPS recorder for one ride. Ends when asked, when the trigger goes away,
- * or after 6 minutes without movement (parked).
+ * after 6 minutes without movement (parked), or unsaved as soon as a motion ride turns out to be a car trip.
  */
 class RideService : Service() {
-    companion object { const val STOP = "com.kaze.motoplus.STOP_RIDE" }
+    companion object {
+        const val STOP = "com.kaze.motoplus.STOP_RIDE"
+        const val CAR = "com.kaze.motoplus.CAR_CONNECTED"
+    }
 
     private val meter = DistanceMeter()
     private var trigger = RideTrigger.manual
     private var device: String? = null
     private var startedAt = 0L
+    // Car signals for this ride. Read from the phone when the ride starts, never kept across process deaths.
+    private var carBluetooth = false
+    private var androidAuto = false
+    private var carConnection: LiveData<Int>? = null
+    private val autoObserver = Observer<Int> { type ->
+        androidAuto = type == CarConnection.CONNECTION_TYPE_PROJECTION
+        checkCar()
+    }
     private lateinit var client: FusedLocationProviderClient
     private val callback = object : LocationCallback() {
         override fun onLocationResult(r: LocationResult) {
@@ -119,6 +143,10 @@ class RideService : Service() {
     @SuppressLint("MissingPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) { finish(); return START_NOT_STICKY }
+        if (intent?.action == CAR) {
+            if (startedAt == 0L) stopSelf() else { carBluetooth = true; checkCar() }
+            return START_NOT_STICKY
+        }
         if (startedAt != 0L) return START_NOT_STICKY
         Repo.init(this)
         trigger = intent?.getStringExtra("trigger")?.let { runCatching { RideTrigger.valueOf(it) }.getOrNull() } ?: RideTrigger.manual
@@ -132,7 +160,33 @@ class RideService : Service() {
             LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).setMinUpdateDistanceMeters(15f).build(),
             callback, Looper.getMainLooper(),
         )
+        if (trigger == RideTrigger.motion) watchCars()
         return START_NOT_STICKY
+    }
+
+    /** Asks the phone whether a car is connected now, and keeps watching Android Auto for the rest of the ride. */
+    @SuppressLint("MissingPermission")
+    private fun watchCars() {
+        val t = Repo.garage.value.tracking
+        if (t.androidAuto) carConnection = CarConnection(this).type.also { it.observeForever(autoObserver) }
+        if (t.carDevices.isEmpty()) return
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return
+        // A car connects for calls (headset profile) and music (A2DP); either one counts.
+        for (profile in listOf(BluetoothProfile.HEADSET, BluetoothProfile.A2DP)) {
+            adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(p: Int, proxy: BluetoothProfile) {
+                    val connected = runCatching { proxy.connectedDevices.any { it.address in t.carDevices } }.getOrDefault(false)
+                    adapter.closeProfileProxy(p, proxy)
+                    if (connected) { carBluetooth = true; checkCar() }
+                }
+                override fun onServiceDisconnected(p: Int) {}
+            }, profile)
+        }
+    }
+
+    private fun checkCar() {
+        if (discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking) != null) finish()
     }
 
     private fun liveNotification(): Notification {
@@ -149,10 +203,15 @@ class RideService : Service() {
         if (finished) return
         finished = true
         if (::client.isInitialized) client.removeLocationUpdates(callback)
+        carConnection?.removeObserver(autoObserver)
         val km = meter.km
         Tracker.set(null)
         val bike = Repo.garage.value.selected
-        if (km >= 0.3 && bike != null) {
+        val discarded = discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking)
+        if (discarded != null) {
+            Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
+                .setContentTitle("Salida descartada · ${discarded.label}").setAutoCancel(true).build())
+        } else if (km >= 0.3 && bike != null) {
             Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis())) }
             ReminderWorker.runNow(this)
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
@@ -171,14 +230,17 @@ class TransitionReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (!ActivityTransitionResult.hasResult(intent)) return
         Repo.init(ctx)
-        if (!Repo.garage.value.tracking.enabled) return
+        if (!Repo.garage.value.tracking.motion) return
         val last = ActivityTransitionResult.extractResult(intent)!!.transitionEvents.lastOrNull { it.activityType == DetectedActivity.IN_VEHICLE } ?: return
         if (last.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) Tracker.start(ctx, RideTrigger.motion)
         else if (Tracker.live.value?.trigger == RideTrigger.motion) Tracker.stop(ctx)
     }
 }
 
-/** Helmet intercom or bike connects → ride starts; disconnects → ride ends. */
+/**
+ * Helmet intercom or bike connects → ride starts; disconnects → ride ends.
+ * One of the rider's cars connects → a motion ride in progress is a car trip.
+ */
 class BluetoothReceiver : BroadcastReceiver() {
     @SuppressLint("MissingPermission")
     override fun onReceive(ctx: Context, intent: Intent) {
@@ -186,10 +248,12 @@ class BluetoothReceiver : BroadcastReceiver() {
         val t = Repo.garage.value.tracking
         val dev: BluetoothDevice = (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)) ?: return
-        if (!t.enabled || dev.address !in t.devices) return
-        when (intent.action) {
-            BluetoothDevice.ACTION_ACL_CONNECTED -> Tracker.start(ctx, RideTrigger.bluetooth, t.devices[dev.address])
-            BluetoothDevice.ACTION_ACL_DISCONNECTED -> if (Tracker.live.value?.trigger == RideTrigger.bluetooth) Tracker.stop(ctx)
+        when {
+            t.bluetooth && dev.address in t.devices -> when (intent.action) {
+                BluetoothDevice.ACTION_ACL_CONNECTED -> Tracker.start(ctx, RideTrigger.bluetooth, t.devices[dev.address])
+                BluetoothDevice.ACTION_ACL_DISCONNECTED -> if (Tracker.live.value?.trigger == RideTrigger.bluetooth) Tracker.stop(ctx)
+            }
+            dev.address in t.carDevices && intent.action == BluetoothDevice.ACTION_ACL_CONNECTED -> Tracker.carConnected(ctx)
         }
     }
 }

@@ -68,5 +68,6 @@ dependencies {
     implementation(libs.splash)
     implementation(libs.glance)
     implementation(libs.play.auth)
+    implementation(libs.car.app)
     testImplementation(libs.junit)
 }

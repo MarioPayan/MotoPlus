@@ -20,7 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data, kmSources }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -49,6 +49,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var docDraft by mutableStateOf<Document?>(null)
     /** Which document control mode opens on. */
     var showingDoc by mutableStateOf<String?>(null)
+    /** The Km tab should open the camera to read the odometer as soon as it shows. */
+    var odometerPhoto by mutableStateOf(false)
     /** Where the part screen goes back to. */
     var back by mutableStateOf(Screen.main); private set
 
@@ -172,12 +174,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         highlighted = zones; selectedZone = null; tab = Tab.bike; screen = Screen.main
     }
 
-    fun setTracking(enabled: Boolean) {
-        Repo.update { it.copy(tracking = it.tracking.copy(enabled = enabled)) }
-        if (enabled) com.kaze.motoplus.work.Tracker.register(app) else com.kaze.motoplus.work.Tracker.unregister(app)
+    /** Saves how km are kept current, and starts or stops listening to the activity sensor to match. */
+    fun setTracking(t: Tracking) {
+        Repo.update { it.copy(tracking = t) }
+        com.kaze.motoplus.work.Tracker.register(app)
     }
 
-    fun setTrackedDevices(devices: Map<String, String>) = Repo.update { it.copy(tracking = it.tracking.copy(devices = devices)) }
+    /** Opens the Km tab's odometer photo reading, from anywhere. */
+    fun readOdometerPhoto() { tab = Tab.km; screen = Screen.main; odometerPhoto = true }
 
     fun openPart(id: String) { back = if (screen == Screen.part) back else screen; openPart = id; screen = Screen.part }
 

@@ -13,6 +13,7 @@ playLocation = "21.4.0"
 splash = "1.2.0"
 glance = "1.2.0"
 playAuth = "21.5.1"
+carApp = "1.7.0"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -31,6 +32,7 @@ play-location = { group = "com.google.android.gms", name = "play-services-locati
 splash = { group = "androidx.core", name = "core-splashscreen", version.ref = "splash" }
 glance = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 play-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playAuth" }
+car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

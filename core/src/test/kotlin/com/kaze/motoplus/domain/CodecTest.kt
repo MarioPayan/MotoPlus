@@ -35,8 +35,25 @@ class CodecTest {
         assertEquals("Pastillas", r.summary)
         assertEquals(Cause("Pastillas gastadas", Level.high, "front_brake"), r.causes.single())
         assertEquals(listOf("Mirar grosor"), r.checks)
-        assertEquals(mapOf("AA:BB" to "Cardo"), g.tracking.devices)
+        assertEquals(Tracking(motion = true, bluetooth = true, devices = mapOf("AA:BB" to "Cardo")), g.tracking)
         assertEquals(12000, b.parts.first().lastKm)
+    }
+
+    // A garage.json as 0.10.0 wrote it: one switch for automatic rides.
+    private fun v2(enabled: Boolean) = """
+        {"schema":2,"bikes":[],"tracking":{"enabled":$enabled,"devices":{"AA:BB":"Cardo"}}}
+    """.trimIndent()
+
+    @Test fun migratesTrackingSwitchV2() {
+        val on = GarageCodec.decode(v2(true))
+        assertEquals(Garage.SCHEMA, on.schema)
+        assertEquals(Tracking(motion = true, bluetooth = true, devices = mapOf("AA:BB" to "Cardo")), on.tracking)
+        assertEquals(Tracking(devices = mapOf("AA:BB" to "Cardo")), GarageCodec.decode(v2(false)).tracking)
+    }
+
+    @Test fun keepsCurrentTracking() {
+        val g = Garage(tracking = Tracking(motion = true, carDevices = mapOf("CC:DD" to "Coche"), androidAuto = true))
+        assertEquals(g, GarageCodec.decode(GarageCodec.encode(g)))
     }
 
     @Test fun roundTrips() {

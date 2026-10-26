@@ -46,7 +46,7 @@ fun TrackingCard(vm: AppViewModel) {
     val askActivity = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         tick++
         if (!Tracker.hasBackground(ctx)) askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        vm.setTracking(true)
+        vm.setTracking(vm.garage.tracking.copy(motion = true, bluetooth = true))
     }
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         tick++
@@ -75,9 +75,9 @@ fun TrackingCard(vm: AppViewModel) {
                 Text("Detectar salidas solas", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Hint("Empieza al ir en vehículo o al conectar tu casco, y termina al aparcar.")
             }
-            Switch(tracking.enabled, { on -> if (on) disclosure = true else vm.setTracking(false) })
+            Switch(tracking.detects, { on -> if (on) disclosure = true else vm.setTracking(tracking.copy(motion = false, bluetooth = false)) })
         }
-        if (tracking.enabled) {
+        if (tracking.detects) {
             val missing = listOfNotNull(
                 "ubicación".takeIf { !loc }, "ubicación todo el tiempo".takeIf { !bg }, "actividad física".takeIf { !act },
             )
@@ -111,13 +111,13 @@ fun TrackingCard(vm: AppViewModel) {
         confirmButton = {
             TextButton({
                 disclosure = false
-                if (loc) { if (act) { vm.setTracking(true); if (!bg) askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } else askActivity.launch(Manifest.permission.ACTIVITY_RECOGNITION) }
+                if (loc) { if (act) { vm.setTracking(vm.garage.tracking.copy(motion = true, bluetooth = true)); if (!bg) askBackground.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } else askActivity.launch(Manifest.permission.ACTIVITY_RECOGNITION) }
                 else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
             }) { Text("Continuar") }
         },
         dismissButton = { TextButton({ disclosure = false }) { Text("Ahora no") } },
     )
-    if (picking) DevicePicker(vm.garage.tracking.devices, onDone = { vm.setTrackedDevices(it); picking = false }, onDismiss = { picking = false })
+    if (picking) DevicePicker(vm.garage.tracking.devices, onDone = { vm.setTracking(vm.garage.tracking.copy(devices = it)); picking = false }, onDismiss = { picking = false })
 }
 
 @SuppressLint("MissingPermission")

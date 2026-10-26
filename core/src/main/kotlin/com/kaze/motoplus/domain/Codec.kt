@@ -15,8 +15,21 @@ object GarageCodec {
 
     fun migrate(root: JsonObject): JsonObject {
         var o = root
-        if ((o["schema"]?.jsonPrimitive?.intOrNull ?: 1) < 2) o = v1ToV2(o)
+        val schema = o["schema"]?.jsonPrimitive?.intOrNull ?: 1
+        if (schema < 2) o = v1ToV2(o)
+        if (schema < 3) o = v2ToV3(o)
         return o
+    }
+
+    // v2 had one switch for automatic rides; v3 switches motion and Bluetooth detection on their own.
+    private fun v2ToV3(o: JsonObject): JsonObject {
+        val out = o.toMutableMap()
+        out["schema"] = JsonPrimitive(3)
+        o["tracking"]?.jsonObject?.let { t ->
+            val enabled = t["enabled"]?.jsonPrimitive?.booleanOrNull ?: false
+            out["tracking"] = JsonObject(t - "enabled" + ("motion" to JsonPrimitive(enabled)) + ("bluetooth" to JsonPrimitive(enabled)))
+        }
+        return JsonObject(out)
     }
 
     // v1 used Spanish ids and Spanish JSON keys in AI reports.
