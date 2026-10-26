@@ -1,0 +1,20 @@
+appId: com.kaze.motoplus
+name: Abrir Mantener al día el km desde la pestaña KM y desde el menú
+---
+- launchApp
+- tapOn: "KM"
+- scrollUntilVisible:
+    element: "Mantener al día el km"
+- tapOn: "Mantener al día el km"
+- assertVisible: "MANTENER AL DÍA EL KM"
+- assertVisible: "Sensor de movimiento"
+- assertVisible: "Intercomunicador o Bluetooth de la moto"
+- scrollUntilVisible:
+    element: "Foto del cuadro"
+- assertVisible: "Android Auto"
+- back
+- tapOn: "MOTO"
+- tapOn: "MI MOTO"
+- tapOn: "Mantener al día el km"
+- assertVisible: "SOLO LA MOTO, NO EL COCHE"
+- back

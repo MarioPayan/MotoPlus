@@ -16,7 +16,7 @@ export JAVA_HOME=~/.local/share/motoplus-tools/jdk-21.0.13+9
 ~/Android/Sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ./gradlew :app:bundleRelease         # AAB firmado (clave en ~/.local/share/motoplus-keys, fuera del repo)
-PATH=~/.local/share/motoplus-tools/maestro/bin:$PATH maestro test .maestro/01_alta_moto.yaml   # flujos en el emulador, en orden 01 → 05 (01 borra los datos de la app)
+PATH=~/.local/share/motoplus-tools/maestro/bin:$PATH maestro test .maestro/01_alta_moto.yaml   # flujos en el emulador, en orden 01 → 06 (01 borra los datos de la app)
 
 node tools/catalog/build.mjs          # regenera assets/catalog.json (necesita red)
 node tools/catalog/recategorize.mjs   # reaplica tools/catalog/category.mjs sin descargar nada
