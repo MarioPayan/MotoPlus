@@ -55,6 +55,7 @@ fun App(vm: AppViewModel) {
                 Screen.orderReturn -> OrderReturnScreen(vm, bike)
                 Screen.check -> CheckScreen(vm, bike)
                 Screen.data -> DataScreen(vm)
+                Screen.kmSources -> KmSourcesScreen(vm)
                 else -> HistoryScreen(vm, bike)
             }
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { ShopSnackbar(it) }
@@ -116,6 +117,7 @@ private fun TopBar(vm: AppViewModel, bike: Bike) {
                 MenuItem("history", "Historial y gastos") { vm.screen = Screen.history; open = false }
                 MenuItem("share", "Lista para el taller") { vm.screen = Screen.order; open = false }
                 MenuItem("edit", "Editar esta moto") { vm.editingBike = true; open = false }
+                MenuItem("route", "Mantener al día el km") { vm.screen = Screen.kmSources; open = false }
                 MenuItem("cloud", "Datos y copia en Drive") { vm.screen = Screen.data; open = false }
                 MenuItem("plus", "Añadir moto") { vm.adding = true; open = false }
             }

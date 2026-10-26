@@ -58,6 +58,8 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
             }
             .addOnFailureListener { ocrNote = "No pude leer la foto. Escríbelo a mano." }
     }
+    // "Foto del cuadro" in Mantener al día el km lands here, so the reading is checked and saved in one place.
+    LaunchedEffect(vm.odometerPhoto) { if (vm.odometerPhoto) { vm.odometerPhoto = false; photo.launch(null) } }
     val month = kmThisMonth(bike, today)
     val week = weekRides(bike, today)
     val stats = fuelStats(bike.fuel)
@@ -90,7 +92,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
             Stat(stats.costPerKm?.let { money(it) } ?: "—", "por km", Modifier.weight(1f))
         }
         WeekBars(week)
-        TrackingCard(vm)
+        TrackingSummary(vm)
         Log(bike) { vm.deleteFuel(it) }
         Spacer(Modifier.height(4.dp))
     }
