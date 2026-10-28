@@ -268,7 +268,7 @@ to {
 .anchor {
   fill:var(--paper);stroke:var(--status);stroke-width:1.6}
 .health-bar {
-  display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px 14px;border-left:3px solid var(--accent);padding:12px 14px;background:var(--sheet)}
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px 14px;border-left:3px solid var(--status);padding:12px 14px;background:var(--sheet)}
 .health-score {
   font:600 44px var(--display);line-height:1}
 .health-max {
@@ -616,7 +616,7 @@ to {
 .health-bar>.row {justify-content:flex-end}
 .health-bar>.grow {grid-column:1/-1}
 .health-bar .cap {font-size:9px;letter-spacing:.3px;margin-top:10px}
-.health-cell.lit {background:var(--accent)}
+.health-cell.lit {background:var(--status)}
 .home-plate {display:flex;flex-direction:column;gap:8px}
 .home-plate .bike-canvas {max-height:244px;min-height:150px}
 .part-row .ring-svg,.part-row .badge {display:none}
@@ -2681,7 +2681,7 @@ function StatusBar(){return `<div class="status-bar" aria-hidden="true"><span>${
 // Home.kt / PartRow.
 function PartRow(p,showInterval=false){const s=partState(p);return `<button class="part-row part-main full" type="button" data-action="part-menu:${p.id}" aria-label="${esc(partName(p)+' · '+t('alertActions'))}">${LifeRing(p.icon,s)}<span class="col grow"><span class="part-name">${esc(partName(p))}</span><span class="part-left status-${s.status} status-text">${esc(shortLeft(s)+(showInterval?' · '+intervalText(p):''))}</span></span>${Icon('chev',18)}</button>`}
 // Home.kt / HealthBar.
-function HealthBar(){const ss=bike().parts.map(partState),score=Math.round(100*ss.reduce((n,s)=>n+(s.status==='ok'?1:s.status==='warn'?.5:0),0)/Math.max(ss.length,1)),alerts=ss.filter(s=>s.status!=='ok').length;return `<div class="health-bar"><span class="health-title">${esc(t('healthTitle'))}</span><div class="row" style="gap:3px"><span class="health-score">${score}</span><span class="health-max">/100</span></div><div class="grow"><div class="health-cells" role="meter" aria-label="${esc(t('healthTitle'))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${score}">${Array.from({length:20},(_,i)=>`<span class="health-cell ${i<Math.round(score/5)?'lit':''}"></span>`).join('')}</div>${Cap(alerts===0?t('healthOk'):alerts===1?t('healthOne'):tr('health',{n:alerts}))}</div></div>`}
+function HealthBar(){const ss=bike().parts.map(partState),score=Math.round(100*ss.reduce((n,s)=>n+(s.status==='ok'?1:s.status==='warn'?.5:0),0)/Math.max(ss.length,1)),alerts=ss.filter(s=>s.status!=='ok').length;return `<div class="health-bar status-${score>=80?'ok':score>=50?'warn':'bad'}"><span class="health-title">${esc(t('healthTitle'))}</span><div class="row" style="gap:3px"><span class="health-score">${score}</span><span class="health-max">/100</span></div><div class="grow"><div class="health-cells" role="meter" aria-label="${esc(t('healthTitle'))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${score}">${Array.from({length:20},(_,i)=>`<span class="health-cell ${i<Math.round(score/5)?'lit':''}"></span>`).join('')}</div>${Cap(alerts===0?t('healthOk'):alerts===1?t('healthOne'):tr('health',{n:alerts}))}</div></div>`}
 // BikeCanvas.kt / BikeCanvas, Plate, drawPrim, drawGrid and drawCallouts.
 // Geometry is embedded verbatim from the app's five production JSON plates. Native getBBox supplies exact SVG bounds.
 function BikeCanvas(focus=null,callouts=false,pins=false,zoom=false){const category=bike().category,key=category==='offroad'?'trail':category==='touring'?'sport':category,plate=PLATES[key]||PLATES.naked,[x,y,w,h]=plate.viewBox,margin=callouts?70:0;let grid='';for(let gx=Math.floor(x/20)*20;gx<=x+w;gx+=20)grid+=`<path class="plate-grid ${gx%100===0?'bold':''}" d="M${gx} ${y-margin}v${h+margin*2}" fill="none" stroke-width="${gx%100===0?4:2}"/>`;for(let gy=Math.floor((y-margin)/20)*20;gy<=y+h+margin;gy+=20)grid+=`<path class="plate-grid ${gy%100===0?'bold':''}" d="M${x} ${gy}h${w}" fill="none" stroke-width="${gy%100===0?4:2}"/>`;
