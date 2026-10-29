@@ -5,7 +5,7 @@ App Android para llevar el mantenimiento de la moto por piezas. La moto se dibuj
 Kotlin + Jetpack Compose, solo Android. Todo vive en el móvil (`garage.json` en el almacenamiento de la app); no hay servidor.
 
 - `core/`: el modelo y sus reglas en Kotlin puro, sin Android. `GarageCodec` es el único formato de datos (archivo local, exportaciones, copias) y migra versiones viejas al leer.
-- `app/`: pantallas, avisos y registro de salidas. Los textos que lee el usuario viven en `ui/Labels.kt` y en las pantallas; el código y los ids van en inglés.
+- `app/`: pantallas, avisos y registro de salidas. Los textos de la fase 1 viven en los recursos `values/`, `values-es-rCO/` y `values-en/`; las pantallas pendientes de las fases 2/3 conservan los textos antiguos. El código y los ids van en inglés.
 
 ## Comandos
 
@@ -22,7 +22,7 @@ node tools/catalog/build.mjs          # regenera assets/catalog.json (necesita r
 node tools/catalog/recategorize.mjs   # reaplica tools/catalog/category.mjs sin descargar nada
 node tools/drawing/export.mjs         # regenera assets/bike_*.json (naked desde design/prototipo.html, el resto desde tools/drawing/bikes.mjs)
 node tools/drawing/preview.mjs /tmp   # PNG de cada lámina para revisarla
-node tools/icons/build.mjs            # regenera ui/Icons.kt desde tools/icons/icons.mjs
+node tools/icons/build.mjs            # regenera los vectores Phosphor y ui/Icons.kt (ver tools/icons/README.md)
 ```
 
 ## Datos

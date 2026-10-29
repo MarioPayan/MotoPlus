@@ -12,6 +12,7 @@ data class ServiceRecord(
     val cost: Double? = null,
     val notes: String = "",
     val photo: String? = null,
+    val partName: String? = null,
 )
 
 fun Bike.addRecord(r: ServiceRecord) = copy(history = history + r).recompute(r.partId)
@@ -32,3 +33,14 @@ private fun Bike.recompute(partId: String): Bike {
 fun Bike.recordsFor(partId: String) = history.filter { it.partId == partId }.sortedWith(compareByDescending<ServiceRecord> { it.date }.thenByDescending { it.km })
 
 val Bike.totalCost get() = history.sumOf { it.cost ?: 0.0 }
+
+/** Removes an interval while retaining the names and costs of past work. */
+fun Bike.withoutPart(partId: String): Bike {
+    val part = parts.firstOrNull { it.id == partId } ?: return this
+    return copy(
+        parts = parts.filter { it.id != partId },
+        history = history.map { if (it.partId == partId && it.partName == null) it.copy(partName = part.name) else it },
+        orders = orders.map { it.copy(partIds = it.partIds - partId) },
+        notified = notified - partId,
+    )
+}

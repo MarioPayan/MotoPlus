@@ -132,9 +132,17 @@ fun dueAlerts(bike: Bike, odo: Double, today: LocalDate): Pair<List<Pair<Part, P
     val sev = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2)
     val worse = bike.parts.mapNotNull { p ->
         val s = now.getValue(p.id)
+        if (p.snoozed(today)) return@mapNotNull null
         val before = sev[bike.notified[p.id] ?: Status.ok] ?: 0
         val after = sev[s.status] ?: return@mapNotNull null
         if (after > before) p to s else null
     }.sortedByDescending { it.second.used }
-    return worse to now.mapValues { it.value.status }
+    return worse to now.mapValues { (id, state) -> if (bike.parts.first { it.id == id }.snoozed(today)) bike.notified[id] ?: Status.ok else state.status }
 }
+
+/** Shared health meter bands. */
+fun healthBand(score: Int): Status = when { score >= 80 -> Status.ok; score >= 50 -> Status.warn; else -> Status.bad }
+
+fun Part.snoozed(today: LocalDate) = snoozedUntil?.let { runCatching { LocalDate.parse(it).isAfter(today) }.getOrDefault(false) } ?: false
+
+fun formatKm(n: Int, locale: java.util.Locale): String = java.text.NumberFormat.getIntegerInstance(locale).format(n)

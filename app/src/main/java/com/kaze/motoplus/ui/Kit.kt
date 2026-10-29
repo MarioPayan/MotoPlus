@@ -14,38 +14,30 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.res.stringResource
+import com.kaze.motoplus.R
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.domain.Part
-import com.kaze.motoplus.domain.PartState
 import com.kaze.motoplus.domain.Status
 
-private val paths = mutableMapOf<String, Path>()
-private fun path(d: String) = paths.getOrPut(d) { PathParser().parsePathString(d).toPath() }
-
-/** One of the app's line icons (tools/icons). */
+/** Phosphor vector, tinted by the theme. */
 @Composable
 fun Icon(name: String, color: Color, size: Dp = 22.dp, stroke: Float = 1.5f, modifier: Modifier = Modifier) {
-    val g = GLYPHS[name] ?: GLYPHS.getValue("wrench")
-    Canvas(modifier.size(size)) {
-        scale(this.size.width / 24f, pivot = Offset.Zero) {
-            drawPath(path(g.d), color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
-            g.heavy?.let { drawPath(path(it), color, style = Stroke(g.heavyWidth, cap = StrokeCap.Round)) }
-        }
-    }
+    androidx.compose.material3.Icon(
+        painter = androidx.compose.ui.res.painterResource(ICONS[name] ?: ICONS.getValue("wrench")),
+        contentDescription = null, tint = color, modifier = modifier.size(size),
+    )
 }
 
 /** Which icon draws each maintenance item. */
@@ -76,13 +68,6 @@ fun zoneIcon(zone: String) = when (zone) {
     else -> "wrench"
 }
 
-private val badges = mapOf(
-    Status.ok to "M7.5 12.3l3 3 6-6.3",
-    Status.warn to "M12 7v5.2l3.2 2",
-    Status.bad to "M12 6.5v6.5M12 16.8v.2",
-    Status.none to "M12 7.5v9M7.5 12h9",
-)
-
 /**
  * Life ring: how much of the part's interval is used, with the part drawn inside and a status badge
  * whose shape (check, clock, !, +) tells the state without relying on colour.
@@ -91,8 +76,9 @@ private val badges = mapOf(
 fun LifeRing(icon: String, status: Status, used: Double, size: Dp = 46.dp) {
     val shop = LocalShop.current
     val c = shop.status(status)
+    val description = statusLabel(status)
     val anim by animateFloatAsState(used.toFloat().coerceIn(0.02f, 1f), tween(700), label = "ring")
-    Box(Modifier.size(size).semantics { contentDescription = statusWord(status) }) {
+    Box(Modifier.size(size).semantics { contentDescription = description }) {
         Canvas(Modifier.fillMaxSize()) {
             val w = this.size.width
             val stroke = w * .07f
@@ -112,23 +98,8 @@ fun LifeRing(icon: String, status: Status, used: Double, size: Dp = 46.dp) {
             Modifier.align(Alignment.BottomEnd).offset(2.dp, 2.dp).size(size * .37f).background(c, CircleShape).border(2.dp, shop.sheet, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.size(size * .26f)) {
-                scale(this.size.width / 24f, pivot = Offset.Zero) { drawPath(path(badges.getValue(status)), shop.sheet, style = Stroke(3f, cap = StrokeCap.Round, join = StrokeJoin.Round)) }
-            }
+            Icon(when (status) { Status.ok -> "check"; Status.warn -> "clock"; Status.bad -> "warning"; Status.none -> "plus" }, shop.sheet, size * .26f)
         }
-    }
-}
-
-fun statusWord(s: Status) = when (s) { Status.ok -> "Al día"; Status.warn -> "Pronto"; Status.bad -> "Vencido"; Status.none -> "Sin registrar" }
-
-/** "40 km", "300 km pasada", "sin registrar": the short line under a part name. */
-fun shortLeft(s: PartState) = when (s.measure) {
-    null -> "sin registrar"
-    com.kaze.motoplus.domain.Measure.km -> if (s.left >= 0) "${com.kaze.motoplus.domain.fmtKm(s.left)} km" else "${com.kaze.motoplus.domain.fmtKm(-s.left)} km pasada"
-    com.kaze.motoplus.domain.Measure.days -> when {
-        s.left < 0 -> "${-s.left} días pasada"
-        s.left >= 60 -> "${Math.round(s.left / 30.4)} meses"
-        else -> "${s.left} días"
     }
 }
 
@@ -137,26 +108,26 @@ fun shortLeft(s: PartState) = when (s.measure) {
 fun Sheet(modifier: Modifier = Modifier, padding: Dp = 12.dp, content: @Composable ColumnScope.() -> Unit) {
     val shop = LocalShop.current
     Column(
-        modifier.fillMaxWidth().background(shop.sheet, RoundedCornerShape(8.dp)).border(1.dp, shop.line, RoundedCornerShape(8.dp)).padding(padding),
+        modifier.fillMaxWidth().padding(vertical = 2.dp).drawBehind { drawLine(shop.line, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }.padding(vertical = padding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
 }
 
 @Composable
-fun SectionTitle(text: String, size: Int = 17) = Text(text.uppercase(), style = Display.copy(fontSize = size.sp), color = LocalShop.current.ink)
+fun SectionTitle(text: String, size: Int = 23) = Text(text.uppercase(), style = Display.copy(fontSize = size.sp), color = LocalShop.current.ink)
 
 @Composable
 fun Cap(text: String, color: Color = LocalShop.current.ink2, modifier: Modifier = Modifier) = Text(text.uppercase(), style = Caption, color = color, modifier = modifier)
 
 @Composable
-fun Hint(text: String, color: Color = LocalShop.current.ink2, modifier: Modifier = Modifier) = Text(text, fontSize = 12.sp, color = color, modifier = modifier)
+fun Hint(text: String, color: Color = LocalShop.current.ink2, modifier: Modifier = Modifier) = Text(text, fontSize = 16.sp, color = color, modifier = modifier)
 
-/** Square-cornered button with a monospaced capital label, filled or outlined. */
+/** Condensed capital label, filled or outlined. */
 @Composable
 fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, ghost: Boolean = false, enabled: Boolean = true, icon: String? = null) {
     val shop = LocalShop.current
-    val shape = RoundedCornerShape(6.dp)
+    val shape = RoundedCornerShape(3.dp)
     val content: @Composable RowScope.() -> Unit = {
         icon?.let { Icon(it, if (ghost) shop.ink else shop.onAccent, 16.dp, 1.8f); Spacer(Modifier.width(6.dp)) }
         Text(text.uppercase(), style = MaterialTheme.typography.labelLarge, maxLines = 1)
@@ -166,7 +137,7 @@ fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, ghost:
     else Button(onClick, modifier, enabled, shape = shape, colors = ButtonDefaults.buttonColors(containerColor = shop.accent, contentColor = shop.onAccent), content = content)
 }
 
-/** A 48 dp touch target around a line icon. */
+/** A 44 dp touch target around an icon. */
 @Composable
 fun IconBtn(icon: String, label: String, onClick: () -> Unit, color: Color = LocalShop.current.ink2, size: Dp = 22.dp) {
     Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClickLabel = label, onClick = onClick).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
@@ -179,8 +150,8 @@ fun IconBtn(icon: String, label: String, onClick: () -> Unit, color: Color = Loc
 fun Header(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -> Unit = {}) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconBtn("back", "Volver", onBack, LocalShop.current.ink)
-        Box(Modifier.weight(1f)) { SectionTitle(title) }
+        IconBtn("back", stringResource(R.string.back), onBack, LocalShop.current.ink)
+        Box(Modifier.weight(1f)) { SectionTitle(title, 30) }
         actions()
     }
 }
@@ -200,4 +171,3 @@ fun Pill(text: String, color: Color) = Row(verticalAlignment = Alignment.CenterV
     Spacer(Modifier.width(6.dp))
     Text(text, fontSize = 12.sp)
 }
-

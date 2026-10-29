@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.MotoPlus" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.MotoPlus" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/paper</item>
     </style>
     <style name="Theme.MotoPlus.Starting" parent="Theme.SplashScreen.IconBackground">

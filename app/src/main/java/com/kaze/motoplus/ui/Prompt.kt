@@ -1,5 +1,7 @@
 package com.kaze.motoplus.ui
 
+// TODO(i18n): phase 2 rewrites the AI handoff.
+
 import com.kaze.motoplus.domain.*
 import java.time.LocalDate
 

@@ -27,13 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.kaze.motoplus.R
 import com.kaze.motoplus.AppViewModel
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.domain.RideTrigger
 import com.kaze.motoplus.domain.Tracking
 import com.kaze.motoplus.work.Tracker
 
-/** Km tab: the live ride or a manual start, and the way into "Mantener al día el km" with what is switched on. */
+/** Km tab: the live ride or a manual start, and the way into ctx.getString(R.string.sources) with what is switched on. */
 @Composable
 fun TrackingSummary(vm: AppViewModel) {
     val ctx = LocalContext.current
@@ -45,22 +46,22 @@ fun TrackingSummary(vm: AppViewModel) {
     }
     Sheet {
         live?.let { r ->
-            Text("Registrando salida · ${"%.1f".format(r.km)} km", fontWeight = FontWeight.SemiBold, color = shop.accent)
-            Hint(r.label)
-            Btn("Terminar salida", { Tracker.stop(ctx) }, Modifier.fillMaxWidth())
-        } ?: Btn("Empezar salida ahora", {
+            Text(ctx.getString(R.string.live_ride, "%.1f".format(r.km)), fontWeight = FontWeight.SemiBold, color = shop.accent)
+            Hint(ctx.getString(when (r.trigger) { RideTrigger.manual -> R.string.manual; RideTrigger.motion -> R.string.motion; RideTrigger.bluetooth -> R.string.bluetooth }))
+            Btn(ctx.getString(R.string.finish_ride), { Tracker.stop(ctx) }, Modifier.fillMaxWidth())
+        } ?: Btn(ctx.getString(R.string.start_ride), {
             if (Tracker.hasLocation(ctx)) Tracker.start(ctx, RideTrigger.manual)
             else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }, Modifier.fillMaxWidth(), ghost = true, icon = "route")
         HorizontalDivider(color = shop.line)
-        Row(Modifier.fillMaxWidth().clickable(onClickLabel = "Abrir") { vm.screen = Screen.kmSources }, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clickable(onClickLabel = ctx.getString(R.string.open)) { vm.screen = Screen.kmSources }, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Mantener al día el km", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(ctx.getString(R.string.sources), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 val on = listOfNotNull(
-                    "Sensor de movimiento".takeIf { t.motion }, "Intercomunicador".takeIf { t.bluetooth },
-                    "Sin viajes en coche".takeIf { t.motion && (t.carDevices.isNotEmpty() || t.androidAuto) },
+                    ctx.getString(R.string.motion).takeIf { t.motion }, ctx.getString(R.string.intercom).takeIf { t.bluetooth },
+                    ctx.getString(R.string.no_car_rides).takeIf { t.motion && (t.carDevices.isNotEmpty() || t.androidAuto) },
                 )
-                Hint(on.joinToString(" · ").ifEmpty { "Nada automático: cuentan las salidas que empiezas tú, las fotos y los repostajes." })
+                Hint(on.joinToString(ctx.getString(R.string.or)).ifEmpty { ctx.getString(R.string.nothing_automatic) })
             }
             Icon("chev", shop.ink2, 16.dp)
         }
@@ -117,64 +118,64 @@ fun KmSourcesScreen(vm: AppViewModel) {
     }
 
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header("Mantener al día el km", { vm.screen = Screen.main })
+        Header(ctx.getString(R.string.sources), { vm.screen = Screen.main })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Hint("Cada método suma o corrige los km de la moto. Activa los que uses; los repostajes y las lecturas que escribas también cuentan.")
+            Hint(ctx.getString(R.string.sources_intro))
 
             Sheet {
-                Cap("Contar salidas solas")
-                Toggle("Sensor de movimiento", "Empieza al ir en vehículo y termina al aparcar.", t.motion) { on ->
+                Cap(ctx.getString(R.string.auto_rides))
+                Toggle(ctx.getString(R.string.motion), ctx.getString(R.string.motion_hint), t.motion) { on ->
                     if (on) enable(t.copy(motion = true)) else vm.setTracking(t.copy(motion = false))
                 }
                 HorizontalDivider(color = shop.line)
-                Toggle("Intercomunicador o Bluetooth de la moto", "Empieza al conectar el casco o la moto y termina al desconectar.", t.bluetooth) { on ->
+                Toggle(ctx.getString(R.string.bluetooth_title), ctx.getString(R.string.bluetooth_hint), t.bluetooth) { on ->
                     if (on) enable(t.copy(bluetooth = true)) else vm.setTracking(t.copy(bluetooth = false))
                 }
                 if (t.bluetooth) {
-                    if (t.devices.isEmpty()) Hint("Ningún dispositivo. Elige el intercomunicador del casco o el Bluetooth de la moto.")
+                    if (t.devices.isEmpty()) Hint(ctx.getString(R.string.no_devices))
                     t.devices.values.forEach { Text("• $it", fontSize = 13.sp) }
-                    TextButton({ pick(Picker.intercom) }, contentPadding = PaddingValues(0.dp)) { Text(if (t.devices.isEmpty()) "Elegir casco o moto" else "Cambiar dispositivos") }
+                    TextButton({ pick(Picker.intercom) }, contentPadding = PaddingValues(0.dp)) { Text(if (t.devices.isEmpty()) ctx.getString(R.string.choose_helmet) else ctx.getString(R.string.change_devices)) }
                 }
                 if (t.detects) {
                     val missing = listOfNotNull(
-                        "ubicación".takeIf { !loc }, "ubicación todo el tiempo".takeIf { !bg }, "actividad física".takeIf { t.motion && !act },
+                        ctx.getString(R.string.permission_location).takeIf { !loc }, ctx.getString(R.string.permission_background).takeIf { !bg }, ctx.getString(R.string.permission_activity).takeIf { t.motion && !act },
                     )
                     if (missing.isNotEmpty()) {
-                        Hint("Falta permiso de ${missing.joinToString(", ")}.", shop.bad)
+                        Hint(ctx.getString(R.string.missing_permissions, missing.joinToString(", ")), shop.bad)
                         TextButton({ ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", ctx.packageName, null))) }, contentPadding = PaddingValues(0.dp)) {
-                            Text("Abrir permisos de MotoPlus")
+                            Text(ctx.getString(R.string.permissions))
                         }
                     }
                     if (!battery) {
-                        Hint("Para que Android no corte el registro, quita la optimización de batería de MotoPlus.${brandHint()}", shop.warn)
-                        TextButton({ ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }, contentPadding = PaddingValues(0.dp)) { Text("Ajustes de batería") }
+                        Hint(ctx.getString(R.string.battery_hint) + brandHint(ctx), shop.warn)
+                        TextButton({ ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }, contentPadding = PaddingValues(0.dp)) { Text(ctx.getString(R.string.battery_settings)) }
                     }
                 }
             }
 
             Sheet {
-                Cap("Solo la moto, no el coche")
-                Hint("El sensor de movimiento no distingue el coche de la moto. Si va en coche, la salida se descarta. Las del casco y las que empiezas tú cuentan siempre.")
-                Toggle("Bluetooth del coche", "Mientras esté conectado, no cuenta.", t.carDevices.isNotEmpty()) { on ->
+                Cap(ctx.getString(R.string.car_only))
+                Hint(ctx.getString(R.string.car_hint))
+                Toggle(ctx.getString(R.string.car_bluetooth), ctx.getString(R.string.car_connected), t.carDevices.isNotEmpty()) { on ->
                     if (on) pick(Picker.car) else vm.setTracking(t.copy(carDevices = emptyMap()))
                 }
                 if (t.carDevices.isNotEmpty()) {
                     t.carDevices.values.forEach { Text("• $it", fontSize = 13.sp) }
-                    TextButton({ pick(Picker.car) }, contentPadding = PaddingValues(0.dp)) { Text("Cambiar coches") }
+                    TextButton({ pick(Picker.car) }, contentPadding = PaddingValues(0.dp)) { Text(ctx.getString(R.string.change_cars)) }
                 }
                 HorizontalDivider(color = shop.line)
-                Toggle("Android Auto", "Mientras el móvil esté en Android Auto, no cuenta.", t.androidAuto) { on -> vm.setTracking(t.copy(androidAuto = on)) }
-                if (!t.motion && (t.carDevices.isNotEmpty() || t.androidAuto)) Hint("Solo se aplica con el sensor de movimiento activado.", shop.warn)
+                Toggle(ctx.getString(R.string.android_auto), ctx.getString(R.string.android_auto_hint), t.androidAuto) { on -> vm.setTracking(t.copy(androidAuto = on)) }
+                if (!t.motion && (t.carDevices.isNotEmpty() || t.androidAuto)) Hint(ctx.getString(R.string.motion_only), shop.warn)
             }
 
             Sheet {
-                Cap("Leer el cuadro")
+                Cap(ctx.getString(R.string.read_odo))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Foto del cuadro", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Hint("Lee el odómetro de una foto y corrige la estimación.")
+                        Text(ctx.getString(R.string.photo_odo), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Hint(ctx.getString(R.string.photo_odo_hint))
                     }
-                    Btn("Foto", { vm.readOdometerPhoto() }, ghost = true, icon = "camera")
+                    Btn(ctx.getString(R.string.photo), { vm.readOdometerPhoto() }, ghost = true, icon = "camera")
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -184,19 +185,18 @@ fun KmSourcesScreen(vm: AppViewModel) {
     disclosure?.let { next ->
         AlertDialog(
             onDismissRequest = { disclosure = null },
-            title = { Text("Usar tu ubicación") },
+            title = { Text(ctx.getString(R.string.location_title)) },
             text = {
-                Text("MotoPlus usa la ubicación para contar los kilómetros de cada salida, también cuando la app está cerrada o no la estás usando. " +
-                    "Solo guarda la distancia, nunca la ruta, y no sale de tu móvil. También usa el sensor de actividad para saber cuándo vas en vehículo.")
+                Text(ctx.getString(R.string.location_text))
             },
-            confirmButton = { TextButton({ disclosure = null; withPermissions(next) }) { Text("Continuar") } },
-            dismissButton = { TextButton({ disclosure = null }) { Text("Ahora no") } },
+            confirmButton = { TextButton({ disclosure = null; withPermissions(next) }) { Text(ctx.getString(R.string.action_continue)) } },
+            dismissButton = { TextButton({ disclosure = null }) { Text(ctx.getString(R.string.not_now)) } },
         )
     }
     when (picking) {
-        Picker.intercom -> DevicePicker("Casco o moto", "Empareja el intercomunicador en los ajustes de Bluetooth y vuelve.", t.devices,
+        Picker.intercom -> DevicePicker(ctx.getString(R.string.helmet_picker), ctx.getString(R.string.helmet_pair), t.devices,
             onDone = { vm.setTracking(vm.garage.tracking.copy(devices = it)); picking = null }, onDismiss = { picking = null })
-        Picker.car -> DevicePicker("Tu coche", "Empareja el coche en los ajustes de Bluetooth y vuelve.", t.carDevices,
+        Picker.car -> DevicePicker(ctx.getString(R.string.car_picker), ctx.getString(R.string.car_pair), t.carDevices,
             onDone = { vm.setTracking(vm.garage.tracking.copy(carDevices = it)); picking = null }, onDismiss = { picking = null })
         null -> {}
     }
@@ -227,7 +227,7 @@ private fun DevicePicker(title: String, noneHint: String, current: Map<String, S
         title = { Text(title) },
         text = {
             Column {
-                if (bonded.isEmpty()) Hint("No hay dispositivos emparejados. $noneHint")
+                if (bonded.isEmpty()) Hint(ctx.getString(R.string.no_paired_devices) + " " + noneHint)
                 bonded.forEach { (addr, name) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(addr in chosen, { on -> chosen = if (on) chosen + (addr to name) else chosen - addr })
@@ -236,14 +236,14 @@ private fun DevicePicker(title: String, noneHint: String, current: Map<String, S
                 }
             }
         },
-        confirmButton = { TextButton({ onDone(chosen) }) { Text("Guardar") } },
-        dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton({ onDone(chosen) }) { Text(ctx.getString(R.string.save)) } },
+        dismissButton = { TextButton(onDismiss) { Text(ctx.getString(R.string.cancel)) } },
     )
 }
 
-private fun brandHint() = when (Build.MANUFACTURER.lowercase()) {
-    "xiaomi", "redmi", "poco" -> " En Xiaomi, activa también \"Inicio automático\" y pon la batería en \"Sin restricciones\"."
-    "samsung" -> " En Samsung, saca MotoPlus de \"Aplicaciones en suspensión\"."
-    "huawei", "honor" -> " En Huawei, permite el \"Inicio manual\" en Inicio de aplicaciones."
+private fun brandHint(ctx: Context) = when (Build.MANUFACTURER.lowercase()) {
+    "xiaomi", "redmi", "poco" -> ctx.getString(R.string.xiaomi_battery)
+    "samsung" -> ctx.getString(R.string.samsung_battery)
+    "huawei", "honor" -> ctx.getString(R.string.huawei_battery)
     else -> ""
 }

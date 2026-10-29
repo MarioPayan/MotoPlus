@@ -12,6 +12,7 @@ import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
 import com.kaze.motoplus.ui.message
+import com.kaze.motoplus.ui.localizedString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -20,7 +21,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data, kmSources }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data, kmSources, settings }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -28,6 +29,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         drawings.getOrPut(name) {
             try { Drawing.load(app, "bike_$name.json") } catch (e: java.io.FileNotFoundException) { Drawing.load(app, "bike_naked.json") }
         }
+    }
+
+    private val preferences = app.getSharedPreferences("display", Application.MODE_PRIVATE)
+    var theme by mutableStateOf(preferences.getString("theme", "dark") ?: "dark"); private set
+    fun chooseTheme(value: String) {
+        theme = value; preferences.edit().putString("theme", value).apply()
+        viewModelScope.launch { com.kaze.motoplus.work.updateWidgets(app) }
     }
 
     var garage by mutableStateOf(Repo.garage.value); private set
@@ -70,7 +78,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun addBike(brand: String, model: String, year: Int?, category: Category, drive: Drive, cooling: Cooling, km: Int, allDoneToday: Boolean) {
         val d = today.toString()
         var b = Bike(UUID.randomUUID().toString(), brand.trim(), model.trim(), year, category, drive, cooling, defaultParts(category, drive, cooling), listOf(Reading(d, km, System.currentTimeMillis())))
-        if (allDoneToday) b.parts.forEach { p -> b = b.addRecord(ServiceRecord(UUID.randomUUID().toString(), p.id, d, km, notes = "Revisión completa al dar de alta la moto")) }
+        if (allDoneToday) b.parts.forEach { p -> b = b.addRecord(ServiceRecord(UUID.randomUUID().toString(), p.id, d, km, notes = text(R.string.initial_service))) }
         Repo.update { it.copy(bikes = it.bikes + b, selectedId = b.id) }
         adding = false; tab = Tab.bike; screen = Screen.main; selectedZone = null
     }
@@ -78,7 +86,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun editBike(brand: String, model: String, year: Int?) {
         updateBike { it.copy(brand = brand.trim(), model = model.trim(), year = year) }
         editingBike = false
-        message = "Moto actualizada"
+        message = text(R.string.bike_updated)
     }
 
     fun deleteBike() {
@@ -89,7 +97,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         Repo.update { g -> g.copy(documents = g.documents.filter { it.bikeId != b.id }) }
         editingBike = false; screen = Screen.main; selectedZone = null; highlighted = emptySet()
         if (garage.bikes.isEmpty()) adding = true
-        message = "Moto borrada"
+        message = text(R.string.bike_deleted)
     }
 
     fun select(id: String) {
@@ -101,7 +109,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val km = estimate(b, today).km.toInt()
         updateBike { it.markDone(partId, km, today) }
         b.parts.firstOrNull { it.id == partId }?.let { flash = it.zone to ((flash?.second ?: 0) + 1) }
-        message = "Registrado a ${fmtKm(km)} km"
+        message = text(R.string.registered_at, fmtKm(km))
     }
 
     fun newRecord(partId: String) {
@@ -118,14 +126,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val r = ServiceRecord(d.id ?: UUID.randomUUID().toString(), d.partId, d.date, km, d.cost.replace(',', '.').toDoubleOrNull(), d.notes.trim(), d.photo)
         updateBike { if (d.id == null) it.addRecord(r) else it.updateRecord(r) }
         recording = null
-        message = if (d.id == null) "Mantenimiento registrado" else "Registro actualizado"
+        message = if (d.id == null) text(R.string.record_saved) else text(R.string.record_updated)
     }
 
     fun deleteRecord(id: String) {
         bike?.history?.firstOrNull { it.id == id }?.photo?.let { File(it).delete() }
         updateBike { it.deleteRecord(id) }
         recording = null
-        message = "Registro borrado"
+        message = text(R.string.record_deleted)
     }
 
     /** Copies a picked invoice photo into app storage so it survives the gallery deleting it. */
@@ -135,31 +143,31 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         app.contentResolver.openInputStream(uri)!!.use { input -> f.outputStream().use { input.copyTo(it) } }
         f.path
     } catch (e: Exception) {
-        message = "No pude guardar la foto"; null
+        message = text(R.string.photo_save_failed); null
     }
 
     fun setInterval(partId: String, km: Int?, days: Int?) {
         updateBike { it.withInterval(partId, km, days) }
         editing = null
-        message = "Plazo actualizado"
+        message = text(R.string.interval_updated)
     }
 
     fun saveReading(km: Int) {
         updateBike { it.withReading(km, today, System.currentTimeMillis()) }
         com.kaze.motoplus.work.ReminderWorker.runNow(app)
-        message = "Lectura guardada"
+        message = text(R.string.reading_saved)
     }
 
     /** Text shared into the app or pasted by the rider. Returns an error to show, or null when saved. */
     fun importReport(text: String): String? {
-        val b = bike ?: return "Primero añade una moto."
+        val b = bike ?: return text(R.string.add_bike_title)
         return when (val r = parseReport(text)) {
             is ParseResult.Error -> r.error.message
             is ParseResult.Ok -> {
                 updateBike { it.copy(reports = it.reports + SavedReport(today.toString(), estimate(b, today).km.toInt(), r.report)) }
                 highlighted = r.report.causes.mapNotNull { it.zone }.toSet()
                 pendingImport = ""
-                message = "Informe guardado"
+                message = text(R.string.report_saved)
                 null
             }
         }
@@ -189,10 +197,20 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun resetIntervals() {
         updateBike { b -> b.copy(parts = b.parts.map { p -> b.suggested(p.id)?.let { p.copy(km = it.km, days = it.days) } ?: p }) }
-        message = "Plazos restablecidos"
+        message = text(R.string.intervals_reset)
     }
 
-    fun setAccent(a: Accent) = updateBike { it.copy(accent = a) }
+    fun setCurrency(value: String) { if (value in listOf("COP", "USD", "EUR", "MXN")) Repo.update { it.copy(currency = value) } }
+
+    fun removePart(id: String) {
+        updateBike { it.withoutPart(id) }
+        message = text(R.string.deleted)
+    }
+
+    fun snooze(partId: String, days: Long) = updateBike { b ->
+        b.copy(parts = b.parts.map { if (it.id == partId) it.copy(snoozedUntil = today.plusDays(days).toString()) else it }, notified = b.notified - partId)
+    }
+
 }
 
 data class RecordDraft(val id: String?, val partId: String, val date: String, val km: String, val cost: String, val notes: String, val photo: String?)
@@ -216,14 +234,14 @@ fun AppViewModel.saveDoc(d: Document) {
     }
     com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
     docDraft = null; screen = Screen.main
-    message = "Papel guardado"
+    message = text(R.string.paper_saved)
 }
 
 fun AppViewModel.deleteDoc(id: String) {
     garage.documents.firstOrNull { it.id == id }?.photos?.forEach { File(it).delete() }
     Repo.update { g -> g.copy(documents = g.documents.filter { it.id != id }) }
     docDraft = null; screen = Screen.main
-    message = "Papel borrado"
+    message = text(R.string.paper_deleted)
 }
 
 /** A new file for the camera to write a document photo into. */
@@ -235,7 +253,7 @@ fun AppViewModel.importDocPhoto(uri: Uri): String? = try {
     getApplication<Application>().contentResolver.openInputStream(uri)!!.use { input -> f.outputStream().use { input.copyTo(it) } }
     f.path
 } catch (e: Exception) {
-    message = "No pude guardar la foto"; null
+    message = text(R.string.photo_save_failed); null
 }
 
 /** The selected bike's papers, then the rider's own. */
@@ -247,18 +265,18 @@ fun AppViewModel.saveFuel(km: Int, liters: Double, total: Double?, full: Boolean
     updateBike { it.withFuel(FuelEntry(UUID.randomUUID().toString(), today.toString(), km, liters, total, full, System.currentTimeMillis()), today) }
     com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
     screen = Screen.main
-    message = "Repostaje guardado · odómetro en ${fmtKm(km)} km"
+    message = text(R.string.fuel_saved_at, fmtKm(km))
 }
 
 fun AppViewModel.replaceLastReading(km: Int) {
     updateBike { it.replaceLastReading(km, today, System.currentTimeMillis()) }
     com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
-    message = "Lectura corregida"
+    message = text(R.string.reading_corrected)
 }
 
 fun AppViewModel.deleteFuel(id: String) {
     updateBike { it.deleteFuel(id) }
-    message = "Repostaje borrado"
+    message = text(R.string.fuel_deleted)
 }
 
 // ---------- Workshop ----------
@@ -279,7 +297,7 @@ fun AppViewModel.closeOrder(done: Map<String, Double?>, photo: String?) {
     updateBike { it.closeOrder(o.id, done, today.toString(), estimate(b, today).km.toInt(), photo) { UUID.randomUUID().toString() } }
     com.kaze.motoplus.work.ReminderWorker.runNow(getApplication())
     screen = Screen.main
-    message = "${done.size} ${if (done.size == 1) "trabajo guardado" else "trabajos guardados"} en el historial"
+    message = if (done.size == 1) text(R.string.one_job_saved) else text(R.string.jobs_saved, done.size)
 }
 
 // ---------- Pre-ride check ----------
@@ -294,6 +312,8 @@ fun AppViewModel.saveCheck(ok: List<String>, failed: List<String>, toOrder: List
         screen = Screen.order
     } else {
         screen = Screen.main
-        message = if (failed.isEmpty()) "Chequeo hecho. Buena ruta" else "Chequeo guardado con ${failed.size} ${if (failed.size == 1) "fallo" else "fallos"}"
+        message = if (failed.isEmpty()) text(R.string.check_saved) else if (failed.size == 1) text(R.string.check_failed_one) else text(R.string.check_failed, failed.size)
     }
 }
+
+private fun AppViewModel.text(id: Int, vararg args: Any) = localizedString(getApplication<Application>(), id, *args)

@@ -1,5 +1,7 @@
 package com.kaze.motoplus.ui
 
+// TODO(i18n): phase 2 rewrites papers and document controls.
+
 import android.app.Activity
 import android.graphics.BitmapFactory
 import android.view.WindowManager

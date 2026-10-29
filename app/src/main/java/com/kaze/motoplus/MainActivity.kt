@@ -3,14 +3,14 @@ package com.kaze.motoplus
 import android.content.Intent
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.kaze.motoplus.ui.App
 import com.kaze.motoplus.ui.MotoTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val vm: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,7 +19,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) handle(intent)
         setContent {
-            MotoTheme(vm.bike?.accent ?: com.kaze.motoplus.domain.Accent.cyan) { App(vm) }
+            MotoTheme(vm.theme) {
+                val dark = com.kaze.motoplus.ui.LocalShop.current.dark
+                androidx.compose.runtime.DisposableEffect(dark) {
+                    val clear = android.graphics.Color.TRANSPARENT
+                    val bars = if (dark) androidx.activity.SystemBarStyle.dark(clear) else androidx.activity.SystemBarStyle.light(clear, clear)
+                    enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                    onDispose { }
+                }
+                App(vm)
+            }
             // Ask for notifications once the rider has a bike to be reminded about.
             val hasBike = vm.garage.bikes.isNotEmpty()
             val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->

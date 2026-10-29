@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.res.stringResource
+import com.kaze.motoplus.R
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -120,7 +123,11 @@ fun BikeCanvas(
             plate.regions.filter { it.value.contains(x, y) }.minByOrNull { it.value.bounds.width() * it.value.bounds.height() }?.let { onZone(it.key) }
         }
     }
-    Canvas(modifier.fillMaxWidth().aspectRatio(view.width / view.height).clipToBounds().then(tap)) {
+    val description = stringResource(R.string.moto_tab)
+    val actions = if (onZone == null) emptyList() else plate.bounds.keys.map { zone ->
+        CustomAccessibilityAction(zoneName(zone)) { onZone(zone); true }
+    }
+    Canvas(modifier.semantics { contentDescription = description; customActions = actions }.fillMaxWidth().aspectRatio(view.width / view.height).clipToBounds().then(tap)) {
         val s = size.width / view.width
         translate(-view.left * s, -view.top * s) {
             scale(s, s, pivot = Offset.Zero) {
@@ -128,12 +135,9 @@ fun BikeCanvas(
                 for (p in plate.prims) {
                     val st = p.zone?.let { zones[it]?.status }
                     val faded = focus != null && p.zone != focus
-                    val zc = if (st == null || faded) shop.plate else shop.status(st)
+                    val zc = if (st == null || st == Status.ok || st == Status.none || faded) shop.plate else shop.status(st)
                     val tint = if (p.zone == null || faded) shop.sheet else lerp(shop.sheet, zc, shop.tint)
                     val alpha = when { faded -> .4f; p.zone == null -> if (shop.dark) .7f else .8f; else -> 1f }
-                    // Trouble zones glow a little on the dark drawing, like warning lights.
-                    if (shop.dark && !faded && (st == Status.warn || st == Status.bad) && "pi" !in p.kind)
-                        drawPath(p.path, zc.copy(alpha = .22f), style = Stroke((p.width ?: 1.3f) + 4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
                     drawPrim(p, zc.copy(alpha = alpha), tint, if (p.zone != null && p.zone == selected) 1.7f else 1f, dashed = st == Status.none && !faded)
                 }
                 for (p in plate.prims) {
@@ -143,7 +147,7 @@ fun BikeCanvas(
                     if (z == flash?.first && flashA.value > 0f)
                         drawPath(p.path, shop.ok.copy(alpha = .7f * flashA.value), style = Stroke((p.width ?: 1.3f) + 10f * flashA.value, cap = StrokeCap.Round, join = StrokeJoin.Round))
                     if (focus != null && z != focus) continue
-                    val hot = z in highlighted || st == Status.bad
+                    val hot = z in highlighted
                     if (!hot) continue
                     val c = if (z in highlighted) shop.accent else shop.bad
                     drawPath(p.path, c.copy(alpha = .08f + .22f * pulse), style = Stroke((p.width ?: 1.3f) + 5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
@@ -168,8 +172,8 @@ fun BikeCanvas(
 }
 
 private fun DrawScope.drawGrid(view: Rect, c: Color, dark: Boolean, s: Float) {
-    val fine = c.copy(alpha = if (dark) .10f else .08f)
-    val bold = c.copy(alpha = if (dark) .18f else .14f)
+    val fine = c.copy(alpha = .035f)
+    val bold = c.copy(alpha = .06f)
     var x = (Math.floor(view.left / 20.0) * 20).toFloat()
     while (x <= view.right) { drawLine(if (x % 100f == 0f) bold else fine, Offset(x, view.top), Offset(x, view.bottom), (if (x % 100f == 0f) 1f else .7f) / s * 1.6f); x += 20f }
     var y = (Math.floor(view.top / 20.0) * 20).toFloat()
@@ -194,21 +198,23 @@ private fun DrawScope.drawCallouts(
             .map { (c, b) -> Triple(c, toScreen(b.center.x, b.center.y), measurer.measure(c.text, style.copy(color = shop.status(c.status)))) }
             .sortedBy { it.second.x }
         val y = if (top) toScreen(0f, view.top + 34f).y else toScreen(0f, view.bottom - 34f).y
-        var cursor = 0f
-        for ((c, anchor, text) in row) {
-            val w = text.size.width.toFloat()
-            // Prefer the label centred over its zone, clamped to the canvas and after the previous label.
-            // ponytail: a label that no longer fits runs off the right edge; split rows if bikes ever need 4+ callouts per margin
-            val left = maxOf(maxOf(cursor, 4f), minOf(anchor.x - w / 2, size.width - w - 4f))
-            cursor = left + w + gap
+        val total = row.sumOf { it.third.size.width }.toFloat() + (row.size - 1).coerceAtLeast(0) * gap
+        val shrink = minOf(1f, (size.width - 8f) / total.coerceAtLeast(1f))
+        var cursor = 4f
+        for ((i, item) in row.withIndex()) {
+            val (c, anchor, text) = item
+            val w = text.size.width * shrink
+            val remaining = row.drop(i).sumOf { it.third.size.width } * shrink + (row.size - i - 1) * gap * shrink
+            val left = maxOf(cursor, minOf(anchor.x - w / 2, size.width - 4f - remaining))
+            cursor = left + w + gap * shrink
             val col = shop.status(c.status)
             val elbowX = anchor.x.coerceIn(left, left + w)
-            val textY = if (top) y - text.size.height else y + 2f
+            val textY = if (top) y - text.size.height * shrink else y + 2f
             drawCircle(shop.paper, 3.5.sp.toPx(), anchor)
             drawCircle(col, 3.5.sp.toPx(), anchor, style = Stroke(1.6.sp.toPx()))
             drawLine(col, anchor, Offset(elbowX, y), 1.2.sp.toPx())
             drawLine(col, Offset(left, y), Offset(left + w, y), 1.2.sp.toPx())
-            drawText(text, topLeft = Offset(left, textY))
+            scale(shrink, pivot = Offset(left, textY)) { drawText(text, topLeft = Offset(left, textY)) }
         }
     }
 }
@@ -231,7 +237,7 @@ private fun DrawScope.drawPrim(p: Prim, line: Color, tint: Color, boost: Float, 
             drawPath(p.path, line, style = Stroke(base, join = StrokeJoin.Round, pathEffect = effect))
         }
         "po" in k -> drawPath(p.path, line, style = Stroke(p.width ?: 1.3f, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = effect))
-        "pi" in k -> drawPath(p.path, tint, style = Stroke(p.width ?: 6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        "pi" in k -> drawPath(p.path, line.copy(alpha = .25f), style = Stroke(p.width ?: 6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         "rollers" in k -> drawPath(p.path, line, style = Stroke(3.4f, cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.01f, 7.1f))))
         else -> drawPath(p.path, line, style = Stroke(p.width ?: base, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = effect))
     }

@@ -88,3 +88,17 @@ val DocType.numberLabel get() = when (this) {
 }
 
 fun Document.name() = title.ifBlank { type.label }
+
+// Legacy labels used by the deferred phase 2/3 screens.
+fun statusWord(s: Status) = when (s) { Status.ok -> "Al día"; Status.warn -> "Pronto"; Status.bad -> "Vencido"; Status.none -> "Sin registrar" }
+
+/** "40 km", "300 km pasada", "sin registrar": the short line under a part name. */
+fun shortLeft(s: PartState) = when (s.measure) {
+    null -> "sin registrar"
+    com.kaze.motoplus.domain.Measure.km -> if (s.left >= 0) "${com.kaze.motoplus.domain.fmtKm(s.left)} km" else "${com.kaze.motoplus.domain.fmtKm(-s.left)} km pasada"
+    com.kaze.motoplus.domain.Measure.days -> when {
+        s.left < 0 -> "${-s.left} días pasada"
+        s.left >= 60 -> "${Math.round(s.left / 30.4)} meses"
+        else -> "${s.left} días"
+    }
+}

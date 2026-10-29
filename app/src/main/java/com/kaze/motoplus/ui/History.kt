@@ -1,7 +1,6 @@
 package com.kaze.motoplus.ui
 
 import android.graphics.BitmapFactory
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,8 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,12 +27,14 @@ import com.kaze.motoplus.AppViewModel
 import com.kaze.motoplus.RecordDraft
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.domain.*
-import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-fun money(v: Double): String = NumberFormat.getCurrencyInstance().apply { if (v % 1.0 == 0.0) maximumFractionDigits = 0 }.format(v)
+@Composable
+fun money(v: Double): String = currencyMoney(v, LocalCurrency.current)
+
+// TODO(i18n): phase 2 rewrites history and service recording.
 
 /** One part: its state, its interval and every time it was done. */
 @Composable
@@ -85,7 +84,7 @@ fun HistoryScreen(vm: AppViewModel, bike: Bike) {
                 }
             }
             if (records.isEmpty()) item { Hint("Todavía no hay mantenimientos registrados.") }
-            items(records, key = { it.id }) { r -> RecordCard(r, names[r.partId] ?: r.partId) { vm.editRecord(r) } }
+            items(records, key = { it.id }) { r -> RecordCard(r, names[r.partId] ?: r.partName ?: r.partId) { vm.editRecord(r) } }
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
@@ -168,45 +167,4 @@ fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
             dismissButton = { TextButton({ picking = false }) { Text("Cancelar") } },
         ) { DatePicker(ps) }
     }
-}
-
-@Composable
-fun BikeDialog(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
-    var brand by remember { mutableStateOf(bike.brand) }
-    var model by remember { mutableStateOf(bike.model) }
-    var year by remember { mutableStateOf(bike.year?.toString() ?: "") }
-    var confirmDelete by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = { vm.editingBike = false },
-        title = { Text("EDITAR MOTO") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(brand, { brand = it }, Modifier.fillMaxWidth(), label = { Text("Marca") }, singleLine = true)
-                OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Modelo") }, singleLine = true)
-                OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text("Año") },
-                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                Hint("${bike.category.label} · ${bike.drive.label} · refrigeración ${bike.cooling.label.lowercase()}")
-                Cap("Color de esta moto")
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Accent.entries.forEach { ac ->
-                        val on = ac == bike.accent
-                        Box(
-                            Modifier.size(32.dp).then(if (on) Modifier.border(2.dp, shop.ink, CircleShape).padding(4.dp) else Modifier)
-                                .background(ac.color(shop.dark), CircleShape).border(1.dp, shop.line, CircleShape)
-                                .clickable(onClickLabel = ac.label) { vm.setAccent(ac) },
-                        )
-                    }
-                }
-                Hint(bike.accent.label)
-                if (!confirmDelete) TextButton({ confirmDelete = true }, contentPadding = PaddingValues(0.dp)) { Text("Borrar esta moto", color = shop.bad) }
-                else Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Hint("Se borran su historial, lecturas, informes y fotos. No se puede deshacer.", shop.bad)
-                    Button({ vm.deleteBike() }, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp), colors = ButtonDefaults.buttonColors(containerColor = shop.bad)) { Text("SÍ, BORRAR ${bike.model.uppercase()}") }
-                }
-            }
-        },
-        confirmButton = { TextButton({ vm.editBike(brand, model, year.toIntOrNull()) }, enabled = brand.isNotBlank() && model.isNotBlank()) { Text("Guardar") } },
-        dismissButton = { TextButton({ vm.editingBike = false }) { Text("Cancelar") } },
-    )
 }

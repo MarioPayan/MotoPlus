@@ -52,6 +52,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation("androidx.appcompat:appcompat:1.7.1")
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)

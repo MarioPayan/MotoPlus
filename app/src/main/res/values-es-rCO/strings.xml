@@ -1,0 +1,27 @@
+<resources>
+    <string name="fuel_saved_at">Tanqueada guardado · odómetro en %1$s km</string>
+    <string name="fuel_deleted">Tanqueada borrado</string>
+    <string name="check_failed_one">Chequeo guardado con 1 falla</string>
+    <string name="check_failed">Chequeo guardado con %1$s fallas</string>
+    <string name="refuel">Tanquear</string>
+    <string name="odometer_reading">Lo que marca el tablero</string>
+    <string name="fillup_line">Tanqueada · %1$s L</string>
+    <string name="delete_fuel">Eliminar tanqueada</string>
+    <string name="fillup">Tanqueada</string>
+    <string name="full_tank">Tanque lleno</string>
+    <string name="consumption_hint">El consumo se mide entre dos tanqueadas con el tanque lleno.</string>
+    <string name="nothing_automatic">Fotos, lecturas y tanqueadas.</string>
+    <string name="motion_hint">Empieza al ir en vehículo y termina al parquear.</string>
+    <string name="read_odo">Leer el tablero</string>
+    <string name="photo_odo">Foto del tablero</string>
+    <string name="location_text">MotoPlus usa la ubicación para contar los kilómetros de cada salida, también cuando la app está cerrada o no la estás usando. Solo guarda la distancia, nunca la ruta, y no sale de tu celular. También usa el sensor de actividad para saber cuándo vas en vehículo.</string>
+    <string name="check_tires">Llantas</string>
+    <string name="no_failures">Sin fallas</string>
+    <string name="check_counts">Lo que marcaste como bien en llantas y luces cuenta como revisado hoy.</string>
+    <string name="csv_hint">Mantenimientos y tanqueadas en .csv</string>
+    <string name="local_data_hint">Todo vive en este celular; no hay servidor de MotoPlus. Android también incluye la app en la copia de seguridad de tu cuenta de Google.</string>
+    <string name="replace_data_text">Las motos, historiales y papeles de este celular se cambian por los %1$s. Si quieres conservar lo actual, exporta una copia antes.</string>
+    <string name="part_names_front_tire">Llanta delantera</string>
+    <string name="part_names_rear_tire">Llanta trasera</string>
+    <string name="part_names_tire_pressure">Presión de llantas</string>
+</resources>

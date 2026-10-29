@@ -37,6 +37,7 @@ data class Part(
     val days: Int? = null,
     val lastKm: Int? = null,
     val lastDate: String? = null,
+    val snoozedUntil: String? = null,
 )
 
 @Serializable
@@ -112,6 +113,7 @@ data class Garage(
     val selectedId: String? = null,
     val tracking: Tracking = Tracking(),
     val documents: List<Document> = emptyList(),
+    val currency: String = "COP",
 ) {
     val selected get() = bikes.firstOrNull { it.id == selectedId } ?: bikes.firstOrNull()
 

@@ -12,19 +12,16 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.R
-import com.kaze.motoplus.domain.Accent
 import com.kaze.motoplus.domain.Status
 
-/** "Plano técnico": the bike as an engineering drawing. Dark is the main mode, light is a printed blueprint. */
+/** Instrumento: monochrome plate, orange actions and separate status bands. */
 @Immutable
 data class Shop(
     val dark: Boolean,
@@ -42,64 +39,54 @@ data class Shop(
 
 private val Dark = Shop(
     dark = true,
-    paper = Color(0xFF0A1A2E), sheet = Color(0xFF0F2542), sheet2 = Color(0xFF143058),
-    ink = Color(0xFFE2EEFF), ink2 = Color(0xFF8EAED4), line = Color(0xFF22406A), plate = Color(0xFF9FC3EE),
-    accent = Color(0xFF5AD1FF), onAccent = Color(0xFF04131F),
-    ok = Color(0xFF5EE6A8), warn = Color(0xFFFFC857), bad = Color(0xFFFF5D73), tint = .16f,
+    paper = Color(0xFF111415), sheet = Color(0xFF1D2223), sheet2 = Color(0xFF272E2D),
+    ink = Color(0xFFF2F5ED), ink2 = Color(0xFFA3AEAA), line = Color(0xFF343C3A), plate = Color(0xFFC6D0C6),
+    accent = Color(0xFFFF8B3D), onAccent = Color(0xFF18140E),
+    ok = Color(0xFF5FC47E), warn = Color(0xFFF2C14E), bad = Color(0xFFFF5A4F), tint = .06f,
 )
 private val Light = Shop(
     dark = false,
-    paper = Color(0xFFF3F7FB), sheet = Color.White, sheet2 = Color(0xFFE8F0F8),
-    ink = Color(0xFF0B2545), ink2 = Color(0xFF4A6585), line = Color(0xFFC9D6E5), plate = Color(0xFF1F4E8C),
-    accent = Color(0xFF0077B6), onAccent = Color.White,
-    ok = Color(0xFF1E8E5A), warn = Color(0xFFB7791F), bad = Color(0xFFD1344B), tint = .10f,
+    paper = Color(0xFFF4F5EF), sheet = Color.White, sheet2 = Color(0xFFE7EBE5),
+    ink = Color(0xFF202621), ink2 = Color(0xFF505C55), line = Color(0xFFC9D0C8), plate = Color(0xFF505C55),
+    accent = Color(0xFF963900), onAccent = Color.White,
+    ok = Color(0xFF2E7D4F), warn = Color(0xFF8A6100), bad = Color(0xFFB3261E), tint = .06f,
 )
-
-/** Accent colour per mode: bright on the dark drawing, deep on the printed one. */
-fun Accent.color(dark: Boolean) = when (this) {
-    Accent.cyan -> if (dark) Color(0xFF5AD1FF) else Color(0xFF0077B6)
-    Accent.violet -> if (dark) Color(0xFFA98BFF) else Color(0xFF6D4AFF)
-    Accent.magenta -> if (dark) Color(0xFFF07CF0) else Color(0xFFB5179E)
-    Accent.chalk -> if (dark) Color(0xFFF2F5F8) else Color(0xFF0B2545)
-}
-
-val Accent.label get() = when (this) { Accent.cyan -> "Cian señal"; Accent.violet -> "Violeta"; Accent.magenta -> "Magenta"; Accent.chalk -> "Tiza" }
 
 val LocalShop = staticCompositionLocalOf { Dark }
 
-/** The palette outside Compose (widgets), with the bike's accent. */
-fun shopFor(dark: Boolean, accent: Accent): Shop = (if (dark) Dark else Light).copy(accent = accent.color(dark), onAccent = if (dark) Color(0xFF04131F) else Color.White)
+/** Widgets share the same brand palette; serialized bike accents remain compatible. */
+fun shopFor(dark: Boolean): Shop = if (dark) Dark else Light
 
-@OptIn(ExperimentalTextApi::class)
-private val Plex = FontFamily(
-    listOf(400, 500, 600, 700).map { w ->
-        Font(R.font.ibmplexsans, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
-    }
+private val Barlow = FontFamily(
+    Font(R.font.barlow_condensed_regular, FontWeight.Normal),
+    Font(R.font.barlow_condensed_medium, FontWeight.Medium),
+    Font(R.font.barlow_condensed_semibold, FontWeight.SemiBold),
+    Font(R.font.barlow_condensed_bold, FontWeight.Bold),
 )
 private val PlexMono = FontFamily(Font(R.font.ibmplexmono_regular, FontWeight.Normal), Font(R.font.ibmplexmono_semibold, FontWeight.SemiBold))
 
-/** Titles and labels in monospaced capitals, like the annotations on a drawing. Callers pass upper-case text. */
-val Display = TextStyle(fontFamily = PlexMono, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, letterSpacing = 2.sp)
+/** Condensed display titles and monospaced annotations. */
+val Display = TextStyle(fontFamily = Barlow, fontWeight = FontWeight.SemiBold, fontSize = 29.sp, letterSpacing = .7.sp)
 val Mono = TextStyle(fontFamily = PlexMono)
-/** Small spaced caption: "FIG. 1 · VISTA LATERAL". */
+/** Small, spaced annotation. */
 val Caption = TextStyle(fontFamily = PlexMono, fontWeight = FontWeight.Medium, fontSize = 10.sp, letterSpacing = 1.6.sp)
 
 private val Body = Typography().let { t ->
-    fun TextStyle.plex() = copy(fontFamily = Plex)
+    fun TextStyle.barlow() = copy(fontFamily = Barlow, fontSize = 18.sp)
     t.copy(
-        bodyLarge = t.bodyLarge.plex(), bodyMedium = t.bodyMedium.plex(), bodySmall = t.bodySmall.plex(),
-        labelLarge = t.labelLarge.copy(fontFamily = PlexMono, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 1.sp),
-        labelMedium = t.labelMedium.plex(), labelSmall = t.labelSmall.plex(),
-        titleLarge = t.titleLarge.copy(fontFamily = PlexMono, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, letterSpacing = 1.sp),
-        titleMedium = t.titleMedium.plex(), titleSmall = t.titleSmall.plex(),
-        headlineSmall = t.headlineSmall.copy(fontFamily = PlexMono, fontWeight = FontWeight.SemiBold),
+        bodyLarge = t.bodyLarge.barlow(), bodyMedium = t.bodyMedium.barlow(), bodySmall = t.bodySmall.barlow(),
+        labelLarge = t.labelLarge.copy(fontFamily = Barlow, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, letterSpacing = .6.sp),
+        labelMedium = t.labelMedium.barlow(), labelSmall = t.labelSmall.barlow(),
+        titleLarge = t.titleLarge.copy(fontFamily = Barlow, fontWeight = FontWeight.SemiBold, fontSize = 23.sp, letterSpacing = .7.sp),
+        titleMedium = t.titleMedium.barlow(), titleSmall = t.titleSmall.barlow(),
+        headlineSmall = t.headlineSmall.copy(fontFamily = Barlow, fontWeight = FontWeight.SemiBold),
     )
 }
 
 @Composable
-fun MotoTheme(accent: Accent = Accent.cyan, content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val s = shopFor(dark, accent)
+fun MotoTheme(mode: String = "dark", content: @Composable () -> Unit) {
+    val dark = when (mode) { "system" -> isSystemInDarkTheme(); "light" -> false; else -> true }
+    val s = shopFor(dark)
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
         primary = s.accent, onPrimary = s.onAccent, secondaryContainer = s.accent.copy(alpha = .16f), onSecondaryContainer = s.ink,
         background = s.paper, surface = s.sheet, onBackground = s.ink, onSurface = s.ink,

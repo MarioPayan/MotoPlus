@@ -1,5 +1,7 @@
 package com.kaze.motoplus.ui
 
+// TODO(i18n): phase 2 rewrites workshop screens.
+
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult

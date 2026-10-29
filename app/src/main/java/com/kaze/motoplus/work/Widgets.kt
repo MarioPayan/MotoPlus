@@ -34,7 +34,7 @@ import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
-import com.kaze.motoplus.ui.GLYPHS
+import com.kaze.motoplus.ui.ICONS
 import com.kaze.motoplus.ui.Shop
 import com.kaze.motoplus.ui.partIcon
 import com.kaze.motoplus.ui.shopFor
@@ -42,7 +42,11 @@ import com.kaze.motoplus.ui.shortLeft
 import com.kaze.motoplus.ui.zoneShort
 import java.time.LocalDate
 
-private fun dark(ctx: Context) = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+private fun dark(ctx: Context) = when (ctx.getSharedPreferences("display", Context.MODE_PRIVATE).getString("theme", "dark")) {
+    "light" -> false
+    "system" -> (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    else -> true
+}
 private fun Shop.argb(s: Status) = status(s).toArgb()
 
 /** Most urgent part of the selected bike, for the small widget. */
@@ -60,7 +64,7 @@ class SmallWidget : GlanceAppWidget() {
     private fun Small(ctx: Context) {
         val bike = Repo.garage.collectAsState().value.selected
         val today = LocalDate.now()
-        val shop = shopFor(dark(ctx), bike?.accent ?: Accent.cyan)
+        val shop = shopFor(dark(ctx))
         Column(
             GlanceModifier.fillMaxSize().background(shop.paper).cornerRadius(24.dp).padding(14.dp).clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally,
@@ -69,7 +73,7 @@ class SmallWidget : GlanceAppWidget() {
             val (p, s) = urgent(bike, today) ?: return@Column
             Text(bike.model.uppercase(), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace))
             Spacer(GlanceModifier.height(6.dp))
-            Image(ImageProvider(ringBitmap(shop, partIcon(p), s.status, s.used, 180)), p.name, GlanceModifier.size(64.dp))
+            Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 180)), p.name, GlanceModifier.size(64.dp))
             Spacer(GlanceModifier.height(6.dp))
             Text(p.name, style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
             Text(shortLeft(s).uppercase(), style = TextStyle(color = ColorProvider(shop.status(s.status)), fontSize = 10.sp, fontFamily = FontFamily.Monospace), maxLines = 1)
@@ -89,7 +93,7 @@ class LargeWidget : GlanceAppWidget() {
     private fun Large(ctx: Context) {
         val bike = Repo.garage.collectAsState().value.selected
         val today = LocalDate.now()
-        val shop = shopFor(dark(ctx), bike?.accent ?: Accent.cyan)
+        val shop = shopFor(dark(ctx))
         Column(GlanceModifier.fillMaxSize().background(shop.paper).cornerRadius(24.dp).padding(horizontal = 14.dp, vertical = 10.dp)) {
             if (bike == null) { Text("Añade tu moto", style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
             val odo = estimate(bike, today)
@@ -163,7 +167,7 @@ private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, 
     var y = vy; while (y < vy + vh) { c.drawLine(vx, y, vx + vw, y, grid); y += 20f }
     for (i in d.items) {
         val st = i.z?.let { zones[it]?.status }
-        val line = if (st == null) shop.plate.copy(alpha = .75f) else shop.status(st)
+        val line = if (st == null || st == Status.ok) shop.plate.copy(alpha = .75f) else shop.status(st)
         val path = PathParser().parsePathString(i.d).toPath().asAndroidPath().apply { if (i.eo) fillType = android.graphics.Path.FillType.EVEN_ODD }
         val k = i.k.split(' ')
         stroke.color = line.toArgb()
@@ -179,7 +183,7 @@ private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, 
     return bmp
 }
 
-private fun ringBitmap(shop: Shop, icon: String, status: Status, used: Double, size: Int): Bitmap {
+private fun ringBitmap(ctx: Context, shop: Shop, icon: String, status: Status, used: Double, size: Int): Bitmap {
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     val col = shop.argb(status)
@@ -189,13 +193,12 @@ private fun ringBitmap(shop: Shop, icon: String, status: Status, used: Double, s
     p.color = shop.line.toArgb(); c.drawOval(arc, p)
     if (status == Status.none) { p.color = shop.ink2.toArgb(); p.pathEffect = DashPathEffect(floatArrayOf(w * .06f, w * .08f), 0f); c.drawOval(arc, p); p.pathEffect = null }
     else { p.color = col; c.drawArc(arc, -90f, 360f * used.toFloat().coerceIn(.02f, 1f), false, p) }
-    GLYPHS[icon]?.let { g ->
-        c.save(); val gs = w * .44f / 24f; c.translate(w * .28f, w * .28f); c.scale(gs, gs)
-        c.drawPath(PathParser().parsePathString(g.d).toPath().asAndroidPath(), Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE; strokeWidth = 1.5f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-            color = (if (status == Status.none) shop.ink2 else shop.ink).toArgb()
-        })
-        c.restore()
+    ICONS[icon]?.let { id ->
+        androidx.core.content.ContextCompat.getDrawable(ctx, id)?.mutate()?.let { drawable ->
+            drawable.setTint((if (status == Status.none) shop.ink2 else shop.ink).toArgb())
+            drawable.setBounds((w * .28f).toInt(), (w * .28f).toInt(), (w * .72f).toInt(), (w * .72f).toInt())
+            drawable.draw(c)
+        }
     }
     return bmp
 }

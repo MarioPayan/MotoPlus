@@ -1,70 +1,55 @@
 package com.kaze.motoplus.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.AppViewModel
+import com.kaze.motoplus.saveOrder
+import com.kaze.motoplus.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.domain.*
 
-// ---------- 1A: the bike on its blueprint, with callouts and what's next ----------
-
 @Composable
 fun BikeScreen(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
     val today = vm.today
     val odo = estimate(bike, today).km
     val zones = zoneStates(bike, odo, today)
-    val plate = rememberPlate(vm.drawingFor(bike))
     val states = bike.parts.map { it to partState(it, odo, today) }
-    var info by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Sheet(padding = 0.dp) {
-            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 10.dp)) {
-                Cap("Fig. 1 · Vista lateral", modifier = Modifier.weight(1f))
-                Cap("Toca una zona")
-            }
-            BikeCanvas(
-                plate, zones, Modifier.padding(horizontal = 4.dp),
-                highlighted = vm.highlighted, callouts = callouts(bike, zones), flash = vm.flash,
-                onZone = { vm.openZone(it) },
-            )
-            HealthBar(health(bike, odo, today), states.map { it.second.status }) { info = true }
-        }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        HealthBar(health(bike, odo, today), states.count { it.second.status != Status.ok })
+        BikeCanvas(rememberPlate(vm.drawingFor(bike)), zones, highlighted = vm.highlighted,
+            callouts = callouts(bike, zones), flash = vm.flash, onZone = { vm.openZone(it) })
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Cap("Lo próximo", modifier = Modifier.weight(1f).padding(start = 6.dp))
-                TextButton({ vm.screen = Screen.parts }) { Text("VER LAS ${bike.parts.size} →", style = Mono.copy(fontSize = 12.sp), color = shop.accent) }
-            }
-            states.sortedByDescending { it.second.used }.take(3).forEach { (p, s) -> PartRow(vm, p, s) }
-            HorizontalDivider(color = shop.line)
-            val open = bike.openOrder()
-            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Btn("Antes de salir", { vm.screen = Screen.check }, Modifier.weight(1f), ghost = true, icon = "helmet")
-                Btn(if (open != null) "Volví del taller" else "Para el taller", { vm.screen = if (open != null) Screen.orderReturn else Screen.order },
-                    Modifier.weight(1f), ghost = true, icon = "wrench")
-            }
+            Box(Modifier.padding(bottom = 10.dp)) { SectionTitle(stringResource(R.string.next)) }
+            val alerts = states.filter { it.second.status != Status.ok && !it.first.snoozed(today) }.sortedByDescending { it.second.used }
+            alerts.forEach { (p, state) -> PartRow(vm, p, state) }
+            if (alerts.isEmpty()) Hint(stringResource(R.string.no_alerts))
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(12.dp))
     }
-    if (info) LegendDialog { info = false }
 }
 
 /** Callouts for zones that need attention, most urgent first (overdue, coming due, never recorded), labelled with their worst part. */
+@Composable
 fun callouts(bike: Bike, zones: Map<String, ZoneState>): List<Callout> = zones.entries
     .sortedWith(compareBy<Map.Entry<String, ZoneState>> { listOf(Status.bad, Status.warn, Status.none, Status.ok).indexOf(it.value.status) }.thenByDescending { it.value.worst })
     .mapNotNull { (z, st) ->
@@ -72,112 +57,108 @@ fun callouts(bike: Bike, zones: Map<String, ZoneState>): List<Callout> = zones.e
     val (_, s) = st.parts.firstOrNull { it.second.status == st.status } ?: return@mapNotNull null
     val value = when {
         s.measure == null -> "?"
-        s.measure == Measure.km -> (if (s.left < 0) "−" else "") + fmtKm(kotlin.math.abs(s.left)) + " KM"
-        else -> (if (s.left < 0) "−" else "") + kotlin.math.abs(s.left) + " D"
+        s.measure == Measure.km -> (if (s.left < 0) "−" else "") + distance(kotlin.math.abs(s.left)) + " " + stringResource(R.string.km_unit)
+        else -> (if (s.left < 0) "−" else "") + kotlin.math.abs(s.left) + " " + stringResource(R.string.day_short)
     }
-    Callout(z, "${zoneShort(z, bike.drive)} $value", st.status)
+    Callout(z, "${zoneAbbreviation(z, bike.drive)} $value", st.status)
 }
 
 @Composable
-private fun HealthBar(score: Int, statuses: List<Status>, onInfo: () -> Unit) {
+private fun HealthBar(score: Int, alerts: Int) {
     val shop = LocalShop.current
-    val n = statuses.size.coerceAtLeast(1)
-    val cells = 20
-    val bad = Math.round(statuses.count { it == Status.bad } * cells / n.toFloat())
-    val warn = Math.round(statuses.count { it == Status.warn } * cells / n.toFloat())
-    val none = Math.round(statuses.count { it == Status.none } * cells / n.toFloat())
-    val alerts = statuses.count { it != Status.ok }
-    HorizontalDivider(color = shop.line)
-    Row(Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("$score", style = Mono.copy(fontSize = 30.sp, fontWeight = FontWeight.SemiBold), color = shop.ink)
-        Text("/100", style = Mono.copy(fontSize = 12.sp), color = shop.ink2, modifier = Modifier.padding(top = 10.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(cells) { i ->
-                    val c = when { i < bad -> shop.bad; i < bad + warn -> shop.warn; i < bad + warn + none -> shop.ink2.copy(alpha = .45f); else -> shop.ok }
-                    Box(Modifier.weight(1f).height(8.dp).background(c))
-                }
-            }
-            Spacer(Modifier.height(5.dp))
-            Cap(if (alerts == 0) "Salud · todo al día" else "Salud · $alerts ${if (alerts == 1) "aviso" else "avisos"}")
+    val color = shop.status(healthBand(score))
+    Column(Modifier.fillMaxWidth().background(shop.sheet).drawBehind {
+        drawLine(color, Offset.Zero, Offset(0f, size.height), 3.dp.toPx())
+    }.padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Cap(stringResource(R.string.health_title), modifier = Modifier.weight(1f))
+            Text(score.toString(), style = Display.copy(fontSize = 44.sp), color = color)
+            Text("/100", style = Mono.copy(fontSize = 11.sp), color = shop.ink2, modifier = Modifier.padding(start = 3.dp, top = 16.dp))
         }
-        IconBtn("info", "Cómo leer la moto", onInfo, size = 18.dp)
+        Spacer(Modifier.height(8.dp))
+        SegmentedMeter(score / 100f, color, stringResource(R.string.health_title))
+        Spacer(Modifier.height(10.dp))
+        Text(when (alerts) { 0 -> stringResource(R.string.health_ok); 1 -> stringResource(R.string.health_one); else -> stringResource(R.string.health, alerts) }.uppercase(),
+            style = Caption.copy(fontSize = 9.sp, letterSpacing = .3.sp), color = shop.ink2)
     }
 }
 
+/** The same segmented instrument is used for health and monthly distance. */
 @Composable
-private fun LegendDialog(onDismiss: () -> Unit) {
-    val shop = LocalShop.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onDismiss) { Text("ENTENDIDO") } },
-        title = { Text("CÓMO LEER LA MOTO") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Legend(Status.ok, "Al día: le queda más de una cuarta parte del plazo.")
-                Legend(Status.warn, "Pronto: le queda menos de una cuarta parte. Ve planeándolo.")
-                Legend(Status.bad, "Vencido: pasó el plazo. Las zonas vencidas laten.")
-                Legend(Status.none, "Sin registrar: aún no sabemos cuándo se hizo. Toca la pieza y añade el último cambio.")
-                Text("El anillo muestra cuánto del plazo has gastado. Cada zona toma el color de su pieza más urgente, y las cotas del dibujo señalan lo que pide atención. Cada plazo cuenta por kilómetros o por tiempo, lo que llegue antes.", fontSize = 13.sp, color = shop.ink2)
+fun SegmentedMeter(fraction: Float, color: androidx.compose.ui.graphics.Color, label: String, height: Dp = 11.dp) {
+    val track = LocalShop.current.line
+    Row(Modifier.fillMaxWidth().semantics { contentDescription = label; progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f) }, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(20) { i ->
+            val cell = if (i < Math.round(fraction.coerceIn(0f, 1f) * 20)) color else track
+            Canvas(Modifier.weight(1f).height(height)) {
+                val skew = 2.dp.toPx().coerceAtMost(size.width / 3)
+                drawPath(Path().apply { moveTo(skew, 0f); lineTo(size.width, 0f); lineTo(size.width - skew, size.height); lineTo(0f, size.height); close() }, cell)
             }
-        },
-    )
+        }
+    }
 }
 
-@Composable
-private fun Legend(s: Status, text: String) = Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-    LifeRing("wrench", s, when (s) { Status.ok -> .3; Status.warn -> .85; else -> 1.0 }, 38.dp)
-    Text(text, fontSize = 13.sp)
-}
-
-/** Ring, name and time left; a quick "done" check and the ⋮ menu with the rarer actions. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = false) {
     val shop = LocalShop.current
-    val haptic = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
+    var snoozing by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+    var days by remember { mutableStateOf("7") }
+    val name = partLabel(p)
+    val left = remaining(s)
     Column {
         HorizontalDivider(color = shop.line)
-        Row(
-            Modifier.fillMaxWidth().clickable(onClickLabel = "Ver historial") { vm.openPart(p.id) }.padding(start = 6.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LifeRing(partIcon(p), s.status, s.used)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(p.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    shortLeft(s) + if (showInterval) " · ${intervalText(p)}" else "",
-                    style = Mono.copy(fontSize = 12.sp), color = if (s.status == Status.none) shop.ink2 else shop.status(s.status),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+        Row(Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.alert_actions)) { menu = true }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(partIcon(p), shop.status(s.status), 24.dp)
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(name, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(left + if (showInterval) " · ${localizedInterval(p)}" else "", style = Mono.copy(fontSize = 11.sp), color = shop.status(s.status))
             }
-            IconBtn("check", "Hecho hoy", {
-                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                vm.markDone(p.id)
-            }, shop.ink2, 20.dp)
-            Box {
-                IconBtn("more", "Más acciones", { menu = true })
-                DropdownMenu(menu, { menu = false }, containerColor = shop.sheet2) {
-                    MenuItem("check", "Hecho hoy") { menu = false; haptic.performHapticFeedback(HapticFeedbackType.Confirm); vm.markDone(p.id) }
-                    MenuItem("calendar", "Hecho en otra fecha…") { menu = false; vm.newRecord(p.id) }
-                    MenuItem("edit", "Cambiar plazo") { menu = false; vm.editing = p.id }
-                    MenuItem("history", "Ver historial") { menu = false; vm.openPart(p.id) }
-                }
-            }
+            Icon("chev", shop.ink2, 18.dp)
         }
     }
+    if (menu) ModalBottomSheet(onDismissRequest = { menu = false }, containerColor = shop.sheet) {
+        Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState())) {
+            SectionTitle(name)
+            Row(Modifier.padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                LifeRing(partIcon(p), s.status, s.used)
+                Hint(left, modifier = Modifier.padding(start = 12.dp))
+            }
+            SettingsEntry("check", stringResource(R.string.done)) { vm.markDone(p.id); menu = false }
+            SettingsEntry("calendar", stringResource(R.string.other_date)) { vm.newRecord(p.id); menu = false }
+            SettingsEntry("clock", stringResource(R.string.snooze)) { snoozing = true; menu = false }
+            SettingsEntry("wrench", stringResource(R.string.add_to_order)) {
+                val order = vm.bike?.openOrder()
+                vm.saveOrder(((order?.partIds ?: emptyList()) + p.id).distinct(), order?.notes ?: "")
+                menu = false
+            }
+            SettingsEntry("history", stringResource(R.string.history_action)) { vm.openPart(p.id); menu = false }
+            Btn(stringResource(R.string.view_limits), { vm.editing = p.id; menu = false }, Modifier.fillMaxWidth(), ghost = true, icon = "settings")
+            TextButton({ deleting = true; menu = false }) { Text(stringResource(R.string.delete), color = shop.bad) }
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text(stringResource(R.string.delete_question, name)) },
+        text = { Text(stringResource(R.string.delete_warning)) },
+        confirmButton = { TextButton({ vm.removePart(p.id); deleting = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
+        dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
+    if (snoozing) AlertDialog(onDismissRequest = { snoozing = false }, title = { Text(stringResource(R.string.snooze)) }, text = {
+        OutlinedTextField(days, { days = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.snooze_days)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+    }, confirmButton = { TextButton({ vm.snooze(p.id, days.toLong()); snoozing = false }, enabled = days.toIntOrNull() in 1..365) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton({ snoozing = false }) { Text(stringResource(R.string.cancel)) } })
 }
+
+@Composable
+fun localizedInterval(p: Part): String = listOfNotNull(
+    p.km?.let { stringResource(R.string.every_km, distance(it)) },
+    p.days?.let { if (it >= 60) stringResource(R.string.every_months, Math.round(it / 30.4)) else stringResource(R.string.every_days, it) },
+).joinToString(stringResource(R.string.or)).ifEmpty { stringResource(R.string.no_interval) }
 
 @Composable
 fun MenuItem(icon: String, text: String, onClick: () -> Unit) =
     DropdownMenuItem(text = { Text(text, style = MaterialTheme.typography.bodyLarge) }, onClick = onClick, leadingIcon = { Icon(icon, LocalShop.current.ink2, 18.dp) })
-
-fun intervalText(p: Part) = listOfNotNull(
-    p.km?.let { "cada ${fmtKm(it)} km" },
-    p.days?.let { if (it >= 60 && it % 30 == 0 || it >= 365) "cada ${Math.round(it / 30.4)} meses" else "cada $it días" },
-).joinToString(" o ").ifEmpty { "sin plazo" }
 
 // ---------- 2B: zone detail, zoomed like a manual's "Detail A" ----------
 
@@ -191,83 +172,26 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
     val st = zones.getValue(zone)
     val last = bike.history.filter { r -> st.parts.any { it.first.id == r.partId } }.maxWithOrNull(compareBy({ it.date }, { it.km }))
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header(zoneLabel(zone), { vm.screen = Screen.main })
+        Header(zoneName(zone), { vm.screen = Screen.main })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Sheet(padding = 0.dp) {
                 Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp)) {
-                    Cap("Det. A · ${zoneLabel(zone)}", modifier = Modifier.weight(1f))
-                    Cap(statusWord(st.status), shop.status(st.status))
+                    Cap(stringResource(R.string.detail, zoneName(zone)), modifier = Modifier.weight(1f))
+                    Cap(statusLabel(st.status), shop.status(st.status))
                 }
                 if (plate.bounds[zone] != null)
                     BikeCanvas(plate, zones, focus = zone, window = plate.detail(listOf(zone)), flash = vm.flash, highlighted = vm.highlighted)
             }
             Column {
                 st.parts.forEach { (p, s) -> PartRow(vm, p, s, showInterval = true) }
-                if (st.parts.isEmpty()) Hint("No hay tareas de mantenimiento en esta zona para tu moto.", modifier = Modifier.padding(6.dp))
+                if (st.parts.isEmpty()) Hint(stringResource(R.string.empty_zone), modifier = Modifier.padding(6.dp))
             }
             if (last != null) Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Cap("Último trabajo")
-                val name = bike.parts.firstOrNull { it.id == last.partId }?.name ?: ""
-                Text(listOfNotNull(prettyDate(last.date), "${fmtKm(last.km)} km", name, last.cost?.let { money(it) }).joinToString(" · "), fontSize = 13.sp, color = shop.ink2)
+                Cap(stringResource(R.string.last_work))
+                val name = bike.parts.firstOrNull { it.id == last.partId }?.let { partLabel(it) } ?: ""
+                Text(listOfNotNull(localizedDate(last.date), stringResource(R.string.km_left, distance(last.km)), name, last.cost?.let { currencyMoney(it, vm.garage.currency) }).joinToString(" · "), fontSize = 13.sp, color = shop.ink2)
             }
             Spacer(Modifier.height(8.dp))
         }
     }
 }
-
-// ---------- 3A: every interval at once, yours next to the recommended one ----------
-
-@Composable
-fun PartsScreen(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
-    var reset by remember { mutableStateOf(false) }
-    val changed = bike.parts.count { p -> bike.suggested(p.id)?.let { it.km != p.km || it.days != p.days } == true }
-    Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header("Plazos", { vm.screen = Screen.main }) {
-            if (changed > 0) TextButton({ reset = true }) { Text("RESTABLECER", style = Mono.copy(fontSize = 12.sp), color = shop.accent) }
-        }
-        Hint(
-            "Recomendados para tu tipo de moto (${bike.category.label}, ${bike.drive.label.lowercase()}). Lo que cambies se marca; el manual de tu moto manda.",
-            modifier = Modifier.padding(horizontal = 18.dp),
-        )
-        Row(Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp)) {
-            Cap("Pieza", modifier = Modifier.weight(1f)); Cap("Tuyo", modifier = Modifier.width(86.dp)); Cap("Recom.", modifier = Modifier.width(78.dp))
-        }
-        HorizontalDivider(color = shop.line)
-        val groups = bike.parts.groupBy { it.zone }.entries.sortedBy { Zone.of(it.key)?.ordinal ?: 99 }
-        LazyColumn(Modifier.weight(1f)) {
-            groups.forEach { (zone, parts) ->
-                item(zone) { Cap(zoneLabel(zone), modifier = Modifier.padding(start = 18.dp, top = 12.dp, bottom = 2.dp)) }
-                items(parts, key = { it.id }) { p ->
-                    val rec = bike.suggested(p.id)
-                    val diff = rec != null && (rec.km != p.km || rec.days != p.days)
-                    Row(
-                        Modifier.fillMaxWidth().background(if (diff) shop.accent.copy(alpha = .08f) else shop.paper)
-                            .clickable(onClickLabel = "Cambiar plazo") { vm.editing = p.id }.padding(horizontal = 18.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(partIcon(p), shop.ink2, 18.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text(p.name, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Text(intervalCell(p), style = Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold), color = if (diff) shop.accent else shop.ink, modifier = Modifier.width(86.dp))
-                        Text(rec?.let(::intervalCell) ?: "—", style = Mono.copy(fontSize = 12.sp), color = shop.ink2, modifier = Modifier.width(78.dp))
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(16.dp)) }
-        }
-    }
-    if (reset) AlertDialog(
-        onDismissRequest = { reset = false },
-        title = { Text("RESTABLECER PLAZOS") },
-        text = { Text("Vuelven a los recomendados los $changed plazos que cambiaste. El historial no se toca.") },
-        confirmButton = { TextButton({ vm.resetIntervals(); reset = false }) { Text("RESTABLECER") } },
-        dismissButton = { TextButton({ reset = false }) { Text("CANCELAR") } },
-    )
-}
-
-/** "6.000 km" over "12 m", compact for the table. */
-private fun intervalCell(p: Part) = listOfNotNull(
-    p.km?.let { "${fmtKm(it)} km" },
-    p.days?.let { if (it >= 60) "${Math.round(it / 30.4)} m" else "$it d" },
-).joinToString("\n").ifEmpty { "—" }
