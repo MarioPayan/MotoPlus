@@ -541,4 +541,6 @@
     <string name="p3_tab_tax">Tax</string>
     <string name="p3_tab_driving_license">License</string>
     <string name="p3_tab_other">Other</string>
+    <string name="ai_features">AI features</string>
+    <string name="ai_features_hint">Ask your AI and read invoices. Off, MotoPlus ignores AI links.</string>
 </resources>

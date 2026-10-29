@@ -80,13 +80,12 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
     var causes by remember(vm.aiRevision) { mutableStateOf(initial.causes.indices.toSet()) }
     var checks by remember(vm.aiRevision) { mutableStateOf(initial.checks.filter { it.isNotBlank() }.indices.toSet()) }
     var parts by remember(vm.aiRevision) { mutableStateOf(initial.parts.indices.toSet()) }
-    var advice by remember(vm.aiRevision) { mutableStateOf(initial.advice.isNotBlank()) }
     var pickParts by remember { mutableStateOf(false) }
     val valid = d.summary.isNotBlank() && d.causes.filterIndexed { i, _ -> i in causes }.all { it.cause.isNotBlank() } && d.checks.filterIndexed { i, _ -> i in checks }.all { it.isNotBlank() }
     WorkshopPage(stringResource(R.string.p2_ai_review), { vm.screen = Screen.ai }, footer = {
         Btn(stringResource(R.string.save), {
             vm.saveReviewedReport(d.copy(v = REPORT_VERSION, causes = d.causes.filterIndexed { i, _ -> i in causes },
-                checks = d.checks.filterIndexed { i, _ -> i in checks }, advice = if (advice) d.advice else "", parts = d.parts.filterIndexed { i, _ -> i in parts }.distinct()))
+                checks = d.checks.filterIndexed { i, _ -> i in checks }, advice = d.advice.trim(), parts = d.parts.filterIndexed { i, _ -> i in parts }.distinct()))
         }, Modifier.fillMaxWidth(), enabled = valid, icon = "check")
     }) {
         knownAiSource(vm.aiSource)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
@@ -109,7 +108,6 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
             FormField(check, stringResource(R.string.p2_ai_check), { value -> d = d.copy(checks = d.checks.mapIndexed { j, c -> if (i == j) value.take(500) else c }) }, multiline = true)
         } }
         TextButton({ checks = checks + d.checks.size; d = d.copy(checks = d.checks + "") }, enabled = d.checks.size < 60) { Text(stringResource(R.string.p2_ai_add_check)) }
-        IncludeRow(advice) { advice = it }
         FormField(d.advice, stringResource(R.string.p2_ai_advice), { d = d.copy(advice = it.take(800)) }, multiline = true)
         if (d.parts.isNotEmpty()) SectionTitle(stringResource(R.string.p2_ai_pending_parts))
         d.parts.forEachIndexed { i, id -> Sheet {

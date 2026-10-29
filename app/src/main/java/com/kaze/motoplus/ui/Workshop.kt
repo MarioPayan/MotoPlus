@@ -37,7 +37,7 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
             WorkshopRow("wrench", stringResource(R.string.p2_workshop_list), count) { vm.screen = Screen.order }
             WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.startVisit() }
         }
-        Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
+        if (vm.aiEnabled) Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
         Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size) { vm.screen = Screen.history } }
         HistoryTimeline(vm, bike, compact = true)
         Spacer(Modifier.height(12.dp))
@@ -217,7 +217,7 @@ fun OrderReturnScreen(vm: AppViewModel, bike: Bike) {
     WorkshopPage(stringResource(R.string.p2_from_workshop), { vm.screen = Screen.main }, footer = {
         Btn(stringResource(if (d.done.size == 1) R.string.p2_save_job else R.string.p2_save_jobs, d.done.size), { vm.saveVisit(d) }, Modifier.fillMaxWidth(), enabled = valid)
     }) {
-        Btn(stringResource(R.string.p2_read_invoice_ai), { vm.screen = Screen.invoiceAi }, Modifier.fillMaxWidth(), ghost = true, icon = "camera")
+        if (vm.aiEnabled) Btn(stringResource(R.string.p2_read_invoice_ai), { vm.screen = Screen.invoiceAi }, Modifier.fillMaxWidth(), ghost = true, icon = "camera")
         knownAiSource(d.source)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
         Hint(stringResource(if (d.source != null || d.costs.isNotEmpty()) R.string.p2_ai_invoice_review else R.string.p2_return_hint))
         jobs.forEach { (id, name) ->

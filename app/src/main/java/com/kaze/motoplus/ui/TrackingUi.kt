@@ -203,7 +203,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun Toggle(title: String, hint: String, on: Boolean, onChange: (Boolean) -> Unit) {
+internal fun Toggle(title: String, hint: String, on: Boolean, onChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)

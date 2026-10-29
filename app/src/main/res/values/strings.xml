@@ -541,4 +541,6 @@
     <string name="p3_tab_tax">Impuesto</string>
     <string name="p3_tab_driving_license">Conducción</string>
     <string name="p3_tab_other">Otro</string>
+    <string name="ai_features">Funciones con IA</string>
+    <string name="ai_features_hint">Consultar con tu IA y leer facturas. Apagado, MotoPlus ignora los enlaces de la IA.</string>
 </resources>

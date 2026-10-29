@@ -38,6 +38,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { com.kaze.motoplus.work.updateWidgets(app) }
     }
 
+    /** AI features (consult, invoice reading, incoming AI links) stay hidden until the rider opts in. */
+    var aiEnabled by mutableStateOf(preferences.getBoolean("ai", false)); private set
+    fun setAi(on: Boolean) { aiEnabled = on; preferences.edit().putBoolean("ai", on).apply() }
+
     var garage by mutableStateOf(Repo.garage.value); private set
     var catalog by mutableStateOf<Catalog?>(null); private set
     var tab by mutableStateOf(Tab.bike)
@@ -169,6 +173,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Every incoming route stops at review; no garage data changes here. */
     fun incoming(answer: String, source: String? = null) {
+        if (!aiEnabled) return
         aiRevision++
         pendingImport = answer
         aiSource = source
