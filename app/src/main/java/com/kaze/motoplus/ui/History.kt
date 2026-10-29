@@ -8,10 +8,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,90 +19,121 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kaze.motoplus.AppViewModel
-import com.kaze.motoplus.RecordDraft
-import com.kaze.motoplus.Screen
+import com.kaze.motoplus.R
+import com.kaze.motoplus.*
 import com.kaze.motoplus.domain.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun money(v: Double): String = currencyMoney(v, LocalCurrency.current)
 
-// TODO(i18n): phase 2 rewrites history and service recording.
-
-/** One part: its state, its interval and every time it was done. */
 @Composable
 fun PartScreen(vm: AppViewModel, bike: Bike, partId: String) {
-    val shop = LocalShop.current
-    val part = bike.parts.firstOrNull { it.id == partId } ?: run { vm.screen = Screen.main; return }
-    val state = partState(part, estimate(bike, vm.today).km, vm.today)
+    val part = bike.parts.firstOrNull { it.id == partId } ?: return
     val records = bike.recordsFor(partId)
-    Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header(part.name, { vm.screen = vm.back })
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Sheet {
-                    Cap(zoneLabel(part.zone), shop.status(state.status))
-                    PartRow(vm, part, state, showInterval = true)
-                    Btn("Registrar con fecha, coste o factura", { vm.newRecord(part.id) }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
-                }
-            }
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { SectionTitle("Historial") }
-                    val spent = records.sumOf { it.cost ?: 0.0 }
-                    if (spent > 0) Text("Gastado: ${money(spent)}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                }
-            }
-            if (records.isEmpty()) item { Hint("Aún no hay registros. Cada \"Hecho hoy\" o registro queda aquí.") }
-            items(records, key = { it.id }) { r -> RecordCard(r, null) { vm.editRecord(r) } }
-            item { Spacer(Modifier.height(8.dp)) }
+    WorkshopPage(partLabel(part), { vm.screen = vm.back }) {
+        Sheet {
+            Cap(zoneName(part.zone))
+            PartRow(vm, part, partState(part, estimate(bike, vm.today).km, vm.today), showInterval = true)
+            Btn(stringResource(R.string.p2_record_with_details), { vm.newRecord(part.id) }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
         }
+        SectionTitle(stringResource(R.string.history))
+        Text(money(records.sumOf { it.cost ?: 0.0 }), style = Mono)
+        if (records.isEmpty()) Hint(stringResource(R.string.p2_empty_history))
+        records.forEach { r -> RecordCard(r, partLabel(part)) { vm.editRecord(r) } }
     }
 }
 
-/** Every job on the bike, newest first, with the total spent. */
 @Composable
 fun HistoryScreen(vm: AppViewModel, bike: Bike) {
-    val shop = LocalShop.current
-    val records = bike.history.sortedWith(compareByDescending<ServiceRecord> { it.date }.thenByDescending { it.km })
-    val names = bike.parts.associate { it.id to it.name }
-    Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
-        Header("Historial y gastos", { vm.screen = Screen.main })
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Sheet {
-                    Cap("Gastado en ${bike.title}")
-                    Text(money(bike.totalCost), style = Mono.copy(fontSize = 32.sp, fontWeight = FontWeight.SemiBold), color = shop.ink)
-                    Hint("${records.size} ${if (records.size == 1) "registro" else "registros"} · ${records.count { it.photo != null }} con factura")
-                }
-            }
-            if (records.isEmpty()) item { Hint("Todavía no hay mantenimientos registrados.") }
-            items(records, key = { it.id }) { r -> RecordCard(r, names[r.partId] ?: r.partName ?: r.partId) { vm.editRecord(r) } }
-            item { Spacer(Modifier.height(8.dp)) }
-        }
+    WorkshopPage(stringResource(R.string.history), { vm.screen = Screen.main }) {
+        Cap(stringResource(R.string.p2_spent_bike, bike.title))
+        Text(money(bike.totalCost), style = Mono.copy(fontSize = 29.sp, fontWeight = FontWeight.SemiBold))
+        HistoryTimeline(vm, bike)
     }
 }
 
+private data class HistoryEvent(val date: String, val icon: String, val title: String, val sub: String, val open: () -> Unit)
+
+/** Month headings and a continuous rule match the prototype's event timeline. */
 @Composable
-private fun RecordCard(r: ServiceRecord, partName: String?, onClick: () -> Unit) {
-    val shop = LocalShop.current
-    Sheet(Modifier.clickable(onClickLabel = "Editar registro", onClick = onClick)) {
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                partName?.let { Text(it, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
-                Text("${prettyDate(r.date)} · ${fmtKm(r.km)} km", fontSize = 13.sp, color = if (partName == null) shop.ink else shop.ink2)
-                r.cost?.let { Text(money(it), fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
-                if (r.notes.isNotBlank()) Text(r.notes, fontSize = 13.sp, color = shop.ink2)
-            }
-            r.photo?.let { Thumb(it, Modifier.size(64.dp)) }
+internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = false) {
+    var orderDetail by remember { mutableStateOf<WorkOrder?>(null) }
+    var reportDetail by remember { mutableStateOf<SavedReport?>(null) }
+    var eventDetail by remember { mutableStateOf<HistoryEvent?>(null) }
+    val locale = LocalConfiguration.current.locales[0]
+    val records = bike.history.map { r ->
+        val name = bike.parts.firstOrNull { it.id == r.partId }?.let { partLabel(it) } ?: r.partName ?: r.partId
+        HistoryEvent(r.date, "wrench", name, stringResource(R.string.p2_km_value, distance(r.km)) + (r.cost?.let { " · " + money(it) } ?: "")) { vm.editRecord(r) }
+    }
+    val orders = bike.orders.map { o -> HistoryEvent(o.date, "list-checks", stringResource(R.string.p2_workshop_list), stringResource(R.string.p2_km_value, distance(o.km))) { orderDetail = o } }
+    val reports = bike.reports.map { r -> HistoryEvent(r.at, "bulb", r.data.title.ifBlank { stringResource(R.string.p2_report) }, stringResource(R.string.p2_km_value, distance(r.km))) { reportDetail = r } }
+    val fuel = bike.fuel.map { f -> HistoryEvent(f.date, "fuel", stringResource(R.string.fillup), stringResource(R.string.p2_km_value, distance(f.km)) + (f.total?.let { " · " + money(it) } ?: "")) {} }
+    val rides = bike.rides.map { r -> HistoryEvent(r.date, "route", rideSource(r), stringResource(R.string.p2_km_value, distance(r.km.toInt()))) {} }
+    val readings = bike.readings.map { r -> HistoryEvent(r.date, "gauge", stringResource(R.string.reading), stringResource(R.string.p2_km_value, distance(r.km))) {} }
+    val papers = vm.papers.map { d -> HistoryEvent(vm.today.toString(), "doc", documentLabel(d, androidx.compose.ui.platform.LocalContext.current), "") { vm.editDoc(d) } }
+    val events = (records + orders + reports + fuel + rides + readings + papers).sortedByDescending { it.date }
+    if (events.isEmpty()) Hint(stringResource(R.string.p2_empty_history))
+    var month = ""
+    (if (compact) events.take(5) else events).forEach { event ->
+        val key = event.date.take(7)
+        if (month != key) {
+            month = key
+            Text(LocalDate.parse("$key-01").format(DateTimeFormatter.ofPattern("LLLL yyyy", locale)), style = Display.copy(fontSize = 23.sp), modifier = Modifier.padding(top = 12.dp))
         }
+        Row(Modifier.fillMaxWidth().heightIn(min = 70.dp).clickable {
+            if (event in fuel || event in rides || event in readings) eventDetail = event else event.open()
+        }, verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(28.dp).height(70.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.width(1.dp).fillMaxHeight().background(LocalShop.current.line))
+                Box(Modifier.size(7.dp).background(LocalShop.current.ink2, CircleShape))
+            }
+            Text(LocalDate.parse(event.date).dayOfMonth.toString(), style = Mono, modifier = Modifier.width(34.dp))
+            Icon(event.icon, LocalShop.current.ink2, 20.dp)
+            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text(event.title)
+                if (event.sub.isNotBlank()) Hint(event.sub)
+            }
+            Icon("chev", LocalShop.current.ink2, 16.dp)
+        }
+    }
+    orderDetail?.let { o ->
+        AlertDialog(onDismissRequest = { orderDetail = null }, title = { Text(stringResource(R.string.p2_workshop_list)) }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Hint(localizedDate(o.date) + " · " + stringResource(R.string.p2_km_value, distance(o.km)))
+                o.partIds.forEach { id ->
+                    Text(bike.parts.firstOrNull { it.id == id }?.let { partLabel(it) } ?: id)
+                    o.itemNotes[id]?.let { Hint(it) }
+                }
+                o.customItems.forEach { Text(it.name); if (it.note.isNotBlank()) Hint(it.note) }
+                if (o.notes.isNotBlank()) Hint(o.notes)
+            }
+        }, confirmButton = { TextButton({ orderDetail = null }) { Text(stringResource(R.string.close)) } })
+    }
+    reportDetail?.let { r ->
+        AlertDialog(onDismissRequest = { reportDetail = null }, title = { Text(stringResource(R.string.p2_report)) }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) { ReportCard(r) { reportDetail = null; vm.showZones(r.data.causes.mapNotNull { it.zone }.toSet()) } }
+        }, confirmButton = { TextButton({ reportDetail = null }) { Text(stringResource(R.string.close)) } })
+    }
+    eventDetail?.let { event -> AlertDialog(onDismissRequest = { eventDetail = null }, title = { Text(event.title) }, text = { Text(localizedDate(event.date) + " · " + event.sub) }, confirmButton = { TextButton({ eventDetail = null }) { Text(stringResource(R.string.close)) } }) }
+}
+
+@Composable
+private fun RecordCard(r: ServiceRecord, name: String, onClick: () -> Unit) {
+    Sheet(Modifier.clickable(onClick = onClick)) {
+        Text(name, fontWeight = FontWeight.SemiBold)
+        Hint(localizedDate(r.date) + " · " + stringResource(R.string.p2_km_value, distance(r.km)))
+        r.cost?.let { Text(money(it), style = Mono) }
+        if (r.notes.isNotBlank()) Hint(r.notes)
+        r.photo?.let { Thumb(it, Modifier.size(64.dp)) }
     }
 }
 
@@ -116,55 +147,48 @@ fun Thumb(path: String, modifier: Modifier) {
             BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
         }.getOrNull()
     }
-    bmp?.let { Image(it, "Factura", modifier.clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop) }
+    bmp?.let { Image(it, stringResource(R.string.p2_invoice_photo), modifier.clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
-    val shop = LocalShop.current
-    var d by remember(draft.id, draft.partId) { mutableStateOf(draft) }
+internal fun ServiceDateField(iso: String, onDate: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
-    val photo = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.importPhoto(uri)?.let { d = d.copy(photo = it) }
-    }
-    val km = d.km.toIntOrNull()
-    val future = LocalDate.parse(d.date).isAfter(vm.today)
-    AlertDialog(
-        onDismissRequest = { vm.recording = null },
-        title = { Text(bike.parts.firstOrNull { it.id == d.partId }?.name ?: "Mantenimiento") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Btn(prettyDate(d.date), { picking = true }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
-                OutlinedTextField(d.km, { d = d.copy(km = it.filter(Char::isDigit).take(7)) }, Modifier.fillMaxWidth(), label = { Text("Kilómetros") },
-                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(d.cost, { d = d.copy(cost = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(9)) }, Modifier.fillMaxWidth(),
-                    label = { Text("Coste (opcional)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                OutlinedTextField(d.notes, { d = d.copy(notes = it.take(500)) }, Modifier.fillMaxWidth(), label = { Text("Notas (taller, marca, referencia…)") }, maxLines = 3)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    d.photo?.let { Thumb(it, Modifier.size(56.dp)) }
-                    TextButton({ photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                        Text(if (d.photo == null) "Añadir foto de la factura" else "Cambiar foto")
-                    }
-                }
-                if (future) Hint("La fecha no puede ser futura.", shop.bad)
-                if (d.id != null) TextButton({ vm.deleteRecord(d.id!!) }, contentPadding = PaddingValues(0.dp)) { Text("Borrar este registro", color = shop.bad) }
-            }
-        },
-        confirmButton = { TextButton({ vm.saveRecord(d) }, enabled = km != null && !future) { Text("Guardar") } },
-        dismissButton = { TextButton({ vm.recording = null }) { Text("Cancelar") } },
-    )
+    OutlinedTextField(localizedDate(iso), {}, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.p2_date)) }, readOnly = true,
+        textStyle = MaterialTheme.typography.bodyLarge,
+        trailingIcon = { IconBtn("calendar", stringResource(R.string.p2_date), { picking = true }) })
     if (picking) {
-        val ps = rememberDatePickerState(initialSelectedDateMillis = LocalDate.parse(d.date).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = {
-                TextButton({
-                    ps.selectedDateMillis?.let { d = d.copy(date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()) }
-                    picking = false
-                }) { Text("Aceptar") }
-            },
-            dismissButton = { TextButton({ picking = false }) { Text("Cancelar") } },
-        ) { DatePicker(ps) }
+        val ps = rememberDatePickerState(initialSelectedDateMillis = LocalDate.parse(iso).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
+        DatePickerDialog(onDismissRequest = { picking = false }, confirmButton = {
+            TextButton({ ps.selectedDateMillis?.let { onDate(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()) }; picking = false }) { Text(stringResource(R.string.save)) }
+        }, dismissButton = { TextButton({ picking = false }) { Text(stringResource(R.string.cancel)) } }) { DatePicker(ps) }
     }
+}
+
+@Composable
+fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
+    var d by remember(draft) { mutableStateOf(draft) }
+    var deleting by remember { mutableStateOf(false) }
+    val locale = LocalConfiguration.current.locales[0]
+    val part = bike.parts.firstOrNull { it.id == draft.partId }
+    val record = bike.history.firstOrNull { it.id == draft.id }
+    val name = part?.let { partLabel(it) } ?: record?.partName ?: draft.partId
+    val valid = d.km.toIntOrNull() != null && !LocalDate.parse(d.date).isAfter(vm.today) && (d.cost.isBlank() || parseAmount(d.cost, locale) != null)
+    val photo = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) vm.importPhoto(uri)?.let { d = d.copy(photo = it) } }
+    AlertDialog(onDismissRequest = { vm.recording = null }, title = { Text(name) }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ServiceDateField(d.date) { d = d.copy(date = it) }
+            FormField(d.km, stringResource(R.string.odo_km), { d = d.copy(km = it.filter(Char::isDigit).take(7)) }, numeric = true)
+            AmountField(d.cost, { d = d.copy(cost = it) }, Modifier.fillMaxWidth())
+            FormField(d.notes, stringResource(R.string.p2_record_notes), { d = d.copy(notes = it.take(500)) }, multiline = true)
+            d.photo?.let { Thumb(it, Modifier.size(72.dp)) }
+            TextButton({ photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text(stringResource(if (d.photo == null) R.string.p2_invoice_add else R.string.p2_invoice_change)) }
+            if (!valid) Hint(stringResource(R.string.p2_amount_invalid), LocalShop.current.bad)
+            if (d.id != null) TextButton({ deleting = true }) { Text(stringResource(R.string.p2_delete_record), color = LocalShop.current.bad) }
+        }
+    }, confirmButton = { TextButton({ vm.saveRecord(d) }, enabled = valid) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton({ vm.recording = null }) { Text(stringResource(R.string.cancel)) } })
+    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text(stringResource(R.string.p2_delete_question, name)) }, text = { Text(stringResource(R.string.p2_delete_warning)) },
+        confirmButton = { TextButton({ d.id?.let(vm::deleteRecord); deleting = false }) { Text(stringResource(R.string.delete), color = LocalShop.current.bad) } },
+        dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
 }

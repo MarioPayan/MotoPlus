@@ -60,4 +60,28 @@ class CodecTest {
         val g = GarageCodec.decode(v1)
         assertEquals(g, GarageCodec.decode(GarageCodec.encode(g)))
     }
+
+    @Test fun schemaThreePhoneDataKeepsOrdersHistoryAndReportsWithNewDefaults() {
+        val sample = """
+            {"schema":3,"selectedId":"b","bikes":[{"id":"b","brand":"Yamaha","model":"MT","category":"naked","drive":"chain","cooling":"liquid",
+            "parts":[{"id":"engine_oil","zone":"engine","name":"Aceite","lastKm":12000,"lastDate":"2026-10-01"}],
+            "readings":[{"date":"2026-10-01","km":12000}],
+            "orders":[{"id":"o","number":7,"date":"2026-10-02","km":12000,"partIds":["engine_oil"],"notes":"Mario's notes","closed":false}],
+            "history":[{"id":"h","partId":"engine_oil","date":"2026-10-01","km":12000,"cost":145000,"notes":"Original service","photo":"/invoices/original.jpg"}],
+            "reports":[{"at":"2026-10-02","km":12000,"data":{"v":2,"title":"Original report","summary":"Check chain","causes":[],"checks":[],"advice":"Workshop","urgency":"medium"}}]}]}
+        """.trimIndent()
+        val garage = GarageCodec.decode(sample)
+        val b = garage.bikes.single()
+        assertEquals(3, garage.schema)
+        assertEquals(listOf("engine_oil"), b.openOrder()!!.partIds)
+        assertEquals("Mario's notes", b.openOrder()!!.notes)
+        assertTrue(b.openOrder()!!.customItems.isEmpty())
+        assertTrue(b.openOrder()!!.itemNotes.isEmpty())
+        assertEquals("/invoices/original.jpg", b.history.single().photo)
+        assertEquals(145000.0, b.totalCost, 0.0)
+        assertEquals("Original report", b.reports.single().data.title)
+        assertNull(b.reports.single().source)
+        assertTrue(b.reports.single().data.parts.isEmpty())
+        assertEquals(garage, GarageCodec.decode(GarageCodec.encode(garage)))
+    }
 }

@@ -61,7 +61,7 @@ data class Ride(
 }
 
 @Serializable
-data class SavedReport(val at: String, val km: Int, val data: ReportData)
+data class SavedReport(val at: String, val km: Int, val data: ReportData, val source: String? = null)
 
 @Serializable
 data class Bike(

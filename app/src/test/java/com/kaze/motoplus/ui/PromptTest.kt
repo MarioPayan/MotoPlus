@@ -1,18 +1,28 @@
 package com.kaze.motoplus.ui
 
 import com.kaze.motoplus.domain.*
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
-import java.time.LocalDate
 
 class PromptTest {
-    @Test fun promptListsPartsAndZones() {
-        val b = Bike("b", "Yamaha", "MT-07", 2021, Category.naked, Drive.chain, Cooling.liquid,
-            defaultParts(Category.naked, Drive.chain, Cooling.liquid), listOf(Reading("2026-10-10", 12210)))
-        val p = buildPrompt(b, "chirría", LocalDate.parse("2026-10-24"))
-        assertTrue(p.contains("Engrase de cadena [drivetrain]"))
-        assertTrue(p.contains("SÍNTOMA: chirría"))
-        assertTrue(p.contains("front_brake"))
-        assertTrue(p.contains("\"v\":$REPORT_VERSION"))
+    private val bike = Bike("b", "Yamaha", "MT-07", 2021, Category.naked, Drive.chain, Cooling.liquid,
+        defaultParts(Category.naked, Drive.chain, Cooling.liquid), listOf(Reading("2026-10-10", 12210)))
+
+    @Test fun reportContractCanReturnThroughTheParser() {
+        val contract = promptContract(bike, false, "COP")
+        val result = parseAiResponse("```motoplus\n$contract\n```") as AiResult.Report
+        assertEquals("b", result.data.bikeId)
+        assertEquals(3, result.data.v)
+        assertEquals(listOf(bike.parts.first().id), result.data.parts)
+    }
+
+    @Test fun invoiceContractIncludesDefaultKindVersionAndCurrency() {
+        val contract = promptContract(bike, true, "COP")
+        val result = parseAiResponse(contract) as AiResult.Invoice
+        assertEquals("invoice", result.data.kind)
+        assertEquals("COP", result.data.currency)
+        assertEquals(3, result.data.v)
+        assertEquals(bike.parts.first().id, result.data.jobs.single().partId)
+        assertNull(result.data.jobs.single().cost)
     }
 }

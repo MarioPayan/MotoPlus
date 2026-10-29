@@ -3,6 +3,7 @@ export const ICONS = {
   "close": "x",
   "trash": "trash",
   "calendar": "calendar-blank",
+  "note-pencil": "note-pencil",
   "edit": "pencil-simple",
   "history": "clock-counter-clockwise",
   "bike": "motorcycle",

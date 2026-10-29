@@ -23,3 +23,15 @@ fun parseAmount(value: String, locale: Locale): Double? {
     val number = NumberFormat.getNumberInstance(locale).parse(input, position) ?: return null
     return number.toDouble().takeIf { position.index == input.length && it.isFinite() && it >= 0 }
 }
+
+/** Groups the integer portion while retaining decimal input and an unfinished decimal separator. */
+fun formatAmountInput(value: String, currency: String, locale: Locale): String {
+    val symbols = java.text.DecimalFormatSymbols.getInstance(locale)
+    val decimal = symbols.decimalSeparator
+    val hasDecimals = currency != "COP"
+    val pieces = value.split(decimal, limit = 2)
+    val digits = pieces[0].filter(Char::isDigit).take(9)
+    if (digits.isEmpty()) return ""
+    val grouped = NumberFormat.getIntegerInstance(locale).format(digits.toLong())
+    return if (hasDecimals && pieces.size == 2) grouped + decimal + pieces[1].filter(Char::isDigit).take(2) else grouped
+}

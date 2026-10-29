@@ -12,7 +12,12 @@ data class WorkOrder(
     val partIds: List<String>,
     val notes: String = "",
     val closed: Boolean = false,
+    val customItems: List<PendingJob> = emptyList(),
+    val itemNotes: Map<String, String> = emptyMap(),
 )
+
+@Serializable
+data class PendingJob(val id: String, val name: String, val note: String = "")
 
 /** Parts worth taking to the workshop now: overdue or coming due, most urgent first. */
 fun Bike.dueForWorkshop(odo: Double, today: java.time.LocalDate): List<String> =
@@ -28,5 +33,28 @@ fun Bike.closeOrder(orderId: String, done: Map<String, Double?>, date: String, k
     val o = orders.firstOrNull { it.id == orderId } ?: return this
     var b = copy(orders = orders.map { if (it.id == orderId) it.copy(closed = true) else it })
     for ((partId, cost) in done) b = b.addRecord(ServiceRecord(newId(), partId, date, km, cost, notes = "Orden de trabajo nº ${o.number}", photo = photo))
+    return b
+}
+
+/** Saves a reviewed visit atomically; unfinished jobs stay in Pendientes. */
+fun Bike.completeVisit(order: WorkOrder?, done: Map<String, Double?>, extras: List<PendingJob>, date: String, km: Int, photo: String?, newId: () -> String): Bike {
+    require(km >= 0 && !java.time.LocalDate.parse(date).isAfter(java.time.LocalDate.now()))
+    val custom = (order?.customItems.orEmpty() + extras).associateBy { it.id }
+    var b = this
+    for ((id, cost) in done) {
+        require(cost == null || (cost.isFinite() && cost >= 0))
+        val job = custom[id]
+        if (parts.none { it.id == id } && job == null) continue
+        b = b.addRecord(ServiceRecord(newId(), id, date, km, cost,
+            notes = listOfNotNull(order?.notes?.takeIf { it.isNotBlank() }, order?.itemNotes?.get(id)?.takeIf { it.isNotBlank() }, job?.note?.takeIf { it.isNotBlank() }).joinToString("\n"), photo = photo, partName = job?.name))
+    }
+    if (order != null) {
+        val remaining = order.copy(id = newId(), number = nextOrderNumber(), date = date, km = km,
+            partIds = order.partIds.filterNot(done::containsKey),
+            customItems = order.customItems.filterNot { it.id in done },
+            itemNotes = order.itemNotes.filterKeys { it !in done })
+        b = b.copy(orders = b.orders.map { if (it.id == order.id) it.copy(closed = true) else it } +
+            if (remaining.partIds.isNotEmpty() || remaining.customItems.isNotEmpty()) listOf(remaining) else emptyList())
+    }
     return b
 }

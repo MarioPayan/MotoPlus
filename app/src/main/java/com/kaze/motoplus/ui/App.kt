@@ -63,6 +63,8 @@ private fun AppContent(vm: AppViewModel) {
                 Screen.fuel -> FuelScreen(vm, bike)
                 Screen.order -> OrderScreen(vm, bike)
                 Screen.orderReturn -> OrderReturnScreen(vm, bike)
+                Screen.ai, Screen.invoiceAi, Screen.aiError -> AiScreen(vm, bike)
+                Screen.aiReview -> AiReviewScreen(vm, bike)
                 Screen.check -> CheckScreen(vm, bike)
                 Screen.settings -> SettingsScreen(vm)
                 Screen.data -> DataScreen(vm)
@@ -125,7 +127,7 @@ private fun TopBar(vm: AppViewModel, bike: Bike) {
         }
         Row(Modifier.fillMaxWidth().clickable { vm.screen = Screen.kmSources }.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Cap(stringResource(if (est.basis == EstimateBasis.todayReading) R.string.read_today else R.string.estimated), modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.km_left, distance(est.km.toInt())), style = Mono.copy(fontSize = 14.sp), color = shop.accent)
+            Text(stringResource(R.string.p2_km_value, distance(est.km.toInt())), style = Mono.copy(fontSize = 14.sp), color = shop.accent)
         }
     }
     if (open) ModalBottomSheet(onDismissRequest = { open = false }, containerColor = shop.sheet) {
@@ -145,20 +147,6 @@ private fun TopBar(vm: AppViewModel, bike: Bike) {
             SettingsEntry("plus", stringResource(R.string.add_bike)) { vm.adding = true; open = false }
             Spacer(Modifier.height(20.dp))
         }
-    }
-}
-
-/** Existing workshop, report and history remain reachable until phase 2. */
-@Composable
-private fun WorkshopTab(vm: AppViewModel, bike: Bike) {
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val order = bike.orders.firstOrNull { !it.closed }
-            Btn(stringResource(if (order == null) R.string.to_workshop else R.string.from_workshop),
-                { vm.screen = if (order == null) Screen.order else Screen.orderReturn }, Modifier.weight(1f), ghost = true, icon = "wrench")
-            IconBtn("history", stringResource(R.string.history), { vm.screen = Screen.history })
-        }
-        Box(Modifier.weight(1f)) { ReportScreen(vm, bike) }
     }
 }
 

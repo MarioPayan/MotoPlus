@@ -136,7 +136,7 @@ private fun WeekBars(week: List<Double>) {
     Column(Modifier.padding(horizontal = 6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.week), style = Display.copy(fontSize = 23.sp), modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.km_left, distance(week.sum().toInt())), style = Mono.copy(fontSize = 18.sp))
+            Text(stringResource(R.string.p2_km_value, distance(week.sum().toInt())), style = Mono.copy(fontSize = 18.sp))
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().height(90.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
@@ -159,9 +159,9 @@ private fun WeekBars(week: List<Double>) {
 private fun Log(bike: Bike, currency: String, onDeleteFuel: (String) -> Unit) {
     val shop = LocalShop.current
     data class Row(val sort: String, val icon: String, val title: String, val sub: String, val date: String, val fuelId: String? = null)
-    val rows = bike.fuel.map { f -> Row(f.date + f.at, "fuel", stringResource(R.string.fillup_line, "%.1f".format(f.liters)), stringResource(R.string.km_left, distance(f.km)) + (f.total?.let { " · ${currencyMoney(it, currency)}" } ?: ""), f.date, f.id) } +
-        bike.rides.map { r -> Row(r.date + r.at, "route", stringResource(R.string.ride_line, rideSource(r)), "+" + stringResource(R.string.km_left, "%.1f".format(r.km)), r.date) } +
-        bike.readings.filter { r -> bike.fuel.none { it.at == r.at && it.km == r.km } }.map { r -> Row(r.date + r.at, "gauge", stringResource(R.string.reading), stringResource(R.string.km_left, distance(r.km)), r.date) }
+    val rows = bike.fuel.map { f -> Row(f.date + f.at, "fuel", stringResource(R.string.fillup_line, "%.1f".format(f.liters)), stringResource(R.string.p2_km_value, distance(f.km)) + (f.total?.let { " · ${currencyMoney(it, currency)}" } ?: ""), f.date, f.id) } +
+        bike.rides.map { r -> Row(r.date + r.at, "route", stringResource(R.string.ride_line, rideSource(r)), "+" + stringResource(R.string.p2_km_value, "%.1f".format(r.km)), r.date) } +
+        bike.readings.filter { r -> bike.fuel.none { it.at == r.at && it.km == r.km } }.map { r -> Row(r.date + r.at, "gauge", stringResource(R.string.reading), stringResource(R.string.p2_km_value, distance(r.km)), r.date) }
     Column(Modifier.padding(horizontal = 6.dp)) {
         Cap(stringResource(R.string.log))
         rows.sortedByDescending { it.sort }.take(25).forEach { r ->

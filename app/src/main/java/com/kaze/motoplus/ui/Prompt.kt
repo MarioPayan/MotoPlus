@@ -1,35 +1,35 @@
 package com.kaze.motoplus.ui
 
-// TODO(i18n): phase 2 rewrites the AI handoff.
-
+import android.content.Context
+import com.kaze.motoplus.R
 import com.kaze.motoplus.domain.*
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
-/** The message the rider pastes into their own AI: bike state in Spanish plus the JSON contract for the reply. */
-fun buildPrompt(bike: Bike, symptom: String, today: LocalDate): String {
+private val promptJson = Json { encodeDefaults = true }
+
+/** Machine-readable output examples use generated serializers, including in the R8 build. */
+fun promptContract(bike: Bike, invoice: Boolean, currency: String): String = if (invoice) {
+    promptJson.encodeToString(InvoiceData(bikeId = bike.id, currency = currency,
+        jobs = bike.parts.take(1).map { InvoiceJob(it.id) }, extras = listOf(ExtraJob("…"))))
+} else {
+    promptJson.encodeToString(ReportData(v = 3, kind = "report", bikeId = bike.id, title = "…", summary = "…",
+        causes = listOf(Cause("…", zone = "drivetrain")), checks = listOf("…"), advice = "…", parts = bike.parts.take(1).map { it.id }))
+}
+
+fun buildPrompt(ctx: Context, bike: Bike, notes: String, today: LocalDate, currency: String, invoice: Boolean): String {
     val est = estimate(bike, today)
-    val parts = bike.parts.joinToString("\n") { p ->
-        val s = partState(p, est.km, today)
-        val last = if (p.lastDate == null) "sin registro" else "última a ${p.lastKm?.let { fmtKm(it) + " km" } ?: "?"} el ${p.lastDate}"
-        "- ${p.name} [${p.zone}]: $last → ${s.text}"
-    }
-    val rides = bike.rides.takeLast(4).joinToString("\n") { "- ${it.date}: ${it.km.toInt()} km${if (it.wet) " con lluvia" else ""}" }
-        .ifEmpty { "- (sin salidas registradas)" }
-    return """
-        Eres un mecánico de motos con experiencia. Te paso el estado de mi moto desde la app MotoPlus. Explícame en lenguaje sencillo qué puede estar pasando y qué revisar. Sé claro si debo dejar de usarla. No sustituyes una revisión en taller.
-
-        MOTO: ${bike.title} (${bike.category.label}, ${bike.drive.label.lowercase()}, refrigeración ${bike.cooling.label.lowercase()}). Odómetro: ~${fmtKm(est.km.toInt())} km (± ${est.margin}).
-        SÍNTOMA: ${symptom.ifBlank { "(sin síntoma: revisión general)" }}
-
-        MANTENIMIENTO:
-        $parts
-
-        SALIDAS RECIENTES:
-        $rides
-
-        FORMATO: primero la explicación para mí, en español. Al final, un bloque de código con la etiqueta motoplus que contenga solo este JSON (claves en inglés, textos en español):
-        {"v":$REPORT_VERSION,"title":"…","urgency":"low|medium|high","summary":"…","causes":[{"cause":"…","likelihood":"low|medium|high","zone":"…"}],"checks":["…"],"advice":"…"}
-        Zonas válidas: ${Zone.ids.joinToString(", ")}.
-        Si puedes ejecutar código, añade debajo un enlace https://motoplus.app/i#r=<ese JSON en base64url>. Si no puedes, no lo inventes.
-    """.trimIndent()
+    val locale = ctx.resources.configuration.locales[0]
+    return buildList {
+        add(ctx.getString(if (invoice) R.string.p2_ai_prompt_invoice else R.string.p2_prompt_intro))
+        add(ctx.getString(R.string.p2_prompt_context, bike.title, formatKm(est.km.toInt(), locale), notes.ifBlank { ctx.getString(R.string.p2_general_review) }))
+        addAll(bike.parts.map { p -> ctx.getString(R.string.p2_part_context, p.id + " · " + partLabel(p, ctx), p.zone, remaining(partState(p, est.km, today), ctx)) })
+        if (invoice) add(ctx.getString(R.string.p2_ai_prompt_jobs, bike.openOrder()?.let { o -> (o.partIds + o.customItems.map { it.id + " · " + it.name }).joinToString(", ") }.orEmpty()))
+        add(ctx.getString(R.string.p2_ai_prompt_parts, bike.parts.joinToString(", ") { it.id }))
+        add(ctx.getString(R.string.p2_ai_prompt_currency, currency))
+        add(ctx.getString(R.string.p2_ai_prompt_link))
+        add(ctx.getString(R.string.p2_ai_prompt_contract))
+        add(promptContract(bike, invoice, currency))
+        add(promptJson.encodeToString(Zone.ids.toList()))
+    }.joinToString("\n\n")
 }

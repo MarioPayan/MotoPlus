@@ -7,6 +7,7 @@ val ICONS = mapOf(
     "close" to R.drawable.ph_close,
     "trash" to R.drawable.ph_trash,
     "calendar" to R.drawable.ph_calendar,
+    "note-pencil" to R.drawable.ph_note_pencil,
     "edit" to R.drawable.ph_edit,
     "history" to R.drawable.ph_history,
     "bike" to R.drawable.ph_bike,

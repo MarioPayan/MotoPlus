@@ -46,19 +46,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handle(intent)
     }
 
-    /** Reports come back either shared as text from the AI app or as a https://motoplus.app/i#r=… link. */
+    /** All Android entry routes use the same core parser and require review. */
     private fun handle(intent: Intent) {
         val text = when (intent.action) {
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_SEND -> intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
             Intent.ACTION_VIEW -> intent.dataString
             else -> null
         }
         intent.getStringExtra("bike")?.let { vm.select(it) }
         intent.getStringExtra("papers")?.let { b -> if (b.isNotEmpty()) vm.select(b); vm.tab = Tab.papers }
         intent.getStringExtra("startRide")?.let { t -> com.kaze.motoplus.work.Tracker.start(this, runCatching { com.kaze.motoplus.domain.RideTrigger.valueOf(t) }.getOrDefault(com.kaze.motoplus.domain.RideTrigger.manual)); vm.tab = Tab.km }
-        if (!text.isNullOrBlank()) vm.incoming(text)
+        if (!text.isNullOrBlank()) {
+            val provider = callingPackage ?: referrer?.host
+            val source = when (provider) {
+                "com.openai.chatgpt", "chatgpt.com", "chat.openai.com" -> getString(com.kaze.motoplus.R.string.p2_source_chatgpt)
+                "com.google.android.apps.bard", "gemini.google.com" -> getString(com.kaze.motoplus.R.string.p2_source_gemini)
+                "com.anthropic.claude", "claude.ai" -> getString(com.kaze.motoplus.R.string.p2_source_claude)
+                else -> provider?.takeIf { it != packageName }?.let { pkg ->
+                    runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull()
+                }
+            }
+            vm.incoming(text, source)
+        }
     }
 }

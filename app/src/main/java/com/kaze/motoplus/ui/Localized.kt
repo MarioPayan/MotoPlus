@@ -170,3 +170,7 @@ fun zoneAbbreviation(zone: String, drive: Drive): String = if (zone == "drivetra
     "lights" -> stringResource(R.string.zone_short_lights)
     else -> zone.uppercase()
 }
+
+/** The application context may retain the system locale when AppCompat overrides the activity. */
+fun localizedLocale(ctx: android.content.Context): java.util.Locale =
+    androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().get(0) ?: ctx.resources.configuration.locales[0]

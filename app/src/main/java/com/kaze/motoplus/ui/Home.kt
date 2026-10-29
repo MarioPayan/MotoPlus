@@ -189,7 +189,7 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
             if (last != null) Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Cap(stringResource(R.string.last_work))
                 val name = bike.parts.firstOrNull { it.id == last.partId }?.let { partLabel(it) } ?: ""
-                Text(listOfNotNull(localizedDate(last.date), stringResource(R.string.km_left, distance(last.km)), name, last.cost?.let { currencyMoney(it, vm.garage.currency) }).joinToString(" · "), fontSize = 13.sp, color = shop.ink2)
+                Text(listOfNotNull(localizedDate(last.date), stringResource(R.string.p2_km_value, distance(last.km)), name, last.cost?.let { currencyMoney(it, vm.garage.currency) }).joinToString(" · "), fontSize = 13.sp, color = shop.ink2)
             }
             Spacer(Modifier.height(8.dp))
         }
