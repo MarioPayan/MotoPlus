@@ -69,7 +69,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
     ) {
         SectionTitle("Añade tu moto", 24)
         if (pick == null && !manual) {
-            Hint("Busca por marca y modelo. ${vm.catalog?.brands?.size ?: "…"} marcas en el catálogo.")
+            Hint("Busca por marca, modelo o línea de la tarjeta. ${vm.catalog?.brands?.size ?: "…"} marcas en el catálogo.")
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Ej.: yamaha mt-07") }, singleLine = true)
             val hits = remember(query, vm.catalog) { vm.catalog?.search(query).orEmpty() }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

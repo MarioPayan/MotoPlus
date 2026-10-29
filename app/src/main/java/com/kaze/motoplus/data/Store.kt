@@ -8,8 +8,17 @@ import com.kaze.motoplus.domain.GarageCodec
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.text.Normalizer
+import java.util.Locale
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+private val catalogMarks = Regex("\\p{M}")
+private val catalogSymbols = Regex("[^a-z0-9]")
+private fun fold(s: String) = Normalizer.normalize(s, Normalizer.Form.NFKC)
+    .let { Normalizer.normalize(it, Normalizer.Form.NFD) }.replace(catalogMarks, "").lowercase(Locale.ROOT)
+private fun compact(s: String) = fold(s).replace(catalogSymbols, "")
+private val catalogParts = Regex("[a-z]+|[0-9]+")
+private fun modelKey(s: String) = catalogParts.findAll(fold(s)).map { it.value }.sorted().joinToString("|")
 
 /** The whole garage in one JSON file, written atomically. */
 // ponytail: single file, fine for a handful of bikes; move to Room when we need queries or sync
@@ -35,7 +44,10 @@ class GarageStore(context: Context) {
 }
 
 @Serializable
-data class CatalogModel(val n: String, val y: List<Int> = emptyList(), val c: Category = Category.naked)
+data class CatalogModel(
+    val n: String, val y: List<Int> = emptyList(), val c: Category = Category.naked,
+    val a: List<String> = emptyList(), val s: List<String> = emptyList(),
+)
 
 @Serializable
 data class CatalogBrand(val n: String, val models: List<CatalogModel>)
@@ -44,16 +56,34 @@ data class CatalogBrand(val n: String, val models: List<CatalogModel>)
 data class Catalog(val brands: List<CatalogBrand>) {
     data class Hit(val brand: String, val model: CatalogModel)
 
-    private val all by lazy { brands.flatMap { b -> b.models.map { Hit(b.n, it) } } }
+    private data class Entry(
+        val hit: Hit, val fields: List<String>, val name: String, val key: String, val brand: String, val sortName: String,
+    )
+    private val all by lazy {
+        brands.flatMap { b -> b.models.map { m ->
+            Entry(Hit(b.n, m), (listOf(b.n, m.n) + m.a).map(::compact), compact(m.n), modelKey(m.n), fold(b.n), fold(m.n))
+        } }
+    }
 
-    /** Every word of the query must appear in "brand model"; newest models first. */
+    /** Every word must match a brand, model or alias; exact and prefix names come first. */
     fun search(q: String, limit: Int = 40): List<Hit> {
-        val words = q.lowercase().split(' ').filter { it.isNotBlank() }
+        val words = fold(q).split(Regex("\\s+")).map(::compact).filter { it.isNotEmpty() }
         if (words.isEmpty()) return emptyList()
+        fun rank(e: Entry): Int {
+            val modelQuery = words.filterNot { it in e.fields.first() }.joinToString("")
+            return when {
+                modelQuery.isEmpty() -> 2
+                e.key == modelKey(modelQuery) -> 0
+                e.name.startsWith(modelQuery) -> 1
+                else -> 2
+            }
+        }
         return all.asSequence()
-            .filter { h -> val s = "${h.brand} ${h.model.n}".lowercase(); words.all { it in s } }
-            .sortedByDescending { it.model.y.maxOrNull() ?: 0 }
-            .take(limit).toList()
+            .filter { e -> words.all { word -> e.fields.any { word in it } } }
+            .map { it to rank(it) }
+            .sortedWith(compareBy<Pair<Entry, Int>> { it.second }.thenByDescending { it.first.hit.model.s.size }
+                .thenBy { it.first.brand }.thenBy { it.first.sortName })
+            .take(limit.coerceAtLeast(0)).map { it.first.hit }.toList()
     }
 
     companion object {
