@@ -154,7 +154,7 @@ fun Thumb(path: String, modifier: Modifier) {
 @Composable
 internal fun ServiceDateField(iso: String, onDate: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
-    OutlinedTextField(localizedDate(iso), {}, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.p2_date)) }, readOnly = true,
+    AppInput(localizedDate(iso), {}, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.p2_date)) }, readOnly = true,
         textStyle = MaterialTheme.typography.bodyLarge,
         trailingIcon = { IconBtn("calendar", stringResource(R.string.p2_date), { picking = true }) })
     if (picking) {

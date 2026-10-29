@@ -54,16 +54,16 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
         SectionTitle(stringResource(R.string.add_bike_title), 24)
         if (pick == null && !manual) {
             Hint(stringResource(R.string.catalog_hint, vm.catalog?.brands?.size ?: "…"))
-            OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.catalog_search)) }, singleLine = true)
+            AppInput(query, { query = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.catalog_search)) }, singleLine = true)
             val hits = remember(query, vm.catalog) { vm.catalog?.search(query).orEmpty() }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 items(hits) { h ->
                     Row(Modifier.fillMaxWidth().clickable { choose(h) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${h.brand} ${h.model.n}", fontWeight = FontWeight.SemiBold)
+                            Text(listOf(h.brand, h.model.n).joinToString(" "), fontWeight = FontWeight.SemiBold)
                             Hint(listOfNotNull(categoryLabel(h.model.c), h.model.y.takeIf { it.isNotEmpty() }?.let { "${it.min()}–${it.max()}" }).joinToString(stringResource(R.string.or)))
                         }
-                        Text("›", fontSize = 22.sp, color = shop.ink2)
+                        Icon("chev", shop.ink2, 18.dp)
                     }
                     HorizontalDivider(color = shop.line)
                 }
@@ -76,15 +76,15 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (manual) {
-                OutlinedTextField(brand, { brand = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.brand)) }, singleLine = true)
-                OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.model)) }, singleLine = true)
+                AppInput(brand, { brand = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.brand)) }, singleLine = true)
+                AppInput(model, { model = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.model)) }, singleLine = true)
             } else {
                 Sheet {
-                    Text("$brand $model", style = Display, color = shop.ink)
+                    Text(listOf(brand, model).joinToString(" "), style = Display, color = shop.ink)
                     TextButton({ pick = null }, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.change_model)) }
                 }
             }
-            OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.year)) },
+            AppInput(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.year)) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Hint(stringResource(R.string.type))
             ChoiceRow(Category.entries.map { it.name to categoryLabel(it) }, category.name) {
@@ -94,7 +94,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
             ChoiceRow(Drive.entries.map { it.name to driveLabel(it) }, drive.name) { drive = Drive.valueOf(it) }
             Hint(stringResource(R.string.cooling))
             ChoiceRow(Cooling.entries.map { it.name to coolingLabel(it) }, cooling.name) { cooling = Cooling.valueOf(it) }
-            OutlinedTextField(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.current_km)) },
+            AppInput(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.current_km)) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Row(
                 Modifier.fillMaxWidth().toggleable(allDone, role = androidx.compose.ui.semantics.Role.Checkbox) { allDone = it },

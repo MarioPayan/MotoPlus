@@ -174,3 +174,18 @@ fun zoneAbbreviation(zone: String, drive: Drive): String = if (zone == "drivetra
 /** The application context may retain the system locale when AppCompat overrides the activity. */
 fun localizedLocale(ctx: android.content.Context): java.util.Locale =
     androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().get(0) ?: ctx.resources.configuration.locales[0]
+
+
+fun rideSource(ride: Ride, ctx: android.content.Context): String = ctx.getString(when (ride.trigger) {
+    RideTrigger.manual -> R.string.manual
+    RideTrigger.motion -> R.string.motion
+    RideTrigger.bluetooth -> R.string.bluetooth
+}) + (ride.device?.let { ": $it" } ?: "")
+
+
+@Composable
+fun knownAiSource(source: String?): String? = listOf(
+    stringResource(R.string.p2_source_chatgpt), stringResource(R.string.p2_source_gemini),
+    stringResource(R.string.p2_source_claude), stringResource(R.string.p3_source_copilot),
+    stringResource(R.string.p3_source_perplexity),
+).firstOrNull { it == source }

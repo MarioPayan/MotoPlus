@@ -17,8 +17,8 @@ import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.Status
 import com.kaze.motoplus.domain.dueAlerts
 import com.kaze.motoplus.domain.estimate
-import com.kaze.motoplus.ui.text
-import com.kaze.motoplus.ui.name
+import com.kaze.motoplus.ui.remaining
+import com.kaze.motoplus.ui.documentLabel
 import com.kaze.motoplus.domain.docAlerts
 import com.kaze.motoplus.domain.docState
 import java.time.LocalDate
@@ -70,8 +70,8 @@ fun notifyDue(ctx: Context) {
             val n = NotificationCompat.Builder(ctx, CHANNEL_MAINTENANCE)
                 .setSmallIcon(R.drawable.ic_stat_moto)
                 .setContentTitle(title)
-                .setContentText("${first.name}: ${state.text.lowercase()}$more")
-                .setStyle(NotificationCompat.BigTextStyle().bigText(alerts.joinToString("\n") { "• ${it.first.name}: ${it.second.text.lowercase()}" }))
+                .setContentText("${first.name}: ${remaining(state, ctx).lowercase()}$more")
+                .setStyle(NotificationCompat.BigTextStyle().bigText(alerts.joinToString("\n") { "• ${it.first.name}: ${remaining(it.second, ctx).lowercase()}" }))
                 .setContentIntent(open).setAutoCancel(true).build()
             try { NotificationManagerCompat.from(ctx).notify(bike.id.hashCode(), n) } catch (e: SecurityException) { return }
         }
@@ -86,13 +86,13 @@ private fun notifyPapers(ctx: Context, today: LocalDate, allowed: Boolean) {
     if (!allowed) return
     val g = Repo.garage.value
     val sent = mutableMapOf<String, Int>()
-    for ((d, stage) in docAlerts(g.documents, today)) {
+    for ((d, stage) in docAlerts(g.documents, today, g.paperReminderDays)) {
         val left = docState(d, today).daysLeft ?: continue
         val whose = g.bikes.firstOrNull { it.id == d.bikeId }?.let { "${it.brand} ${it.model}" } ?: "Tus papeles"
         val text = when {
-            left < 0 -> "${d.name()} venció hace ${-left} ${if (left == -1L) "día" else "días"}"
-            left == 0L -> "${d.name()} vence hoy"
-            else -> "${d.name()} vence en $left ${if (left == 1L) "día" else "días"}"
+            left < 0 -> "${documentLabel(d, ctx)} venció hace ${-left} ${if (left == -1L) "día" else "días"}"
+            left == 0L -> "${documentLabel(d, ctx)} vence hoy"
+            else -> "${documentLabel(d, ctx)} vence en $left ${if (left == 1L) "día" else "días"}"
         }
         val open = PendingIntent.getActivity(ctx, d.id.hashCode(), Intent(ctx, MainActivity::class.java).putExtra("papers", d.bikeId ?: ""), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(ctx, CHANNEL_MAINTENANCE).setSmallIcon(R.drawable.ic_stat_moto)

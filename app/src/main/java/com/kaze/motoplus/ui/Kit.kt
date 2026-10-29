@@ -160,7 +160,7 @@ fun Header(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -
 fun ChoiceRow(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         options.forEach { (k, label) ->
-            FilterChip(selected = k == selected, onClick = { onPick(k) }, label = { Text(label, style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(6.dp))
+            FilterChip(selected = k == selected, onClick = { onPick(k) }, label = { Text(label, style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(3.dp))
         }
     }
 }

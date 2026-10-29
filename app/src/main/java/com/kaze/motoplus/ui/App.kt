@@ -47,7 +47,7 @@ private fun AppContent(vm: AppViewModel) {
     val bike = vm.bike!!
     vm.editing?.let { id ->
         bike.parts.firstOrNull { it.id == id }?.let { p ->
-            IntervalDialog(p, bike.suggested(id), onSave = { km, d -> vm.setInterval(id, km, d) }, onDismiss = { vm.editing = null })
+            IntervalDialog(p, bike.suggested(id), onSave = { km, d, unit, value -> vm.setInterval(id, km, d, unit, value) }, onDismiss = { vm.editing = null })
         }
     }
     vm.recording?.let { RecordDialog(vm, bike, it) }

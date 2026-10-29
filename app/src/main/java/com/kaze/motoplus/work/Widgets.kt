@@ -38,8 +38,7 @@ import com.kaze.motoplus.ui.ICONS
 import com.kaze.motoplus.ui.Shop
 import com.kaze.motoplus.ui.partIcon
 import com.kaze.motoplus.ui.shopFor
-import com.kaze.motoplus.ui.shortLeft
-import com.kaze.motoplus.ui.zoneShort
+import com.kaze.motoplus.ui.remaining
 import java.time.LocalDate
 
 private fun dark(ctx: Context) = when (ctx.getSharedPreferences("display", Context.MODE_PRIVATE).getString("theme", "dark")) {
@@ -76,7 +75,7 @@ class SmallWidget : GlanceAppWidget() {
             Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 180)), p.name, GlanceModifier.size(64.dp))
             Spacer(GlanceModifier.height(6.dp))
             Text(p.name, style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-            Text(shortLeft(s).uppercase(), style = TextStyle(color = ColorProvider(shop.status(s.status)), fontSize = 10.sp, fontFamily = FontFamily.Monospace), maxLines = 1)
+            Text(remaining(s, ctx).uppercase(), style = TextStyle(color = ColorProvider(shop.status(s.status)), fontSize = 10.sp, fontFamily = FontFamily.Monospace), maxLines = 1)
         }
     }
 }

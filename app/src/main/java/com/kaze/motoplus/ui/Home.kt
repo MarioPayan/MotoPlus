@@ -73,7 +73,7 @@ private fun HealthBar(score: Int, alerts: Int) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Cap(stringResource(R.string.health_title), modifier = Modifier.weight(1f))
             Text(score.toString(), style = Display.copy(fontSize = 44.sp), color = color)
-            Text("/100", style = Mono.copy(fontSize = 11.sp), color = shop.ink2, modifier = Modifier.padding(start = 3.dp, top = 16.dp))
+            Text(stringResource(R.string.p3_score_max), style = Mono.copy(fontSize = 11.sp), color = shop.ink2, modifier = Modifier.padding(start = 3.dp, top = 16.dp))
         }
         Spacer(Modifier.height(8.dp))
         SegmentedMeter(score / 100f, color, stringResource(R.string.health_title))
@@ -112,7 +112,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
         HorizontalDivider(color = shop.line)
         Row(Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.alert_actions)) { menu = true }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(partIcon(p), shop.status(s.status), 24.dp)
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
                 Text(name, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(left + if (showInterval) " · ${localizedInterval(p)}" else "", style = Mono.copy(fontSize = 11.sp), color = shop.status(s.status))
             }
@@ -145,7 +145,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
         confirmButton = { TextButton({ vm.removePart(p.id); deleting = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
         dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
     if (snoozing) AlertDialog(onDismissRequest = { snoozing = false }, title = { Text(stringResource(R.string.snooze)) }, text = {
-        OutlinedTextField(days, { days = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.snooze_days)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        AppInput(days, { days = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.snooze_days)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
     }, confirmButton = { TextButton({ vm.snooze(p.id, days.toLong()); snoozing = false }, enabled = days.toIntOrNull() in 1..365) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton({ snoozing = false }) { Text(stringResource(R.string.cancel)) } })
 }
@@ -153,7 +153,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
 @Composable
 fun localizedInterval(p: Part): String = listOfNotNull(
     p.km?.let { stringResource(R.string.every_km, distance(it)) },
-    p.days?.let { if (it >= 60) stringResource(R.string.every_months, Math.round(it / 30.4)) else stringResource(R.string.every_days, it) },
+    p.days?.let { stringResource(R.string.p3_every_time, IntervalInput.from(p).text, intervalUnitLabel(p.timeUnit)) },
 ).joinToString(stringResource(R.string.or)).ifEmpty { stringResource(R.string.no_interval) }
 
 @Composable
@@ -173,7 +173,7 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
     val last = bike.history.filter { r -> st.parts.any { it.first.id == r.partId } }.maxWithOrNull(compareBy({ it.date }, { it.km }))
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(zoneName(zone), { vm.screen = Screen.main })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Sheet(padding = 0.dp) {
                 Row(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp)) {
                     Cap(stringResource(R.string.detail, zoneName(zone)), modifier = Modifier.weight(1f))

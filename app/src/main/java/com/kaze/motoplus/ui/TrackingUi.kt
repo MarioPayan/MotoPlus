@@ -119,7 +119,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
 
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(ctx.getString(R.string.sources), { vm.screen = Screen.main })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Hint(ctx.getString(R.string.sources_intro))
 
             Sheet {
@@ -133,7 +133,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
                 }
                 if (t.bluetooth) {
                     if (t.devices.isEmpty()) Hint(ctx.getString(R.string.no_devices))
-                    t.devices.values.forEach { Text("• $it", fontSize = 13.sp) }
+                    t.devices.values.forEach { Text(ctx.getString(R.string.p3_bullet, it), fontSize = 13.sp) }
                     TextButton({ pick(Picker.intercom) }, contentPadding = PaddingValues(0.dp)) { Text(if (t.devices.isEmpty()) ctx.getString(R.string.choose_helmet) else ctx.getString(R.string.change_devices)) }
                 }
                 if (t.detects) {
@@ -160,7 +160,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
                     if (on) pick(Picker.car) else vm.setTracking(t.copy(carDevices = emptyMap()))
                 }
                 if (t.carDevices.isNotEmpty()) {
-                    t.carDevices.values.forEach { Text("• $it", fontSize = 13.sp) }
+                    t.carDevices.values.forEach { Text(ctx.getString(R.string.p3_bullet, it), fontSize = 13.sp) }
                     TextButton({ pick(Picker.car) }, contentPadding = PaddingValues(0.dp)) { Text(ctx.getString(R.string.change_cars)) }
                 }
                 HorizontalDivider(color = shop.line)

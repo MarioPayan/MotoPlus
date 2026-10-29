@@ -25,6 +25,8 @@ data class Document(
     val photos: List<String> = emptyList(),
     val notes: String = "",
     val alerted: Int? = null,
+    val officialUrl: String = "",
+    val officialSite: String = "",
 )
 
 /** Reminders go out this many days before expiry, then on the day it expires (0). */
@@ -32,21 +34,21 @@ val REMINDER_DAYS = listOf(30, 7, 1, 0)
 
 data class DocState(val status: Status, val daysLeft: Long?)
 
-fun docState(d: Document, today: LocalDate): DocState {
+fun docState(d: Document, today: LocalDate, leadDays: Int = 30): DocState {
     val exp = d.expires?.let(LocalDate::parse) ?: return DocState(Status.ok, null)
     val left = ChronoUnit.DAYS.between(today, exp)
-    return DocState(if (left < 0) Status.bad else if (left <= 30) Status.warn else Status.ok, left)
+    return DocState(if (left < 0) Status.bad else if (left <= leadDays.coerceIn(0, 1095)) Status.warn else Status.ok, left)
 }
 
 /** The reminder stage a document has reached today, or null when it is not due yet or never expires. */
-fun reminderStage(d: Document, today: LocalDate): Int? {
+fun reminderStage(d: Document, today: LocalDate, leadDays: Int = 30): Int? {
     val left = docState(d, today).daysLeft ?: return null
-    return REMINDER_DAYS.lastOrNull { left <= it }
+    return (listOf(leadDays.coerceIn(0, 1095)) + REMINDER_DAYS.filter { it < leadDays }).lastOrNull { left <= it }
 }
 
 /** Documents with a reminder stage not sent yet, with that stage. */
-fun docAlerts(docs: List<Document>, today: LocalDate): List<Pair<Document, Int>> = docs.mapNotNull { d ->
-    val stage = reminderStage(d, today) ?: return@mapNotNull null
+fun docAlerts(docs: List<Document>, today: LocalDate, leadDays: Map<DocType, Int> = emptyMap()): List<Pair<Document, Int>> = docs.mapNotNull { d ->
+    val stage = reminderStage(d, today, leadDays[d.type] ?: 30) ?: return@mapNotNull null
     if (d.alerted != null && d.alerted <= stage) null else d to stage
 }
 

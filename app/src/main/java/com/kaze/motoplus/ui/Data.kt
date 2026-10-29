@@ -104,7 +104,7 @@ fun DataScreen(vm: AppViewModel) {
 
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(ctx.getString(R.string.data), { vm.screen = Screen.settings })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Sheet {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon("cloud", if (token != null) shop.ok else shop.ink2, 26.dp)

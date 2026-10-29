@@ -25,12 +25,12 @@ import com.google.android.gms.location.*
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.R
 import com.kaze.motoplus.data.Repo
+import com.kaze.motoplus.domain.DiscardReason
 import com.kaze.motoplus.domain.DistanceMeter
 import com.kaze.motoplus.domain.Ride
 import com.kaze.motoplus.domain.RideTrigger
 import com.kaze.motoplus.domain.discardReason
-import com.kaze.motoplus.ui.label
-import com.kaze.motoplus.ui.sourceLabel
+import com.kaze.motoplus.ui.rideSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDate
@@ -40,7 +40,7 @@ private const val ID_LIVE = 4100
 private const val ID_DONE = 4101
 
 data class LiveRide(val trigger: RideTrigger, val device: String?, val km: Double, val startedAt: Long) {
-    val label get() = Ride("", km, trigger, device).sourceLabel
+    fun label(ctx: Context) = rideSource(Ride("", km, trigger, device), ctx)
 }
 
 /** Starts and stops ride recording; the UI watches [live]. */
@@ -194,7 +194,7 @@ class RideService : Service() {
         val open = PendingIntent.getActivity(this, 4, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
             .setContentTitle("Registrando salida · ${"%.1f".format(meter.km)} km")
-            .setContentText(Tracker.live.value?.label ?: "").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+            .setContentText(Tracker.live.value?.label(this) ?: "").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .addAction(0, "Terminar", stop).build()
     }
 
@@ -210,12 +210,12 @@ class RideService : Service() {
         val discarded = discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking)
         if (discarded != null) {
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("Salida descartada · ${discarded.label}").setAutoCancel(true).build())
+                .setContentTitle("Salida descartada · ${getString(if (discarded == DiscardReason.carBluetooth) R.string.p3_car_connected else R.string.android_auto)}").setAutoCancel(true).build())
         } else if (km >= 0.3 && bike != null) {
             Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis())) }
             ReminderWorker.runNow(this)
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("Salida registrada: ${"%.1f".format(km)} km").setContentText("${bike.brand} ${bike.model} · ${Ride("", km, trigger, device).sourceLabel.lowercase()}")
+                .setContentTitle("Salida registrada: ${"%.1f".format(km)} km").setContentText("${bike.brand} ${bike.model} · ${rideSource(Ride("", km, trigger, device), this).lowercase()}")
                 .setContentIntent(PendingIntent.getActivity(this, 5, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
                 .setAutoCancel(true).build())
         }

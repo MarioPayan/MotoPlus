@@ -76,9 +76,9 @@ internal fun IncludeRow(on: Boolean, change: (Boolean) -> Unit) {
 @Composable
 fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
     val initial = vm.aiReview ?: return
-    var d by remember(vm.aiRevision) { mutableStateOf(initial) }
+    var d by remember(vm.aiRevision) { mutableStateOf(initial.copy(checks = initial.checks.filter { it.isNotBlank() })) }
     var causes by remember(vm.aiRevision) { mutableStateOf(initial.causes.indices.toSet()) }
-    var checks by remember(vm.aiRevision) { mutableStateOf(initial.checks.indices.toSet()) }
+    var checks by remember(vm.aiRevision) { mutableStateOf(initial.checks.filter { it.isNotBlank() }.indices.toSet()) }
     var parts by remember(vm.aiRevision) { mutableStateOf(initial.parts.indices.toSet()) }
     var advice by remember(vm.aiRevision) { mutableStateOf(initial.advice.isNotBlank()) }
     var pickParts by remember { mutableStateOf(false) }
@@ -89,7 +89,7 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
                 checks = d.checks.filterIndexed { i, _ -> i in checks }, advice = if (advice) d.advice else "", parts = d.parts.filterIndexed { i, _ -> i in parts }.distinct()))
         }, Modifier.fillMaxWidth(), enabled = valid, icon = "check")
     }) {
-        vm.aiSource?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
+        knownAiSource(vm.aiSource)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
         Hint(stringResource(R.string.p2_ai_review_hint))
         FormField(d.title, stringResource(R.string.p2_report), { d = d.copy(title = it.take(100)) })
         FormField(d.summary, stringResource(R.string.p2_ai_diagnosis), { d = d.copy(summary = it.take(1200)) }, multiline = true)
@@ -111,7 +111,7 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
         TextButton({ checks = checks + d.checks.size; d = d.copy(checks = d.checks + "") }, enabled = d.checks.size < 60) { Text(stringResource(R.string.p2_ai_add_check)) }
         IncludeRow(advice) { advice = it }
         FormField(d.advice, stringResource(R.string.p2_ai_advice), { d = d.copy(advice = it.take(800)) }, multiline = true)
-        SectionTitle(stringResource(R.string.p2_ai_pending_parts))
+        if (d.parts.isNotEmpty()) SectionTitle(stringResource(R.string.p2_ai_pending_parts))
         d.parts.forEachIndexed { i, id -> Sheet {
             IncludeRow(i in parts) { parts = if (it) parts + i else parts - i }
             ChoiceRow(bike.parts.map { it.id to partLabel(it) }, id) { value -> d = d.copy(parts = d.parts.mapIndexed { j, p -> if (j == i) value else p }) }
@@ -129,7 +129,7 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
 internal fun ReportCard(r: SavedReport, onSee: () -> Unit) {
     Sheet {
         Hint(localizedDate(r.at) + " · " + stringResource(R.string.p2_km_value, distance(r.km)))
-        r.source?.let { Hint(it) }
+        knownAiSource(r.source)?.let { Hint(it) }
         SectionTitle(r.data.title.ifBlank { stringResource(R.string.p2_report) })
         Text(r.data.summary)
         Text(levelOptions(true).first { it.first == r.data.urgency.name }.second)

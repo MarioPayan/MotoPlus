@@ -1,57 +1,64 @@
 package com.kaze.motoplus.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kaze.motoplus.R
 import com.kaze.motoplus.domain.*
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-internal val ES = Locale.forLanguageTag("es-ES")
-internal fun prettyDate(iso: String) = LocalDate.parse(iso).format(DateTimeFormatter.ofPattern("d MMM yyyy", ES))
 
 @Composable
-fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?) -> Unit, onDismiss: () -> Unit) {
-    val shop = LocalShop.current
-    var km by remember { mutableStateOf(part.km?.toString() ?: "") }
-    val monthsUnit = (part.days ?: 60) >= 60
-    var months by remember { mutableStateOf(monthsUnit) }
-    var time by remember { mutableStateOf(part.days?.let { if (monthsUnit) Math.round(it / 30.4).toString() else it.toString() } ?: "") }
+fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?, IntervalUnit, String) -> Unit, onDismiss: () -> Unit) {
+    var km by remember(part) { mutableStateOf(part.km?.toString().orEmpty()) }
+    var time by remember(part) { mutableStateOf(IntervalInput.from(part)) }
     val kmN = km.toIntOrNull()?.takeIf { it > 0 }
-    val days = time.toIntOrNull()?.takeIf { it > 0 }?.let { if (months) (it * 30.4).toInt() else it }
+    val days = time.toDays()
+    val each = stringResource(when (time.unit) {
+        IntervalUnit.days -> R.string.p3_each_days
+        IntervalUnit.months -> R.string.p3_each_months
+        IntervalUnit.years -> R.string.p3_each_years
+    })
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(partLabel(part)) },
+        onDismissRequest = onDismiss, title = { SectionTitle(partLabel(part)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(km, { km = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.p2_each_km)) },
-                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), placeholder = { Text(stringResource(R.string.p2_no_km_limit)) })
-                OutlinedTextField(time, { time = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text(stringResource(if (months) R.string.p2_each_months else R.string.p2_each_days)) },
-                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), placeholder = { Text(stringResource(R.string.p2_no_time_limit)) })
-                ChoiceRow(listOf("m" to stringResource(R.string.p2_months), "d" to stringResource(R.string.p2_days)), if (months) "m" else "d") { months = it == "m" }
-                Hint(stringResource(R.string.p2_interval_hint))
-                suggested?.takeIf { it.km != kmN || it.days != days }?.let { sp ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Hint(stringResource(R.string.p2_suggested, localizedInterval(sp)), modifier = Modifier.weight(1f))
-                        TextButton({
-                            km = sp.km?.toString() ?: ""
-                            months = (sp.days ?: 60) >= 60
-                            time = sp.days?.let { if (months) Math.round(it / 30.4).toString() else it.toString() } ?: ""
-                        }) { Text(stringResource(R.string.p2_use_suggested)) }
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FormField(km, stringResource(R.string.p2_each_km), { km = it.filter(Char::isDigit).take(6) }, numeric = true)
+                AppInput(time.text, { value ->
+                    if (value.matches(Regex("[0-9]{0,5}([.,][0-9]{0,2})?"))) time = time.type(value.replace(',', '.'))
+                }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.p3_time)) }, placeholder = { Text(each) },
+                    singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                ChoiceRow(IntervalUnit.entries.map { it.name to intervalUnitLabel(it) }, time.unit.name) { time = time.switchTo(IntervalUnit.valueOf(it)) }
+                suggested?.let { sp ->
+                    Cap(stringResource(R.string.p3_suggested))
+                    Row(Modifier.fillMaxWidth().background(LocalShop.current.sheet2).border(1.dp, LocalShop.current.line), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Column(Modifier.weight(1f).padding(12.dp)) {
+                            Cap(stringResource(R.string.p3_km))
+                            Text(sp.km?.let { stringResource(R.string.p2_km_value, distance(it)) } ?: stringResource(R.string.p3_dash), style = Mono)
+                        }
+                        VerticalDivider(Modifier.height(64.dp), color = LocalShop.current.line)
+                        Column(Modifier.weight(1f).padding(12.dp)) {
+                            Cap(stringResource(R.string.p3_time))
+                            Text(sp.days?.let { stringResource(R.string.p3_days_value, it) } ?: stringResource(R.string.p3_dash), style = Mono)
+                        }
                     }
+                    TextButton({ km = sp.km?.toString().orEmpty(); time = IntervalInput.from(sp) }) { Text(stringResource(R.string.p2_use_suggested)) }
                 }
-                if (kmN == null && days == null) Hint(stringResource(R.string.p2_need_interval), shop.bad)
             }
         },
-        confirmButton = { TextButton({ onSave(kmN, days) }, enabled = kmN != null || days != null) { Text(stringResource(R.string.save)) } },
+        confirmButton = { TextButton({ onSave(kmN, days, time.unit, time.text) }, enabled = (kmN != null || days != null) && (time.text.isBlank() || days != null) && (km.isBlank() || kmN != null)) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
+
+@Composable
+fun intervalUnitLabel(unit: IntervalUnit) = stringResource(when (unit) {
+    IntervalUnit.days -> R.string.p2_days; IntervalUnit.months -> R.string.p2_months; IntervalUnit.years -> R.string.p3_years
+}).lowercase()

@@ -155,8 +155,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         message = text(R.string.photo_save_failed); null
     }
 
-    fun setInterval(partId: String, km: Int?, days: Int?) {
-        updateBike { it.withInterval(partId, km, days) }
+    fun setInterval(partId: String, km: Int?, days: Int?, unit: IntervalUnit, value: String) {
+        updateBike { it.withInterval(partId, km, days, unit, value) }
         editing = null
         message = text(R.string.interval_updated)
     }
@@ -258,8 +258,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun openZone(z: String) { selectedZone = z; highlighted = highlighted - z; screen = Screen.zone }
 
     fun resetIntervals() {
-        updateBike { b -> b.copy(parts = b.parts.map { p -> b.suggested(p.id)?.let { p.copy(km = it.km, days = it.days) } ?: p }) }
+        updateBike { b -> b.copy(parts = b.parts.map { p -> b.suggested(p.id)?.let { p.copy(km = it.km, days = it.days, timeUnit = it.timeUnit, timeValue = it.timeValue) } ?: p }) }
         message = text(R.string.intervals_reset)
+    }
+
+    fun setPaperReminder(type: DocType, days: Int) {
+        Repo.update { g -> g.copy(paperReminderDays = g.paperReminderDays + (type to days.coerceIn(0, 1095)),
+            documents = g.documents.map { if (it.type == type) it.copy(alerted = null) else it }) }
+        com.kaze.motoplus.work.ReminderWorker.runNow(app)
     }
 
     fun setCurrency(value: String) { if (value in listOf("COP", "USD", "EUR", "MXN")) Repo.update { it.copy(currency = value) } }

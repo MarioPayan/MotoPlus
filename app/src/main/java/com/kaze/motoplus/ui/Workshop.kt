@@ -37,7 +37,7 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
             WorkshopRow("wrench", stringResource(R.string.p2_workshop_list), count) { vm.screen = Screen.order }
             WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.startVisit() }
         }
-        Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), bike.reports.size) { vm.screen = Screen.ai } }
+        Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
         Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size) { vm.screen = Screen.history } }
         HistoryTimeline(vm, bike, compact = true)
         Spacer(Modifier.height(12.dp))
@@ -45,11 +45,12 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
 }
 
 @Composable
-private fun WorkshopRow(icon: String, title: String, count: Int, onClick: () -> Unit) {
+private fun WorkshopRow(icon: String, title: String, count: Int?, subtitle: String? = null, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, LocalShop.current.ink2)
         Text(title, Modifier.weight(1f).padding(horizontal = 12.dp))
-        Text(count.toString(), style = Mono, color = LocalShop.current.ink2)
+        if (count != null) Text(count.toString(), style = Mono, color = LocalShop.current.ink2)
+        subtitle?.let { Hint(it) }
         Spacer(Modifier.width(12.dp))
         Icon("chev", LocalShop.current.ink2, 18.dp)
     }
@@ -69,7 +70,7 @@ internal fun WorkshopPage(title: String, onBack: () -> Unit, footer: @Composable
 
 @Composable
 internal fun FormField(value: String, label: String, onChange: (String) -> Unit, numeric: Boolean = false, multiline: Boolean = false) {
-    OutlinedTextField(value, onChange, Modifier.fillMaxWidth(), label = { Text(label) },
+    AppInput(value, onChange, Modifier.fillMaxWidth(), label = { Text(label) },
         textStyle = if (numeric) Mono.copy(fontSize = 18.sp) else MaterialTheme.typography.bodyLarge,
         singleLine = !multiline, minLines = if (multiline) 2 else 1,
         keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text))
@@ -169,7 +170,7 @@ internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Mo
     val currency = LocalCurrency.current
     var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
     LaunchedEffect(value) { if (field.text != value) field = TextFieldValue(value, TextRange(value.length)) }
-    OutlinedTextField(field, { next ->
+    AppInput(field, { next ->
         val formatted = formatAmountInput(next.text, currency, locale)
         val significant = next.text.take(next.selection.end).count { it.isDigit() || it == java.text.DecimalFormatSymbols.getInstance(locale).decimalSeparator }
         var seen = 0
@@ -217,7 +218,7 @@ fun OrderReturnScreen(vm: AppViewModel, bike: Bike) {
         Btn(stringResource(if (d.done.size == 1) R.string.p2_save_job else R.string.p2_save_jobs, d.done.size), { vm.saveVisit(d) }, Modifier.fillMaxWidth(), enabled = valid)
     }) {
         Btn(stringResource(R.string.p2_read_invoice_ai), { vm.screen = Screen.invoiceAi }, Modifier.fillMaxWidth(), ghost = true, icon = "camera")
-        d.source?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
+        knownAiSource(d.source)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
         Hint(stringResource(if (d.source != null || d.costs.isNotEmpty()) R.string.p2_ai_invoice_review else R.string.p2_return_hint))
         jobs.forEach { (id, name) ->
             val on = id in d.done

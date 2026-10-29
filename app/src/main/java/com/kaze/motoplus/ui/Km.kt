@@ -79,7 +79,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
     if (fixing) ModalBottomSheet(onDismissRequest = { fixing = false; ocrNote = null }, containerColor = shop.sheet) {
         Column(Modifier.padding(horizontal = 20.dp).imePadding(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             SectionTitle(stringResource(R.string.odometer_reading))
-            OutlinedTextField(value, { value = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) },
+            AppInput(value, { value = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             ocrNote?.let { Hint(it) }
             val last = bike.readings.maxOf { it.km }
@@ -197,14 +197,14 @@ fun FuelScreen(vm: AppViewModel, bike: Bike) {
     val preview = if (kmN != null && litersN != null) fuelStats(bike.fuel + FuelEntry("new", vm.today.toString(), kmN, litersN, totalN, full)) else null
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Header(stringResource(R.string.fillup), { vm.screen = Screen.main })
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) }, singleLine = true,
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AppInput(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) }, singleLine = true,
                 textStyle = Mono.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Hint(stringResource(R.string.fuel_hint, distance(est.km.toInt())))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(liters, { liters = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(6) }, Modifier.weight(1f), label = { Text(stringResource(R.string.liters)) }, singleLine = true,
+                AppInput(liters, { liters = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(6) }, Modifier.weight(1f), label = { Text(stringResource(R.string.liters)) }, singleLine = true,
                     textStyle = Mono.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                OutlinedTextField(total, { total = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(10) }, Modifier.weight(1f), label = { Text(stringResource(R.string.paid)) }, singleLine = true,
+                AppInput(total, { total = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(10) }, Modifier.weight(1f), label = { Text(stringResource(R.string.paid)) }, singleLine = true,
                     textStyle = Mono.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             }
             Row(Modifier.fillMaxWidth().toggleable(full, role = Role.Checkbox) { full = it }, verticalAlignment = Alignment.CenterVertically) {

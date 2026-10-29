@@ -114,9 +114,9 @@ fun Bike.markDone(partId: String, km: Int, today: LocalDate) =
     addRecord(ServiceRecord(java.util.UUID.randomUUID().toString(), partId, today.toString(), km))
 
 /** A rider-set interval; at least one of [km] or [days] must be set. */
-fun Bike.withInterval(partId: String, km: Int?, days: Int?): Bike {
+fun Bike.withInterval(partId: String, km: Int?, days: Int?, timeUnit: IntervalUnit = IntervalUnit.days, timeValue: String? = null): Bike {
     require(km != null || days != null)
-    return copy(parts = parts.map { if (it.id == partId) it.copy(km = km, days = days) else it })
+    return copy(parts = parts.map { if (it.id == partId) it.copy(km = km, days = days, timeUnit = timeUnit, timeValue = timeValue) else it })
 }
 
 fun Bike.suggested(partId: String): Part? = defaultParts(category, drive, cooling).firstOrNull { it.id == partId }

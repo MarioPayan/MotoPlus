@@ -20,6 +20,13 @@ import com.kaze.motoplus.Screen
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
     val shop = LocalShop.current
+    var about by remember { mutableStateOf(false) }
+    var paperLimits by remember { mutableStateOf(false) }
+    if (about) { AboutScreen(vm) { about = false }; return }
+    if (paperLimits) {
+        WorkshopPage(stringResource(R.string.p3_paper_limits), { paperLimits = false }) { PaperLimits(vm) }
+        return
+    }
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(stringResource(R.string.settings), { vm.screen = Screen.main })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -38,6 +45,8 @@ fun SettingsScreen(vm: AppViewModel) {
                 SettingsEntry("route", stringResource(R.string.sources)) { vm.screen = Screen.kmSources }
                 SettingsEntry("history", stringResource(R.string.history_title)) { vm.screen = Screen.history }
                 SettingsEntry("wrench", stringResource(R.string.part_limits)) { vm.screen = Screen.parts }
+                SettingsEntry("doc", stringResource(R.string.p3_paper_limits)) { paperLimits = !paperLimits }
+                SettingsEntry("info", stringResource(R.string.p3_about)) { about = true }
             }
         }
     }
@@ -66,5 +75,30 @@ fun SettingsEntry(icon: String, label: String, onClick: () -> Unit) {
         Icon(icon, LocalShop.current.ink2)
         Text(label, Modifier.weight(1f).padding(horizontal = 12.dp))
         Icon("chev", LocalShop.current.ink2, 18.dp)
+    }
+}
+
+
+@Composable
+private fun AboutScreen(vm: AppViewModel, onBack: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var license by remember { mutableStateOf<String?>(null) }
+    WorkshopPage(stringResource(R.string.p3_about), onBack) {
+        SectionTitle(stringResource(R.string.p3_catalog_sources))
+        vm.catalog?.sources?.values?.forEach { source -> Sheet { Text(source, style = MaterialTheme.typography.bodyLarge) } }
+        SectionTitle(stringResource(R.string.p3_licenses))
+        listOf(
+            "OFL-barlow-condensed.txt" to R.string.p3_license_barlow,
+            "OFL-plex.txt" to R.string.p3_license_plex,
+            "Phosphor-MIT.txt" to R.string.p3_license_phosphor,
+        ).forEach { (file, label) ->
+            SettingsEntry("doc", stringResource(label)) { license = file }
+        }
+    }
+    license?.let { file ->
+        val text = remember(file) { ctx.assets.open("licenses/$file").bufferedReader().use { it.readText() } }
+        AlertDialog(onDismissRequest = { license = null }, title = { Text(stringResource(R.string.p3_licenses)) },
+            text = { Text(text, Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodyMedium) },
+            confirmButton = { TextButton({ license = null }) { Text(stringResource(R.string.close)) } })
     }
 }

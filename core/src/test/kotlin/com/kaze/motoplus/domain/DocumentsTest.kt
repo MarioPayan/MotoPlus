@@ -26,6 +26,24 @@ class DocumentsTest {
         assertTrue(docAlerts(listOf(doc(null)), today).isEmpty())
     }
 
+    @Test fun customReminderLeadTimeKeepsLaterStagesAndDeduplicates() {
+        val paper = doc("2026-12-06")
+        assertEquals(Status.ok, docState(paper, today, 5).status)
+        assertEquals(Status.warn, docState(paper, today, 90).status)
+        assertNull(reminderStage(paper, today, 5))
+        assertEquals(90, reminderStage(paper, today, 90))
+        assertEquals(7, reminderStage(doc("2026-10-30"), today, 90))
+        assertTrue(docAlerts(listOf(paper.copy(alerted = 90)), today, mapOf(DocType.soat to 90)).isEmpty())
+        assertEquals(0, reminderStage(doc(today.toString()), today, 0))
+    }
+
+    @Test fun linkOnlyDocumentAndReminderPreferencesSurviveBackupCodec() {
+        val paper = doc(null).copy(officialUrl = "https://example.gov/permit", officialSite = "Official registry")
+        val garage = Garage(documents = listOf(paper), paperReminderDays = mapOf(DocType.soat to 90))
+        assertEquals(garage, GarageCodec.decode(GarageCodec.encode(garage)))
+        assertTrue(garage.documents.single().photos.isEmpty())
+    }
+
     @Test fun readsLatestDateFromPhoto() {
         assertEquals(LocalDate.parse("2027-11-06"), pickExpiry("VIGENCIA DESDE 07/11/2026 HASTA 06/11/2027 POLIZA 1234"))
         assertEquals(LocalDate.parse("2031-03-14"), pickExpiry("Expedición 2021-03-14 Vence 2031-03-14"))

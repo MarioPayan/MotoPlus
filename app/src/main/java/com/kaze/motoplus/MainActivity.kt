@@ -62,15 +62,19 @@ class MainActivity : AppCompatActivity() {
         intent.getStringExtra("startRide")?.let { t -> com.kaze.motoplus.work.Tracker.start(this, runCatching { com.kaze.motoplus.domain.RideTrigger.valueOf(t) }.getOrDefault(com.kaze.motoplus.domain.RideTrigger.manual)); vm.tab = Tab.km }
         if (!text.isNullOrBlank()) {
             val provider = callingPackage ?: referrer?.host
-            val source = when (provider) {
-                "com.openai.chatgpt", "chatgpt.com", "chat.openai.com" -> getString(com.kaze.motoplus.R.string.p2_source_chatgpt)
-                "com.google.android.apps.bard", "gemini.google.com" -> getString(com.kaze.motoplus.R.string.p2_source_gemini)
-                "com.anthropic.claude", "claude.ai" -> getString(com.kaze.motoplus.R.string.p2_source_claude)
-                else -> provider?.takeIf { it != packageName }?.let { pkg ->
-                    runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull()
-                }
-            }
+            val source = aiSourceResource(provider)?.let(::getString)
             vm.incoming(text, source)
         }
     }
+}
+
+
+/** Unknown referrers, including adb and browsers, have no provider attribution. */
+internal fun aiSourceResource(provider: String?): Int? = when (provider) {
+    "com.openai.chatgpt", "chatgpt.com", "chat.openai.com" -> com.kaze.motoplus.R.string.p2_source_chatgpt
+    "com.google.android.apps.bard", "gemini.google.com" -> com.kaze.motoplus.R.string.p2_source_gemini
+    "com.anthropic.claude", "claude.ai" -> com.kaze.motoplus.R.string.p2_source_claude
+    "com.microsoft.copilot", "copilot.microsoft.com", "com.microsoft.bing" -> com.kaze.motoplus.R.string.p3_source_copilot
+    "ai.perplexity.app.android", "www.perplexity.ai", "perplexity.ai" -> com.kaze.motoplus.R.string.p3_source_perplexity
+    else -> null
 }

@@ -53,7 +53,7 @@ data class CatalogModel(
 data class CatalogBrand(val n: String, val models: List<CatalogModel>)
 
 @Serializable
-data class Catalog(val brands: List<CatalogBrand>) {
+data class Catalog(val brands: List<CatalogBrand>, val sources: Map<String, String> = emptyMap()) {
     data class Hit(val brand: String, val model: CatalogModel)
 
     private data class Entry(

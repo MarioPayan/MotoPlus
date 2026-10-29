@@ -1,6 +1,9 @@
 package com.kaze.motoplus.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -30,7 +33,7 @@ private fun steps(ctx: android.content.Context, vm: AppViewModel, bike: Bike): L
     fun note(vararg ids: String) = ids.mapNotNull { id -> bike.parts.firstOrNull { it.id == id } }
         .map { it to partState(it, odo, today) }.filter { it.second.status != Status.ok }
         .joinToString(ctx.getString(R.string.or)) { (p, s) -> "${partLabel(p, ctx)}: ${remaining(s, ctx)}" }.ifEmpty { null }
-    val papers = vm.papers.map { it to docState(it, today) }.filter { it.second.status != Status.ok }
+    val papers = vm.papers.map { it to docState(it, today, vm.garage.paperReminderDays[it.type] ?: 30) }.filter { it.second.status != Status.ok }
         .joinToString(ctx.getString(R.string.or)) { (d, s) -> "${documentLabel(d, ctx)}: ${documentExpiry(d, s, ctx)}" }.ifEmpty { null }
     return listOfNotNull(
         Step("tires", "front_wheel", ctx.getString(R.string.check_tires), "tire", ctx.getString(R.string.tires_how), note("front_tire", "rear_tire"), listOf("front_tire", "rear_tire")),
@@ -52,7 +55,7 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    val list = remember(bike, ctx.resources.configuration) { steps(ctx, vm, bike) }
+    val list = remember(bike, vm.garage.documents, vm.garage.paperReminderDays, ctx.resources.configuration) { steps(ctx, vm, bike) }
     val results = remember(bike.id) { mutableStateMapOf<String, Boolean>() }
     val pager = rememberPagerState { list.size + 1 }
     val today = vm.today
@@ -65,12 +68,14 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
     }
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(stringResource(R.string.before_ride), { vm.screen = Screen.main }) {
-            Text("${results.size}/${list.size}", style = Mono.copy(fontSize = 13.sp), color = shop.ink2, modifier = Modifier.padding(end = 14.dp))
+            Text(stringResource(R.string.p3_progress, results.size, list.size), style = Mono.copy(fontSize = 13.sp), color = shop.ink2, modifier = Modifier.padding(end = 14.dp))
         }
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            list.forEach { s ->
+            list.forEachIndexed { index, s ->
                 val c = when (results[s.id]) { true -> shop.ok; false -> shop.bad; null -> shop.line }
-                Box(Modifier.weight(1f).height(4.dp).background(c, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+                Box(Modifier.weight(1f).height(24.dp).clickable(onClickLabel = s.title) { scope.launch { pager.animateScrollToPage(index) } }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(c))
+                }
             }
         }
         // The plate, with one numbered point per step; the current one breathes. Tapping a point jumps to its card.
@@ -84,19 +89,19 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
         )
         HorizontalPager(pager, Modifier.weight(1f), verticalAlignment = Alignment.Top, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 10.dp) { i ->
             val step = list.getOrNull(i)
-            Sheet(padding = 18.dp) {
+            Sheet(Modifier.verticalScroll(rememberScrollState()), padding = 18.dp) {
                 if (step != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(step.icon, shop.accent, 30.dp)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Cap(stringResource(R.string.step, i + 1, list.size))
-                            SectionTitle(step.title, 18)
+                            SectionTitle(step.title, 24)
                         }
                         results[step.id]?.let { Cap(if (it) stringResource(R.string.fine) else stringResource(R.string.fails), if (it) shop.ok else shop.bad) }
                     }
-                    Text(step.how, fontSize = 14.sp, color = shop.ink)
-                    step.note?.let { Text("⚠ $it", style = Mono.copy(fontSize = 11.sp), color = shop.warn) }
+                    Text(step.how, style = MaterialTheme.typography.bodyLarge, color = shop.ink)
+                    step.note?.let { Row(verticalAlignment = Alignment.CenterVertically) { Icon("warning", shop.warn, 18.dp); Spacer(Modifier.width(8.dp)); Hint(it, shop.warn) } }
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Btn(stringResource(R.string.something_wrong), { answer(step, false) }, Modifier.weight(1f), ghost = true)
@@ -105,7 +110,11 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
                 } else Summary(vm, bike, list, results)
             }
         }
-        Cap(stringResource(R.string.skip_step), modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (pager.currentPage > 0) IconBtn("back", stringResource(R.string.atras), { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } })
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Cap(stringResource(R.string.skip_step)) }
+            if (pager.currentPage < list.size) IconBtn("chev", stringResource(R.string.p3_next), { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } })
+        }
     }
 }
 
