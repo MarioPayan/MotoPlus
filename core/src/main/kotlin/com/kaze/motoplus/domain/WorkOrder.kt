@@ -26,13 +26,25 @@ fun Bike.dueForWorkshop(odo: Double, today: java.time.LocalDate): List<String> =
 
 fun Bike.openOrder() = orders.lastOrNull { !it.closed }
 
+/** The jobs rendered by both workshop screens and counted on the Taller tab. */
+data class WorkshopItems(val partIds: List<String>, val customItems: List<PendingJob>) {
+    val count: Int get() = partIds.size + customItems.size
+}
+
+/** A saved list (including an empty one) wins over automatically suggested due parts. */
+fun Bike.workshopItems(odo: Double, today: java.time.LocalDate): WorkshopItems {
+    val open = openOrder()
+    val ids = (open?.partIds ?: dueForWorkshop(odo, today)).distinct().filter { id -> parts.any { it.id == id } }
+    return WorkshopItems(ids, open?.customItems.orEmpty())
+}
+
 fun Bike.nextOrderNumber() = (orders.maxOfOrNull { it.number } ?: 0) + 1
 
 /** The rider is back: each done job becomes a service record with its cost; the order closes. */
 fun Bike.closeOrder(orderId: String, done: Map<String, Double?>, date: String, km: Int, photo: String?, newId: () -> String): Bike {
     val o = orders.firstOrNull { it.id == orderId } ?: return this
     var b = copy(orders = orders.map { if (it.id == orderId) it.copy(closed = true) else it })
-    for ((partId, cost) in done) b = b.addRecord(ServiceRecord(newId(), partId, date, km, cost, notes = "Orden de trabajo nº ${o.number}", photo = photo))
+    for ((partId, cost) in done) b = b.addRecord(ServiceRecord(newId(), partId, date, km, cost, notes = o.notes, photo = photo))
     return b
 }
 

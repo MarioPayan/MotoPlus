@@ -79,8 +79,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
     if (fixing) ModalBottomSheet(onDismissRequest = { fixing = false; ocrNote = null }, containerColor = shop.sheet) {
         Column(Modifier.padding(horizontal = 20.dp).imePadding(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             SectionTitle(stringResource(R.string.odometer_reading))
-            AppInput(value, { value = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) },
-                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OdometerField(value, { value = it }, Modifier.fillMaxWidth())
             ocrNote?.let { Hint(it) }
             val last = bike.readings.maxOf { it.km }
             val n = value.toIntOrNull()
@@ -198,8 +197,7 @@ fun FuelScreen(vm: AppViewModel, bike: Bike) {
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Header(stringResource(R.string.fillup), { vm.screen = Screen.main })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppInput(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.odo_km)) }, singleLine = true,
-                textStyle = Mono.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OdometerField(km, { km = it }, Modifier.fillMaxWidth())
             Hint(stringResource(R.string.fuel_hint, distance(est.km.toInt())))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AppInput(liters, { liters = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(6) }, Modifier.weight(1f), label = { Text(stringResource(R.string.liters)) }, singleLine = true,

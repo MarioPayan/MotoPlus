@@ -229,8 +229,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun startVisit() {
         val b = bike ?: return
         val o = b.openOrder()
-        visitDraft = VisitDraft(o?.id, o?.partIds.orEmpty(), o?.customItems.orEmpty(),
-            (o?.partIds.orEmpty() + o?.customItems.orEmpty().map { it.id }).toSet(),
+        val items = b.workshopItems(estimate(b, today).km, today)
+        visitDraft = VisitDraft(o?.id, items.partIds, items.customItems,
+            (items.partIds + items.customItems.map { it.id }).toSet(),
             date = today.toString(), km = estimate(b, today).km.toInt().toString())
         screen = Screen.orderReturn
     }

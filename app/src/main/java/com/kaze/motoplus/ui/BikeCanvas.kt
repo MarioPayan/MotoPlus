@@ -27,6 +27,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.domain.Status
 import com.kaze.motoplus.domain.ZoneState
@@ -123,6 +127,8 @@ fun BikeCanvas(
             plate.regions.filter { it.value.contains(x, y) }.minByOrNull { it.value.bounds.width() * it.value.bounds.height() }?.let { onZone(it.key) }
         }
     }
+    val ctx = LocalContext.current
+    val moreLabel: (Int) -> String = { ctx.getString(R.string.callout_more, it) }
     val description = stringResource(R.string.moto_tab)
     val actions = if (onZone == null) emptyList() else plate.bounds.keys.map { zone ->
         CustomAccessibilityAction(zoneName(zone)) { onZone(zone); true }
@@ -156,7 +162,7 @@ fun BikeCanvas(
         }
         // Annotations are drawn in screen space so text keeps its size whatever the zoom.
         fun toScreen(x: Float, y: Float) = Offset((x - view.left) * s, (y - view.top) * s)
-        drawCallouts(plate, callouts, view, ::toScreen, measurer, labelStyle, shop)
+        drawCallouts(plate, callouts, view, ::toScreen, measurer, labelStyle, shop, moreLabel)
         for (pin in pins) {
             val a = plate.anchor(pin.zone) ?: continue
             val o = toScreen(a.x, a.y)
@@ -182,39 +188,42 @@ private fun DrawScope.drawGrid(view: Rect, c: Color, dark: Boolean, s: Float) {
 
 /**
  * Leader lines from each zone to a label in the top or bottom margin, whichever is closer.
- * Labels in a margin are pushed apart left to right so they never overlap.
+ * Keep the most urgent labels at their measured size, with a count for zones that do not fit.
  */
 private fun DrawScope.drawCallouts(
     plate: Plate, callouts: List<Callout>, view: Rect, toScreen: (Float, Float) -> Offset,
-    measurer: androidx.compose.ui.text.TextMeasurer, style: TextStyle, shop: Shop,
+    measurer: androidx.compose.ui.text.TextMeasurer, style: TextStyle, shop: Shop, moreLabel: (Int) -> String,
 ) {
     if (callouts.isEmpty()) return
     val mid = (plate.viewBox[1] + plate.viewBox[3] / 2)
-    val gap = 6.sp.toPx()
+    val gap = 8.dp.toPx()
     for (top in listOf(true, false)) {
-        val row = callouts.mapNotNull { c -> plate.bounds[c.zone]?.let { c to it } }
+        val candidates = callouts.mapNotNull { c -> plate.bounds[c.zone]?.let { c to it } }
             .filter { (_, b) -> (b.center.y < mid) == top }
-            .take(3) // callers pass the most urgent first
-            .map { (c, b) -> Triple(c, toScreen(b.center.x, b.center.y), measurer.measure(c.text, style.copy(color = shop.status(c.status)))) }
-            .sortedBy { it.second.x }
+            .map { (c, b) -> Triple(c, toScreen(b.center.x, b.center.y), measurer.measure(c.text, style, softWrap = false, maxLines = 1)) }
+        val row = layoutCalloutRow(candidates.map { CalloutMetric(it.third.size.width.toFloat(), it.second.x) },
+            size.width, 4.dp.toPx(), gap) { n -> measurer.measure(moreLabel(n), style, softWrap = false).size.width.toFloat() }
         val y = if (top) toScreen(0f, view.top + 34f).y else toScreen(0f, view.bottom - 34f).y
-        val total = row.sumOf { it.third.size.width }.toFloat() + (row.size - 1).coerceAtLeast(0) * gap
-        val shrink = minOf(1f, (size.width - 8f) / total.coerceAtLeast(1f))
-        var cursor = 4f
-        for ((i, item) in row.withIndex()) {
-            val (c, anchor, text) = item
-            val w = text.size.width * shrink
-            val remaining = row.drop(i).sumOf { it.third.size.width } * shrink + (row.size - i - 1) * gap * shrink
-            val left = maxOf(cursor, minOf(anchor.x - w / 2, size.width - 4f - remaining))
-            cursor = left + w + gap * shrink
+        for (placement in row.labels) {
+            val (c, anchor) = candidates[placement.index]
+            if (placement.width < 1f) continue
             val col = shop.status(c.status)
+            val text = measurer.measure(c.text, style.copy(color = col), softWrap = false, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, constraints = Constraints(maxWidth = placement.width.toInt()))
+            val left = placement.left
+            val w = text.size.width.toFloat()
             val elbowX = anchor.x.coerceIn(left, left + w)
-            val textY = if (top) y - text.size.height * shrink else y + 2f
+            val textY = if (top) y - text.size.height else y + 2f
             drawCircle(shop.paper, 3.5.sp.toPx(), anchor)
             drawCircle(col, 3.5.sp.toPx(), anchor, style = Stroke(1.6.sp.toPx()))
             drawLine(col, anchor, Offset(elbowX, y), 1.2.sp.toPx())
             drawLine(col, Offset(left, y), Offset(left + w, y), 1.2.sp.toPx())
-            scale(shrink, pivot = Offset(left, textY)) { drawText(text, topLeft = Offset(left, textY)) }
+            drawText(text, topLeft = Offset(left, textY))
+        }
+        row.summary?.takeIf { it.width >= 1f }?.let { placement ->
+            val text = measurer.measure(moreLabel(row.hidden), style.copy(color = shop.ink2), softWrap = false,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, constraints = Constraints(maxWidth = placement.width.toInt()))
+            drawText(text, topLeft = Offset(placement.left, if (top) y - text.size.height else y + 2f))
         }
     }
 }

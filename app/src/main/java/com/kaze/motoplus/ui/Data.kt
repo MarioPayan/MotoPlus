@@ -123,13 +123,9 @@ fun DataScreen(vm: AppViewModel) {
                     Btn(ctx.getString(R.string.backup_now), { work(ctx.getString(R.string.uploading_backup)) { t -> backupToDrive(ctx, t); BackupPrefs.done(ctx); lastAt = BackupPrefs.lastAt(ctx) } }, Modifier.weight(1f), enabled = busy == null)
                     Btn(ctx.getString(R.string.restore), { work(ctx.getString(R.string.finding_backups)) { t -> val d = DriveClient(t); backups = d.list(d.folder()) } }, Modifier.weight(1f), ghost = true, enabled = busy == null)
                 }
-                Row(Modifier.fillMaxWidth().clickable {
-                    val on = !daily
+                Toggle(ctx.getString(R.string.daily_backup), ctx.getString(R.string.wifi_only), daily) { on ->
                     if (on && token == null) connect { daily = true; BackupPrefs.setEnabled(ctx, true); BackupWorker.schedule(ctx, true) }
                     else { daily = on; BackupPrefs.setEnabled(ctx, on); BackupWorker.schedule(ctx, on) }
-                }, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(ctx.getString(R.string.daily_backup), fontSize = 14.sp); Hint(ctx.getString(R.string.wifi_only)) }
-                    Switch(daily, null)
                 }
                 busy?.let { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Hint(it) } }
                 error?.let { Hint(it, shop.bad) }

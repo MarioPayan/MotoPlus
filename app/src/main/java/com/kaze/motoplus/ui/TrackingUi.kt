@@ -202,17 +202,6 @@ fun KmSourcesScreen(vm: AppViewModel) {
     }
 }
 
-@Composable
-internal fun Toggle(title: String, hint: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Hint(hint)
-        }
-        Switch(on, onChange)
-    }
-}
-
 @SuppressLint("MissingPermission")
 @Composable
 private fun DevicePicker(title: String, noneHint: String, current: Map<String, String>, onDone: (Map<String, String>) -> Unit, onDismiss: () -> Unit) {

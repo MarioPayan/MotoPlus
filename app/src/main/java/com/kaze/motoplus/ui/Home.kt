@@ -119,7 +119,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
             Icon("chev", shop.ink2, 18.dp)
         }
     }
-    if (menu) ModalBottomSheet(onDismissRequest = { menu = false }, containerColor = shop.sheet) {
+    if (menu && !deleting) ModalBottomSheet(onDismissRequest = { menu = false }, containerColor = shop.sheet) {
         Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState())) {
             SectionTitle(name)
             Row(Modifier.padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -136,13 +136,13 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
             }
             SettingsEntry("history", stringResource(R.string.history_action)) { vm.openPart(p.id); menu = false }
             Btn(stringResource(R.string.view_limits), { vm.editing = p.id; menu = false }, Modifier.fillMaxWidth(), ghost = true, icon = "settings")
-            TextButton({ deleting = true; menu = false }) { Text(stringResource(R.string.delete), color = shop.bad) }
+            TextButton({ deleting = true }) { Text(stringResource(R.string.delete), color = shop.bad) }
             Spacer(Modifier.height(20.dp))
         }
     }
     if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text(stringResource(R.string.delete_question, name)) },
         text = { Text(stringResource(R.string.delete_warning)) },
-        confirmButton = { TextButton({ vm.removePart(p.id); deleting = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
+        confirmButton = { TextButton({ vm.removePart(p.id); deleting = false; menu = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
         dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
     if (snoozing) AlertDialog(onDismissRequest = { snoozing = false }, title = { Text(stringResource(R.string.snooze)) }, text = {
         AppInput(days, { days = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.snooze_days)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))

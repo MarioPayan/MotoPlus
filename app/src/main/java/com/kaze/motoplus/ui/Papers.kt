@@ -80,7 +80,7 @@ fun PapersScreen(vm: AppViewModel, bike: Bike) {
                     doc.photos.firstOrNull()?.let { Photo(it, Modifier.fillMaxSize()) } ?: Icon("camera", shop.ink2, 30.dp)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (doc.photos.isNotEmpty() || officialUri(doc) != null) Btn(stringResource(R.string.p3_control), { vm.showingDoc = doc.id; vm.screen = Screen.control }, Modifier.weight(1f), icon = "doc")
+                    if (doc.photos.isNotEmpty()) Btn(stringResource(R.string.p3_control), { vm.showingDoc = doc.id; vm.screen = Screen.control }, Modifier.weight(1f), icon = "doc")
                     Btn(stringResource(R.string.p3_details), { vm.editDoc(doc) }, Modifier.weight(1f), ghost = true, icon = "edit")
                 }
                 if (doc.photos.isNotEmpty()) SourceRow(doc)

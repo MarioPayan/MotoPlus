@@ -1,6 +1,8 @@
 // App aliases to Phosphor regular icons (MIT).
 export const ICONS = {
   "close": "x",
+  "link": "link-simple",
+  "external": "arrow-square-out",
   "trash": "trash",
   "calendar": "calendar-blank",
   "note-pencil": "note-pencil",

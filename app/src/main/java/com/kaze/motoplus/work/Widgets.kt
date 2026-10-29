@@ -30,6 +30,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.kaze.motoplus.R
+import com.kaze.motoplus.ui.partLabel
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.data.Repo
@@ -68,13 +70,13 @@ class SmallWidget : GlanceAppWidget() {
             GlanceModifier.fillMaxSize().background(shop.paper).cornerRadius(24.dp).padding(14.dp).clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (bike == null) { Text("Añade tu moto", style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
+            if (bike == null) { Text(ctx.getString(R.string.add_bike_title), style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
             val (p, s) = urgent(bike, today) ?: return@Column
             Text(bike.model.uppercase(), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace))
             Spacer(GlanceModifier.height(6.dp))
-            Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 180)), p.name, GlanceModifier.size(64.dp))
+            Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 180)), partLabel(p, ctx), GlanceModifier.size(64.dp))
             Spacer(GlanceModifier.height(6.dp))
-            Text(p.name, style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+            Text(partLabel(p, ctx), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
             Text(remaining(s, ctx).uppercase(), style = TextStyle(color = ColorProvider(shop.status(s.status)), fontSize = 10.sp, fontFamily = FontFamily.Monospace), maxLines = 1)
         }
     }
@@ -94,25 +96,25 @@ class LargeWidget : GlanceAppWidget() {
         val today = LocalDate.now()
         val shop = shopFor(dark(ctx))
         Column(GlanceModifier.fillMaxSize().background(shop.paper).cornerRadius(24.dp).padding(horizontal = 14.dp, vertical = 10.dp)) {
-            if (bike == null) { Text("Añade tu moto", style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
+            if (bike == null) { Text(ctx.getString(R.string.add_bike_title), style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
             val odo = estimate(bike, today)
             Row(GlanceModifier.fillMaxWidth().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
-                Text("${bike.model.uppercase()} · SALUD ${health(bike, odo.km, today)}", style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
-                Text("${fmtKm(odo.km.toInt())} KM", style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
+                Text(ctx.getString(R.string.widget_health, bike.model.uppercase(), health(bike, odo.km, today)), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
+                Text(ctx.getString(R.string.p2_km_value, formatKm(odo.km.toInt(), ctx.resources.configuration.locales[0])), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
             }
             Image(
-                ImageProvider(plateBitmap(ctx, bike, shop, today, 720)), "La moto con el estado de cada zona",
+                ImageProvider(plateBitmap(ctx, bike, shop, today, 720)), ctx.getString(R.string.widget_bike_description),
                 GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity<MainActivity>()), contentScale = androidx.glance.layout.ContentScale.Fit,
             )
             Row(GlanceModifier.fillMaxWidth()) {
                 val chain = bike.parts.any { it.id == "chain_lube" }
                 Box(GlanceModifier.defaultWeight().height(34.dp).background(shop.accent).cornerRadius(6.dp)
                     .clickable(if (chain) actionRunCallback<LubeAction>() else actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
-                    Text(if (chain) "ENGRASÉ" else "ABRIR", style = TextStyle(color = ColorProvider(shop.onAccent), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
+                    Text(ctx.getString(if (chain) R.string.widget_lubed else R.string.widget_open), style = TextStyle(color = ColorProvider(shop.onAccent), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
                 }
                 Spacer(GlanceModifier.width(8.dp))
                 Box(GlanceModifier.defaultWeight().height(34.dp).background(shop.sheet2).cornerRadius(6.dp).clickable(actionRunCallback<RideAction>()), contentAlignment = Alignment.Center) {
-                    Text("SALGO", style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
+                    Text(ctx.getString(R.string.widget_start_ride), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
                 }
             }
         }

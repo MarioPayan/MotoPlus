@@ -4,13 +4,36 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kaze.motoplus.R
+import com.kaze.motoplus.domain.formatOdometerInput
+import com.kaze.motoplus.domain.groupedInputCursor
+
+/** The form stores raw digits; the rider edits a grouped, locale-aware odometer. */
+@Composable
+internal fun OdometerField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val locale = LocalConfiguration.current.locales[0]
+    val formatted = formatOdometerInput(value, locale)
+    var field by remember { mutableStateOf(TextFieldValue(formatted, TextRange(formatted.length))) }
+    LaunchedEffect(formatted) {
+        if (field.text != formatted) field = TextFieldValue(formatted, TextRange(formatted.length))
+    }
+    AppInput(field, { next ->
+        val display = formatOdometerInput(next.text, locale)
+        field = TextFieldValue(display, TextRange(groupedInputCursor(next.text, next.selection.end, display)))
+        onChange(display.filter(Char::isDigit))
+    }, modifier, label = { Text(stringResource(R.string.odo_km)) }, singleLine = true,
+        textStyle = Mono.copy(fontSize = 18.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+}
 
 /** One flat input with its label above the field, shared by every form. */
 @Composable

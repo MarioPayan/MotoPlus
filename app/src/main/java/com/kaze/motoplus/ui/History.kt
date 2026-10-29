@@ -178,7 +178,7 @@ fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
     AlertDialog(onDismissRequest = { vm.recording = null }, title = { Text(name) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ServiceDateField(d.date) { d = d.copy(date = it) }
-            FormField(d.km, stringResource(R.string.odo_km), { d = d.copy(km = it.filter(Char::isDigit).take(7)) }, numeric = true)
+            OdometerField(d.km, { d = d.copy(km = it) }, Modifier.fillMaxWidth())
             AmountField(d.cost, { d = d.copy(cost = it) }, Modifier.fillMaxWidth())
             FormField(d.notes, stringResource(R.string.p2_record_notes), { d = d.copy(notes = it.take(500)) }, multiline = true)
             d.photo?.let { Thumb(it, Modifier.size(72.dp)) }

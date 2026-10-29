@@ -63,7 +63,7 @@ object Tracker {
             // Android refused a background start (battery optimisation on): ask the rider to start it.
             val open = PendingIntent.getActivity(ctx, 7, Intent(ctx, MainActivity::class.java).putExtra("startRide", trigger.name), PendingIntent.FLAG_IMMUTABLE)
             notify(ctx, ID_DONE, NotificationCompat.Builder(ctx, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("¿Sales en moto?").setContentText("Toca para registrar la salida. Quita la optimización de batería para que empiece sola.")
+                .setContentTitle(ctx.getString(R.string.ride_start_title)).setContentText(ctx.getString(R.string.ride_start_hint))
                 .setContentIntent(open).setAutoCancel(true).build())
         }
     }
@@ -193,9 +193,9 @@ class RideService : Service() {
         val stop = PendingIntent.getService(this, 3, Intent(this, RideService::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 4, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-            .setContentTitle("Registrando salida · ${"%.1f".format(meter.km)} km")
+            .setContentTitle(getString(R.string.ride_recording, "%.1f".format(meter.km)))
             .setContentText(Tracker.live.value?.label(this) ?: "").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
-            .addAction(0, "Terminar", stop).build()
+            .addAction(0, getString(R.string.ride_stop), stop).build()
     }
 
     private var finished = false
@@ -210,12 +210,12 @@ class RideService : Service() {
         val discarded = discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking)
         if (discarded != null) {
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("Salida descartada · ${getString(if (discarded == DiscardReason.carBluetooth) R.string.p3_car_connected else R.string.android_auto)}").setAutoCancel(true).build())
+                .setContentTitle(getString(R.string.ride_discarded, getString(if (discarded == DiscardReason.carBluetooth) R.string.p3_car_connected else R.string.android_auto))).setAutoCancel(true).build())
         } else if (km >= 0.3 && bike != null) {
             Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis())) }
             ReminderWorker.runNow(this)
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle("Salida registrada: ${"%.1f".format(km)} km").setContentText("${bike.brand} ${bike.model} · ${rideSource(Ride("", km, trigger, device), this).lowercase()}")
+                .setContentTitle(getString(R.string.ride_recorded, "%.1f".format(km))).setContentText("${bike.brand} ${bike.model} · ${rideSource(Ride("", km, trigger, device), this).lowercase()}")
                 .setContentIntent(PendingIntent.getActivity(this, 5, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
                 .setAutoCancel(true).build())
         }
@@ -267,6 +267,6 @@ class BootReceiver : BroadcastReceiver() {
 
 fun createRideChannel(ctx: Context) {
     ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(
-        NotificationChannel(CHANNEL_RIDE, "Salidas", NotificationManager.IMPORTANCE_LOW).apply { description = "Registro de kilómetros de cada salida" }
+        NotificationChannel(CHANNEL_RIDE, ctx.getString(R.string.ride_channel), NotificationManager.IMPORTANCE_LOW).apply { description = ctx.getString(R.string.ride_channel_hint) }
     )
 }

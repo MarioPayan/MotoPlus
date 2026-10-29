@@ -5,7 +5,7 @@ App Android para llevar el mantenimiento de la moto por piezas. La moto se dibuj
 Kotlin + Jetpack Compose, solo Android. Todo vive en el móvil (`garage.json` en el almacenamiento de la app); no hay servidor.
 
 - `core/`: el modelo y sus reglas en Kotlin puro, sin Android. `GarageCodec` es el único formato de datos (archivo local, exportaciones, copias) y migra versiones viejas al leer.
-- `app/`: pantallas, avisos y registro de salidas. Los textos de la fase 1 viven en los recursos `values/`, `values-es-rCO/` y `values-en/`; las pantallas pendientes de las fases 2/3 conservan los textos antiguos. El código y los ids van en inglés.
+- `app/`: pantallas, avisos y registro de salidas. Los textos de las fases 1 y 2 viven en los recursos `values/`, `values-es-rCO/` y `values-en/`; las pantallas pendientes de la fase 3 conservan los textos antiguos. El código y los ids van en inglés.
 
 ## Comandos
 
@@ -35,6 +35,6 @@ node tools/icons/build.mjs            # regenera los vectores Phosphor y ui/Icon
 
 ## Informe IA
 
-1. *Compartir con mi IA* manda el estado completo de la moto por el menú Compartir de Android.
-2. La IA responde con un bloque ```` ```motoplus ```` en JSON, o con un enlace `https://motoplus.app/i#r=<base64url>`.
-3. El usuario comparte esa respuesta de vuelta a MotoPlus (o la pega) y la app la guarda y marca las zonas en la lámina.
+1. *Compartir con la IA* manda el estado completo de la moto por el menú Compartir de Android.
+2. La IA responde con un bloque ```` ```motoplus ```` en JSON, o con un enlace `https://motoplus.app/r?d=<base64url>` (JSON compacto UTF-8, versión 3; `kind`: `report` o `invoice`).
+3. El usuario comparte esa respuesta de vuelta a MotoPlus (o la pega) y la app abre **Revisar informe** antes de guardar y marcar las zonas. Las facturas abren **Completar visita** para revisar trabajos y costos. También acepta `motoplus://r?d=…` y los enlaces antiguos `/i#r=…`.

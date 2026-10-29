@@ -30,7 +30,7 @@ import java.util.UUID
 
 @Composable
 fun WorkshopTab(vm: AppViewModel, bike: Bike) {
-    val count = bike.openOrder()?.let { it.partIds.size + it.customItems.size } ?: 0
+    val count = bike.workshopItems(estimate(bike, vm.today).km, vm.today).count
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Sheet {
             SectionTitle(stringResource(R.string.workshop_tab))
@@ -79,8 +79,9 @@ internal fun FormField(value: String, label: String, onChange: (String) -> Unit,
 @Composable
 fun OrderScreen(vm: AppViewModel, bike: Bike) {
     val open = bike.openOrder()
-    var ids by remember(bike.id, open?.id) { mutableStateOf(open?.partIds ?: bike.dueForWorkshop(estimate(bike, vm.today).km, vm.today)) }
-    var custom by remember(bike.id, open?.id) { mutableStateOf(open?.customItems.orEmpty()) }
+    val items = bike.workshopItems(estimate(bike, vm.today).km, vm.today)
+    var ids by remember(bike.id, open?.id) { mutableStateOf(items.partIds) }
+    var custom by remember(bike.id, open?.id) { mutableStateOf(items.customItems) }
     var notes by remember(bike.id, open?.id) { mutableStateOf(open?.notes.orEmpty()) }
     var itemNotes by remember(bike.id, open?.id) { mutableStateOf(open?.itemNotes.orEmpty()) }
     var notesOpen by remember { mutableStateOf(emptySet<String>()) }
@@ -241,7 +242,7 @@ fun OrderReturnScreen(vm: AppViewModel, bike: Bike) {
             Text(currencyMoney(d.done.sumOf { d.costs[it] ?: 0.0 }, currency), style = Mono.copy(fontSize = 24.sp))
         }
         ServiceDateField(d.date) { vm.visitDraft = d.copy(date = it) }
-        FormField(d.km, stringResource(R.string.odo_km), { vm.visitDraft = d.copy(km = it.filter(Char::isDigit).take(7)) }, numeric = true)
+        OdometerField(d.km, { vm.visitDraft = d.copy(km = it) }, Modifier.fillMaxWidth())
         Row(verticalAlignment = Alignment.CenterVertically) {
             d.photo?.let { Thumb(it, Modifier.size(56.dp)) }
             Btn(stringResource(if (d.photo == null) R.string.p2_invoice_photo else R.string.p2_invoice_replace), { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, ghost = true, icon = "camera")

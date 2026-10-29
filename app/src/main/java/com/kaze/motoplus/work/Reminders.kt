@@ -17,6 +17,7 @@ import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.Status
 import com.kaze.motoplus.domain.dueAlerts
 import com.kaze.motoplus.domain.estimate
+import com.kaze.motoplus.ui.partLabel
 import com.kaze.motoplus.ui.remaining
 import com.kaze.motoplus.ui.documentLabel
 import com.kaze.motoplus.domain.docAlerts
@@ -51,8 +52,8 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
 fun createChannels(ctx: Context) {
     val nm = ctx.getSystemService(NotificationManager::class.java)
     listOf("mantenimiento", "salida").forEach(nm::deleteNotificationChannel) // ids used up to 0.9.0
-    nm.createNotificationChannel(NotificationChannel(CHANNEL_MAINTENANCE, "Mantenimiento", NotificationManager.IMPORTANCE_DEFAULT).apply {
-        description = "Piezas que toca revisar o cambiar"
+    nm.createNotificationChannel(NotificationChannel(CHANNEL_MAINTENANCE, ctx.getString(R.string.maintenance_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+        description = ctx.getString(R.string.maintenance_channel_hint)
     })
 }
 
@@ -64,14 +65,14 @@ fun notifyDue(ctx: Context) {
         if (alerts.isNotEmpty() && allowed) {
             val (first, state) = alerts.first()
             val overdue = alerts.count { it.second.status == Status.bad }
-            val title = if (overdue > 0) "${bike.brand} ${bike.model}: toca mantenimiento" else "${bike.brand} ${bike.model}: se acerca un mantenimiento"
-            val more = if (alerts.size > 1) " y ${alerts.size - 1} más" else ""
+            val title = ctx.getString(if (overdue > 0) R.string.maintenance_due else R.string.maintenance_soon, bike.title)
+            val more = if (alerts.size > 1) ctx.getString(R.string.alerts_more, alerts.size - 1) else ""
             val open = PendingIntent.getActivity(ctx, bike.id.hashCode(), Intent(ctx, MainActivity::class.java).putExtra("bike", bike.id), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val n = NotificationCompat.Builder(ctx, CHANNEL_MAINTENANCE)
                 .setSmallIcon(R.drawable.ic_stat_moto)
                 .setContentTitle(title)
-                .setContentText("${first.name}: ${remaining(state, ctx).lowercase()}$more")
-                .setStyle(NotificationCompat.BigTextStyle().bigText(alerts.joinToString("\n") { "• ${it.first.name}: ${remaining(it.second, ctx).lowercase()}" }))
+                .setContentText("${partLabel(first, ctx)}: ${remaining(state, ctx).lowercase()}$more")
+                .setStyle(NotificationCompat.BigTextStyle().bigText(alerts.joinToString("\n") { "• ${partLabel(it.first, ctx)}: ${remaining(it.second, ctx).lowercase()}" }))
                 .setContentIntent(open).setAutoCancel(true).build()
             try { NotificationManagerCompat.from(ctx).notify(bike.id.hashCode(), n) } catch (e: SecurityException) { return }
         }
@@ -88,11 +89,11 @@ private fun notifyPapers(ctx: Context, today: LocalDate, allowed: Boolean) {
     val sent = mutableMapOf<String, Int>()
     for ((d, stage) in docAlerts(g.documents, today, g.paperReminderDays)) {
         val left = docState(d, today).daysLeft ?: continue
-        val whose = g.bikes.firstOrNull { it.id == d.bikeId }?.let { "${it.brand} ${it.model}" } ?: "Tus papeles"
+        val whose = g.bikes.firstOrNull { it.id == d.bikeId }?.let { "${it.brand} ${it.model}" } ?: ctx.getString(R.string.rider_papers)
         val text = when {
-            left < 0 -> "${documentLabel(d, ctx)} venció hace ${-left} ${if (left == -1L) "día" else "días"}"
-            left == 0L -> "${documentLabel(d, ctx)} vence hoy"
-            else -> "${documentLabel(d, ctx)} vence en $left ${if (left == 1L) "día" else "días"}"
+            left < 0 -> ctx.getString(if (left == -1L) R.string.doc_expired_day else R.string.doc_expired_days, documentLabel(d, ctx), -left)
+            left == 0L -> ctx.getString(R.string.doc_expires_today, documentLabel(d, ctx))
+            else -> ctx.getString(if (left == 1L) R.string.doc_expires_day else R.string.doc_expires_days, documentLabel(d, ctx), left)
         }
         val open = PendingIntent.getActivity(ctx, d.id.hashCode(), Intent(ctx, MainActivity::class.java).putExtra("papers", d.bikeId ?: ""), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(ctx, CHANNEL_MAINTENANCE).setSmallIcon(R.drawable.ic_stat_moto)
