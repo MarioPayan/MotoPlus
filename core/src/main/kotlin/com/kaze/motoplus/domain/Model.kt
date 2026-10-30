@@ -40,6 +40,10 @@ data class Part(
     val snoozedUntil: String? = null,
     val timeUnit: IntervalUnit = IntervalUnit.days,
     val timeValue: String? = null,
+    /** Only custom parts store one; template parts take theirs from [TEMPLATE_CATEGORIES]. */
+    val category: PartCategory? = null,
+    /** Unwatched parts keep their history but leave health, alerts, Lo próximo, reminders and the drawing. */
+    val watched: Boolean = true,
 )
 
 @Serializable

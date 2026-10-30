@@ -13,7 +13,8 @@ enum class Measure { km, days }
 /** How far a part is through its interval. [left] counts in [measure] and goes negative once overdue; null measure = never recorded. */
 data class PartState(val status: Status, val used: Double, val measure: Measure?, val left: Int)
 
-data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair<Part, PartState>>)
+/** [parts] are the zone's watched parts, which set its status; [all] adds the unwatched ones, shown dimmed. No watched part leaves the zone ok and [parts] empty. */
+data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair<Part, PartState>>, val all: List<Pair<Part, PartState>> = parts)
 
 enum class EstimateBasis { rides, todayReading, lastReading, average }
 
@@ -75,23 +76,31 @@ private val rank = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2, Stat
 
 fun zoneStates(bike: Bike, odo: Double, today: LocalDate): Map<String, ZoneState> =
     Zone.entries.map { it.id }.associateWith { z ->
-        val parts = bike.parts.filter { it.zone == z }.map { it to partState(it, odo, today) }
+        val all = bike.parts.filter { it.zone == z }.map { it to partState(it, odo, today) }
             .sortedByDescending { it.second.used }
+        val parts = all.filter { it.first.watched }
         ZoneState(
             status = parts.maxByOrNull { rank.getValue(it.second.status) }?.second?.status ?: Status.ok,
             worst = parts.maxOfOrNull { it.second.used } ?: 0.0,
             parts = parts,
+            all = all,
         )
     }
 
-/** 0–100: an ok part counts 1, a part coming due counts half, overdue or unknown counts 0. */
+/** 0–100 over the watched parts: an ok part counts 1, a part coming due counts half, overdue or unknown counts 0. */
 fun health(bike: Bike, odo: Double, today: LocalDate): Int {
-    if (bike.parts.isEmpty()) return 100
-    val score = bike.parts.sumOf {
+    val watched = bike.watchedParts
+    if (watched.isEmpty()) return 100
+    val score = watched.sumOf {
         when (partState(it, odo, today).status) { Status.ok -> 1.0; Status.warn -> 0.5; else -> 0.0 }
     }
-    return (100 * score / bike.parts.size).roundToInt()
+    return (100 * score / watched.size).roundToInt()
 }
+
+/** Lo próximo: watched parts that need attention and are not snoozed, most used first. */
+fun upNext(bike: Bike, odo: Double, today: LocalDate): List<Pair<Part, PartState>> =
+    bike.watchedParts.map { it to partState(it, odo, today) }.filter { it.second.status != Status.ok && !it.first.snoozed(today) }
+        .sortedByDescending { it.second.used }
 
 /** Records a real odometer reading and, when GPS rides covered the gap, recalibrates the GPS factor. */
 fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
@@ -125,19 +134,19 @@ fun fmtKm(n: Int): String = "%,d".format(java.util.Locale.ROOT, n).replace(',', 
 
 /**
  * Parts that got worse since we last told the rider (ok → coming due → overdue), plus the new baseline.
- * Never-recorded parts are not news: the rider sees them in red already.
+ * Never-recorded parts are not news: the rider sees them in red already. Unwatched and snoozed parts keep their old baseline.
  */
 fun dueAlerts(bike: Bike, odo: Double, today: LocalDate): Pair<List<Pair<Part, PartState>>, Map<String, Status>> {
     val now = bike.parts.associate { it.id to partState(it, odo, today) }
     val sev = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2)
     val worse = bike.parts.mapNotNull { p ->
         val s = now.getValue(p.id)
-        if (p.snoozed(today)) return@mapNotNull null
+        if (p.snoozed(today) || !p.watched) return@mapNotNull null
         val before = sev[bike.notified[p.id] ?: Status.ok] ?: 0
         val after = sev[s.status] ?: return@mapNotNull null
         if (after > before) p to s else null
     }.sortedByDescending { it.second.used }
-    return worse to now.mapValues { (id, state) -> if (bike.parts.first { it.id == id }.snoozed(today)) bike.notified[id] ?: Status.ok else state.status }
+    return worse to now.mapValues { (id, state) -> bike.parts.first { it.id == id }.let { p -> if (p.snoozed(today) || !p.watched) bike.notified[id] ?: Status.ok else state.status } }
 }
 
 /** Shared health meter bands. */

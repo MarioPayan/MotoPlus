@@ -19,9 +19,9 @@ data class WorkOrder(
 @Serializable
 data class PendingJob(val id: String, val name: String, val note: String = "")
 
-/** Parts worth taking to the workshop now: overdue or coming due, most urgent first. */
+/** Watched parts worth taking to the workshop now: overdue or coming due, most urgent first. */
 fun Bike.dueForWorkshop(odo: Double, today: java.time.LocalDate): List<String> =
-    parts.map { it to partState(it, odo, today) }.filter { it.second.status == Status.bad || it.second.status == Status.warn }
+    watchedParts.map { it to partState(it, odo, today) }.filter { it.second.status == Status.bad || it.second.status == Status.warn }
         .sortedByDescending { it.second.used }.map { it.first.id }
 
 fun Bike.openOrder() = orders.lastOrNull { !it.closed }

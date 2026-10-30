@@ -58,3 +58,13 @@ fun silhouette(c: Category) = when (c) {
     Category.custom -> "custom"
     Category.scooter -> "scooter"
 }
+
+/** Every template part's category and its fixed place inside it: front before rear. */
+val TEMPLATE_CATEGORIES: Map<PartCategory, List<String>> = linkedMapOf(
+    PartCategory.tires to listOf("front_tire", "rear_tire", "tire_pressure"),
+    PartCategory.brakes to listOf("front_pads", "rear_pads", "brake_fluid"),
+    PartCategory.engine to listOf("engine_oil", "oil_filter", "spark_plugs", "valve_clearance", "air_filter", "coolant"),
+    PartCategory.drivetrain to listOf("chain_lube", "chain_tension", "chain_kit", "belt_tension", "drive_belt", "shaft_oil", "cvt_belt", "cvt_rollers", "gear_oil"),
+    PartCategory.suspension to listOf("fork_oil", "shock_service"),
+    PartCategory.electrical to listOf("battery_check", "lights_check"),
+)
