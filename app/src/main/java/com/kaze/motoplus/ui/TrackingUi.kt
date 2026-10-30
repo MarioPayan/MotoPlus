@@ -46,7 +46,7 @@ fun TrackingSummary(vm: AppViewModel) {
     }
     Sheet {
         live?.let { r ->
-            Text(ctx.getString(R.string.live_ride, "%.1f".format(r.km)), fontWeight = FontWeight.SemiBold, color = shop.accent)
+            Text(ctx.getString(R.string.live_ride, decimal(r.km)), fontWeight = FontWeight.SemiBold, color = shop.accent)
             Hint(ctx.getString(when (r.trigger) { RideTrigger.manual -> R.string.manual; RideTrigger.motion -> R.string.motion; RideTrigger.bluetooth -> R.string.bluetooth }))
             Btn(ctx.getString(R.string.finish_ride), { Tracker.stop(ctx) }, Modifier.fillMaxWidth())
         } ?: Btn(ctx.getString(R.string.start_ride), {

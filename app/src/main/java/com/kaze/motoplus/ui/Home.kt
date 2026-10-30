@@ -23,8 +23,6 @@ import com.kaze.motoplus.saveOrder
 import com.kaze.motoplus.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.domain.*
 
@@ -140,12 +138,9 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
             Spacer(Modifier.height(20.dp))
         }
     }
-    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text(stringResource(R.string.delete_question, name)) },
-        text = { Text(stringResource(R.string.delete_warning)) },
-        confirmButton = { TextButton({ vm.removePart(p.id); deleting = false; menu = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
-        dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
+    if (deleting) ConfirmDelete(name, { deleting = false }) { vm.removePart(p.id); deleting = false; menu = false }
     if (snoozing) AlertDialog(onDismissRequest = { snoozing = false }, title = { Text(stringResource(R.string.snooze)) }, text = {
-        AppInput(days, { days = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.snooze_days)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        IntegerField(days, { days = it }, stringResource(R.string.snooze_days), maxDigits = 3)
     }, confirmButton = { TextButton({ vm.snooze(p.id, days.toLong()); snoozing = false }, enabled = days.toIntOrNull() in 1..365) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton({ snoozing = false }) { Text(stringResource(R.string.cancel)) } })
 }
@@ -153,7 +148,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
 @Composable
 fun localizedInterval(p: Part): String = listOfNotNull(
     p.km?.let { stringResource(R.string.every_km, distance(it)) },
-    p.days?.let { stringResource(R.string.p3_every_time, IntervalInput.from(p).text, intervalUnitLabel(p.timeUnit)) },
+    p.days?.let { stringResource(R.string.p3_every_time_value, localizedTimeInterval(p)) },
 ).joinToString(stringResource(R.string.or)).ifEmpty { stringResource(R.string.no_interval) }
 
 @Composable

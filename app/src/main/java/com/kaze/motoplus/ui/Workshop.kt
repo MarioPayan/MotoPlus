@@ -70,10 +70,14 @@ internal fun WorkshopPage(title: String, onBack: () -> Unit, footer: @Composable
 
 @Composable
 internal fun FormField(value: String, label: String, onChange: (String) -> Unit, numeric: Boolean = false, multiline: Boolean = false) {
+    if (numeric) {
+        IntegerField(value, onChange, label, Modifier.fillMaxWidth())
+        return
+    }
     AppInput(value, onChange, Modifier.fillMaxWidth(), label = { Text(label) },
-        textStyle = if (numeric) Mono.copy(fontSize = 18.sp) else MaterialTheme.typography.bodyLarge,
+        textStyle = MaterialTheme.typography.bodyLarge,
         singleLine = !multiline, minLines = if (multiline) 2 else 1,
-        keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text))
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
 }
 
 @Composable
@@ -88,6 +92,8 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
     var orderNote by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
+    var deletingPart by remember { mutableStateOf<String?>(null) }
+    var deletingCustom by remember { mutableStateOf<PendingJob?>(null) }
     val ctx = LocalContext.current
     fun persist() = vm.saveOrder(ids, notes, custom, itemNotes)
     WorkshopPage(stringResource(R.string.p2_workshop_list), { persist(); vm.screen = Screen.main }, footer = {
@@ -113,7 +119,7 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
                     Icon(partIcon(part), LocalShop.current.ink2)
                     Text(partLabel(part), Modifier.weight(1f).padding(start = 10.dp))
                     IconBtn("note-pencil", stringResource(R.string.p2_add_note), { notesOpen = notesOpen + id })
-                    IconBtn("close", stringResource(R.string.delete), { ids = ids - id; itemNotes = itemNotes - id; persist() })
+                    IconBtn("close", stringResource(R.string.delete), { deletingPart = id })
                 }
                 if (id in notesOpen || !itemNotes[id].isNullOrBlank()) FormField(itemNotes[id].orEmpty(), stringResource(R.string.p2_job_note), { itemNotes = itemNotes + (id to it.take(400)); persist() }, multiline = true)
             }
@@ -123,7 +129,7 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
                 Icon("wrench", LocalShop.current.ink2)
                 Text(job.name, Modifier.weight(1f).padding(start = 10.dp))
                 IconBtn("note-pencil", stringResource(R.string.p2_add_note), { notesOpen = notesOpen + job.id })
-                IconBtn("close", stringResource(R.string.delete), { custom = custom.filterNot { it.id == job.id }; persist() })
+                IconBtn("close", stringResource(R.string.delete), { deletingCustom = job })
             }
             if (job.id in notesOpen || job.note.isNotBlank()) FormField(job.note, stringResource(R.string.p2_job_note), { value -> custom = custom.map { if (it.id == job.id) it.copy(note = value.take(400)) else it }; persist() }, multiline = true)
         } }
@@ -136,7 +142,18 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
         }
         Btn(stringResource(R.string.save), { persist(); vm.screen = Screen.main; vm.message = ctx.getString(R.string.p2_pending_saved) }, Modifier.fillMaxWidth(), ghost = true)
     }
-    if (picking) PartPicker(bike, ids.toSet(), { id -> ids = if (id in ids) ids - id else ids + id; persist() }, { picking = false })
+    deletingPart?.let { id ->
+        val name = bike.parts.firstOrNull { it.id == id }?.let { partLabel(it) }.orEmpty()
+        ConfirmDelete(name, { deletingPart = null }) {
+            ids = ids - id; itemNotes = itemNotes - id; persist(); deletingPart = null
+        }
+    }
+    deletingCustom?.let { job -> ConfirmDelete(job.name, { deletingCustom = null }) {
+        custom = custom.filterNot { it.id == job.id }; persist(); deletingCustom = null
+    } }
+    if (picking) PartPicker(bike, ids.toSet(), { id ->
+        if (id in ids) { picking = false; deletingPart = id } else { ids = ids + id; persist() }
+    }, { picking = false })
     if (adding) NewJobDialog(bike, ids.toSet(), allowParts = false, onDismiss = { adding = false }) { id, name, _ ->
         custom = custom + PendingJob(id ?: UUID.randomUUID().toString(), name)
         persist(); adding = false
@@ -166,11 +183,12 @@ internal fun PartPicker(bike: Bike, picked: Set<String>, onToggle: (String) -> U
 }
 
 @Composable
-internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, label: String? = null) {
     val locale = LocalConfiguration.current.locales[0]
     val currency = LocalCurrency.current
-    var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
-    LaunchedEffect(value) { if (field.text != value) field = TextFieldValue(value, TextRange(value.length)) }
+    val display = formatAmountInput(value, currency, locale)
+    var field by remember { mutableStateOf(TextFieldValue(display, TextRange(display.length))) }
+    LaunchedEffect(display) { if (field.text != display) field = TextFieldValue(display, TextRange(display.length)) }
     AppInput(field, { next ->
         val formatted = formatAmountInput(next.text, currency, locale)
         val significant = next.text.take(next.selection.end).count { it.isDigit() || it == java.text.DecimalFormatSymbols.getInstance(locale).decimalSeparator }
@@ -181,7 +199,7 @@ internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Mo
         }.let { if (significant == 0) 0 else if (it < 0) formatted.length else it + 1 }
         field = TextFieldValue(formatted, TextRange(cursor))
         onChange(formatted)
-    }, modifier, enabled = enabled, label = { Text(stringResource(R.string.p2_cost)) }, singleLine = true,
+    }, modifier, enabled = enabled, label = { Text(label ?: stringResource(R.string.p2_cost)) }, singleLine = true,
         textStyle = Mono.copy(fontSize = 16.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
 }
 

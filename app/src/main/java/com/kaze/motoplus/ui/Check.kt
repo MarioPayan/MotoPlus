@@ -9,6 +9,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -87,7 +88,7 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
             focus = list.getOrNull(pager.currentPage)?.zone,
             onZone = { z -> list.indexOfFirst { it.zone == z }.takeIf { it >= 0 }?.let { scope.launch { pager.animateScrollToPage(it) } } },
         )
-        HorizontalPager(pager, Modifier.weight(1f), verticalAlignment = Alignment.Top, contentPadding = PaddingValues(horizontal = 22.dp), pageSpacing = 10.dp) { i ->
+        HorizontalPager(pager, Modifier.weight(1f).padding(horizontal = 22.dp).clipToBounds(), verticalAlignment = Alignment.Top, pageSpacing = 10.dp) { i ->
             val step = list.getOrNull(i)
             Sheet(Modifier.verticalScroll(rememberScrollState()), padding = 18.dp) {
                 if (step != null) {
@@ -112,7 +113,7 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (pager.currentPage > 0) IconBtn("back", stringResource(R.string.atras), { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } })
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Cap(stringResource(R.string.skip_step)) }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { if (pager.currentPage < list.size) Cap(stringResource(R.string.skip_step)) }
             if (pager.currentPage < list.size) IconBtn("chev", stringResource(R.string.p3_next), { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } })
         }
     }

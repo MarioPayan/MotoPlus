@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.R
@@ -84,8 +82,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
                     TextButton({ pick = null }, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.change_model)) }
                 }
             }
-            AppInput(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.year)) },
-                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            IntegerField(year, { year = it }, stringResource(R.string.year), Modifier.fillMaxWidth(), maxDigits = 4, grouping = false)
             Hint(stringResource(R.string.type))
             ChoiceRow(Category.entries.map { it.name to categoryLabel(it) }, category.name) {
                 category = Category.valueOf(it); drive = defaultDrive(category); cooling = defaultCooling(category)
@@ -94,8 +91,7 @@ fun AddBikeScreen(vm: AppViewModel, canCancel: Boolean) {
             ChoiceRow(Drive.entries.map { it.name to driveLabel(it) }, drive.name) { drive = Drive.valueOf(it) }
             Hint(stringResource(R.string.cooling))
             ChoiceRow(Cooling.entries.map { it.name to coolingLabel(it) }, cooling.name) { cooling = Cooling.valueOf(it) }
-            AppInput(km, { km = it.filter(Char::isDigit).take(7) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.current_km)) },
-                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            IntegerField(km, { km = it }, stringResource(R.string.current_km), Modifier.fillMaxWidth())
             Row(
                 Modifier.fillMaxWidth().toggleable(allDone, role = androidx.compose.ui.semantics.Role.Checkbox) { allDone = it },
                 verticalAlignment = Alignment.CenterVertically,

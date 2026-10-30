@@ -569,4 +569,9 @@
     <string name="doc_expires_day">%1$s vence en %2$d día</string>
     <string name="doc_expires_days">%1$s vence en %2$d días</string>
     <string name="backup_network_error">Error de red</string>
+    <string name="p3_every_time_value">cada %1$s</string>
+    <string name="p3_time_value">%1$s %2$s</string>
+    <plurals name="interval_days"><item quantity="one">día</item><item quantity="other">días</item></plurals>
+    <plurals name="interval_months"><item quantity="one">mes</item><item quantity="other">meses</item></plurals>
+    <plurals name="interval_years"><item quantity="one">año</item><item quantity="other">años</item></plurals>
 </resources>

@@ -27,7 +27,17 @@ data class IntervalInput(
     fun toDays(): Int? = anchorDays?.takeIf { it.isFinite() && it > 0 && it <= Int.MAX_VALUE }?.roundToInt()?.coerceAtLeast(1)
 
     companion object {
-        fun from(part: Part): IntervalInput = part.timeValue?.let { IntervalInput(it, part.timeUnit, anchorDays = part.days?.toDouble()) }
-            ?: IntervalInput(part.days?.toString().orEmpty()).switchTo(part.timeUnit)
+        fun from(part: Part): IntervalInput {
+            part.timeValue?.let { return IntervalInput(it, part.timeUnit, anchorDays = part.days?.toDouble()) }
+            if (part.timeUnit != IntervalUnit.days) return IntervalInput(part.days?.toString().orEmpty()).switchTo(part.timeUnit)
+            val days = part.days ?: return IntervalInput()
+            // Old/template intervals have no chosen display unit. Keep their exact day limit.
+            val (unit, factor) = when {
+                days > 0 && days % 365 == 0 -> IntervalUnit.years to 365
+                days > 0 && days % 30 == 0 -> IntervalUnit.months to 30
+                else -> IntervalUnit.days to 1
+            }
+            return IntervalInput((days / factor).toString(), unit, anchorDays = days.toDouble())
+        }
     }
 }

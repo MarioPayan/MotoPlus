@@ -569,4 +569,9 @@
     <string name="doc_expires_day">%1$s expires in %2$d day</string>
     <string name="doc_expires_days">%1$s expires in %2$d days</string>
     <string name="backup_network_error">Network error</string>
+    <string name="p3_every_time_value">every %1$s</string>
+    <string name="p3_time_value">%1$s %2$s</string>
+    <plurals name="interval_days"><item quantity="one">day</item><item quantity="other">days</item></plurals>
+    <plurals name="interval_months"><item quantity="one">month</item><item quantity="other">months</item></plurals>
+    <plurals name="interval_years"><item quantity="one">year</item><item quantity="other">years</item></plurals>
 </resources>

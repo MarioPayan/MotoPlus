@@ -15,24 +15,46 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.R
-import com.kaze.motoplus.domain.formatOdometerInput
-import com.kaze.motoplus.domain.groupedInputCursor
+import com.kaze.motoplus.domain.*
 
 /** The form stores raw digits; the rider edits a grouped, locale-aware odometer. */
 @Composable
 internal fun OdometerField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    IntegerField(value, onChange, stringResource(R.string.odo_km), modifier)
+}
+
+@Composable
+internal fun IntegerField(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, maxDigits: Int = 7, grouping: Boolean = true) {
     val locale = LocalConfiguration.current.locales[0]
-    val formatted = formatOdometerInput(value, locale)
+    val formatted = formatIntegerInput(value, locale, maxDigits, grouping)
     var field by remember { mutableStateOf(TextFieldValue(formatted, TextRange(formatted.length))) }
     LaunchedEffect(formatted) {
         if (field.text != formatted) field = TextFieldValue(formatted, TextRange(formatted.length))
     }
     AppInput(field, { next ->
-        val display = formatOdometerInput(next.text, locale)
+        val display = formatIntegerInput(next.text, locale, maxDigits, grouping)
         field = TextFieldValue(display, TextRange(groupedInputCursor(next.text, next.selection.end, display)))
         onChange(display.filter(Char::isDigit))
-    }, modifier, label = { Text(stringResource(R.string.odo_km)) }, singleLine = true,
+    }, modifier, label = { Text(label) }, singleLine = true,
         textStyle = Mono.copy(fontSize = 18.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+}
+
+@Composable
+internal fun DecimalField(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, maxFractionDigits: Int = 1) {
+    val locale = LocalConfiguration.current.locales[0]
+    val formatted = formatDecimalInput(value, locale, maxFractionDigits)
+    var field by remember { mutableStateOf(TextFieldValue(formatted, TextRange(formatted.length))) }
+    LaunchedEffect(formatted) {
+        if (field.text != formatted) field = TextFieldValue(formatted, TextRange(formatted.length))
+    }
+    AppInput(field, { next ->
+        val canonical = decimalInput(next.text, maxFractionDigits)
+        val display = formatDecimalInput(canonical, locale, maxFractionDigits)
+        val significant = next.text.take(next.selection.end).count { it.isDigit() || it == ',' || it == '.' }
+        field = TextFieldValue(display, TextRange(significant.coerceAtMost(display.length)))
+        onChange(canonical)
+    }, modifier, label = { Text(label) }, singleLine = true,
+        textStyle = Mono.copy(fontSize = 18.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
 }
 
 /** One flat input with its label above the field, shared by every form. */

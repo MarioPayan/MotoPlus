@@ -188,7 +188,5 @@ fun RecordDialog(vm: AppViewModel, bike: Bike, draft: RecordDraft) {
         }
     }, confirmButton = { TextButton({ vm.saveRecord(d) }, enabled = valid) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton({ vm.recording = null }) { Text(stringResource(R.string.cancel)) } })
-    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text(stringResource(R.string.p2_delete_question, name)) }, text = { Text(stringResource(R.string.p2_delete_warning)) },
-        confirmButton = { TextButton({ d.id?.let(vm::deleteRecord); deleting = false }) { Text(stringResource(R.string.delete), color = LocalShop.current.bad) } },
-        dismissButton = { TextButton({ deleting = false }) { Text(stringResource(R.string.cancel)) } })
+    if (deleting) ConfirmDelete(name, { deleting = false }) { d.id?.let(vm::deleteRecord); deleting = false }
 }

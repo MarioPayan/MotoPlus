@@ -7,6 +7,18 @@ import java.time.LocalDate
 class FuelTest {
     private val today = LocalDate.parse("2026-10-25")
 
+    @Test fun monthlyAverageRequiresThirtyDaysOfActualReadings() {
+        fun bike(vararg readings: Reading) = Bike("b", "Y", "M", null, Category.naked,
+            Drive.chain, Cooling.air, emptyList(), readings.toList())
+        val first = Reading("2026-10-01", 1000)
+        assertNull(monthlyAverage(bike(), today))
+        assertNull(monthlyAverage(bike(first), today.plusDays(90)))
+        assertNull(monthlyAverage(bike(first, Reading("2026-10-30", 39950)), today.plusDays(90)))
+        assertEquals(38950, monthlyAverage(bike(first, Reading("2026-10-31", 39950)), LocalDate.parse("2026-10-31")))
+        assertEquals(300, monthlyAverage(bike(first, Reading("2026-11-30", 1600)), LocalDate.parse("2026-11-30")))
+        assertNull(monthlyAverage(bike(first, Reading("2026-11-30", 1600)), today))
+    }
+
     @Test fun consumptionBetweenFullTanks() {
         val s = fuelStats(listOf(
             FuelEntry("1", "2026-10-01", 12000, 10.0, 160000.0),

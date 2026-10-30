@@ -303,10 +303,7 @@ fun DocScreen(vm: AppViewModel, draft: Document) {
             Btn(stringResource(R.string.save), { vm.saveDoc(d) }, Modifier.weight(1f), enabled = (d.type != DocType.other || d.title.isNotBlank()) && (d.officialUrl.isBlank() || officialUri(d) != null))
         }
     }
-    if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false },
-        title = { Text(stringResource(R.string.delete_question, docLabel(d))) }, text = { Text(stringResource(R.string.delete_warning)) },
-        confirmButton = { TextButton({ vm.deleteDoc(d.id); confirmDelete = false }) { Text(stringResource(R.string.delete), color = shop.bad) } },
-        dismissButton = { TextButton({ confirmDelete = false }) { Text(stringResource(R.string.cancel)) } })
+    if (confirmDelete) ConfirmDelete(docLabel(d), { confirmDelete = false }) { vm.deleteDoc(d.id); confirmDelete = false }
     if (picking) {
         val start = d.expires?.let(LocalDate::parse) ?: vm.today.plusYears(1)
         val ps = rememberDatePickerState(initialSelectedDateMillis = start.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())

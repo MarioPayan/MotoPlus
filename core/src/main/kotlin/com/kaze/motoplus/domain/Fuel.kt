@@ -78,9 +78,13 @@ fun Bike.deleteReading(r: Reading): Bike = if (readings.size > 1) copy(readings 
 /** A typed odometer this far above the estimate is probably a typo worth questioning. */
 fun suspiciousJump(km: Int, estimate: Double) = km - estimate > 5000
 
-/** Monthly distance from the rider's readings, used as the instrument's progress scale. */
-fun monthlyAverage(bike: Bike, today: LocalDate): Int {
-    val first = bike.readings.minBy { it.date }
-    val span = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(first.date), today).coerceAtLeast(1)
-    return ((estimate(bike, today).km - first.km).coerceAtLeast(0.0) / span * 30).toInt().coerceAtLeast(1)
+/** Only measured spans of at least 30 days can supply the instrument's monthly scale. */
+fun monthlyAverage(bike: Bike, today: LocalDate): Int? {
+    val readings = bike.readings.filter { it.date <= today.toString() }
+    val order = compareBy<Reading>({ it.date }, { it.at })
+    val first = readings.minWithOrNull(order) ?: return null
+    val last = readings.maxWith(order)
+    val span = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(first.date), LocalDate.parse(last.date))
+    if (span < 30) return null
+    return ((last.km - first.km).coerceAtLeast(0).toDouble() / span * 30).toInt().coerceAtLeast(1)
 }

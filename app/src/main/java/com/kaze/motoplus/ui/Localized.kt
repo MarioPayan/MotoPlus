@@ -18,7 +18,7 @@ fun remaining(state: PartState): String = remaining(state, androidx.compose.ui.p
 fun estimateSource(est: OdoEstimate): String = when (est.basis) {
     EstimateBasis.todayReading -> stringResource(R.string.reading_today)
     EstimateBasis.lastReading -> stringResource(R.string.last_reading)
-    EstimateBasis.average -> stringResource(R.string.average_source, "%.1f".format(est.kmPerDay))
+    EstimateBasis.average -> stringResource(R.string.average_source, decimal(est.kmPerDay))
     EstimateBasis.rides -> if (est.rides == 1) stringResource(R.string.one_ride_source) else stringResource(R.string.ride_source, est.rides)
 }
 
@@ -153,6 +153,11 @@ val LocalCurrency = androidx.compose.runtime.staticCompositionLocalOf { "COP" }
 
 @Composable
 fun distance(n: Int): String = formatKm(n, LocalConfiguration.current.locales[0])
+
+@Composable
+fun decimal(n: Double): String = java.text.NumberFormat.getNumberInstance(LocalConfiguration.current.locales[0]).apply {
+    maximumFractionDigits = 1
+}.format(n)
 
 @Composable
 fun zoneAbbreviation(zone: String, drive: Drive): String = if (zone == "drivetrain") driveLabel(drive).uppercase() else when (zone) {

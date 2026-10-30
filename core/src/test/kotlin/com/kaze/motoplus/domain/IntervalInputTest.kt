@@ -26,6 +26,29 @@ class IntervalInputTest {
         assertEquals("45", reopened.switchTo(IntervalUnit.days).text)
     }
 
+    @Test fun legacyIntervalsUseTheLargestWholeUnitWithoutChangingDays() {
+        for ((days, expected) in listOf(1825 to ("5" to IntervalUnit.years),
+            365 to ("1" to IntervalUnit.years), 30 to ("1" to IntervalUnit.months),
+            180 to ("6" to IntervalUnit.months), 14 to ("14" to IntervalUnit.days),
+            31 to ("31" to IntervalUnit.days))) {
+            val input = IntervalInput.from(Part("p", "engine", "Oil", days = days))
+            assertEquals(expected.first, input.text)
+            assertEquals(expected.second, input.unit)
+            assertEquals(days, input.toDays())
+            assertEquals(days.toString(), input.switchTo(IntervalUnit.days).text)
+        }
+    }
+
+    @Test fun explicitlyChosenUnitsWinOverWholeUnitInference() {
+        val days = Part("p", "engine", "Oil", days = 1825, timeUnit = IntervalUnit.days, timeValue = "1825")
+        assertEquals(IntervalUnit.days, IntervalInput.from(days).unit)
+        assertEquals("1825", IntervalInput.from(days).text)
+        val months = days.copy(timeUnit = IntervalUnit.months, timeValue = "60")
+        assertEquals(IntervalUnit.months, IntervalInput.from(months).unit)
+        assertEquals("60", IntervalInput.from(months).text)
+        assertEquals(1825, IntervalInput.from(months).toDays())
+    }
+
     @Test fun emptyAndInvalidValuesDoNotCreateALimit() {
         assertNull(IntervalInput().switchTo(IntervalUnit.months).toDays())
         assertNull(IntervalInput("0").toDays())

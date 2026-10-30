@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +66,7 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
             Btn(stringResource(R.string.photo), { photo.launch(null) }, Modifier.weight(1f), ghost = true, icon = "camera")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat(stats.kmPerLiter?.let { "%.1f".format(it) } ?: "—", stringResource(R.string.mean_kml), Modifier.weight(1f))
+            Stat(stats.kmPerLiter?.let { decimal(it) } ?: "—", stringResource(R.string.mean_kml), Modifier.weight(1f))
             Stat(stats.costPerKm?.let { currencyMoney(it, vm.garage.currency) } ?: "—", stringResource(R.string.per_km), Modifier.weight(1f))
         }
         WeekBars(week)
@@ -113,9 +111,11 @@ private fun Dial(bike: Bike, est: OdoEstimate, month: Int, onCorrect: () -> Unit
         Spacer(Modifier.height(22.dp))
         Cap(stringResource(R.string.month_distance, distance(month)), modifier = Modifier.align(Alignment.Start))
         Spacer(Modifier.height(8.dp))
-        SegmentedMeter(month.toFloat() / average, shop.accent, stringResource(R.string.month_distance, distance(month)), 18.dp)
-        Spacer(Modifier.height(8.dp))
-        Hint(stringResource(R.string.month_average, distance(average)), modifier = Modifier.align(Alignment.Start))
+        if (average != null) {
+            SegmentedMeter(month.toFloat() / average, shop.accent, stringResource(R.string.month_distance, distance(month)), 18.dp)
+            Spacer(Modifier.height(8.dp))
+            Hint(stringResource(R.string.month_average, distance(average)), modifier = Modifier.align(Alignment.Start))
+        }
     }
 }
 
@@ -157,9 +157,10 @@ private fun WeekBars(week: List<Double>) {
 @Composable
 private fun Log(bike: Bike, currency: String, onDeleteFuel: (String) -> Unit) {
     val shop = LocalShop.current
+    var deletingFuel by remember { mutableStateOf<String?>(null) }
     data class Row(val sort: String, val icon: String, val title: String, val sub: String, val date: String, val fuelId: String? = null)
-    val rows = bike.fuel.map { f -> Row(f.date + f.at, "fuel", stringResource(R.string.fillup_line, "%.1f".format(f.liters)), stringResource(R.string.p2_km_value, distance(f.km)) + (f.total?.let { " · ${currencyMoney(it, currency)}" } ?: ""), f.date, f.id) } +
-        bike.rides.map { r -> Row(r.date + r.at, "route", stringResource(R.string.ride_line, rideSource(r)), "+" + stringResource(R.string.p2_km_value, "%.1f".format(r.km)), r.date) } +
+    val rows = bike.fuel.map { f -> Row(f.date + f.at, "fuel", stringResource(R.string.fillup_line, decimal(f.liters)), stringResource(R.string.p2_km_value, distance(f.km)) + (f.total?.let { " · ${currencyMoney(it, currency)}" } ?: ""), f.date, f.id) } +
+        bike.rides.map { r -> Row(r.date + r.at, "route", stringResource(R.string.ride_line, rideSource(r)), "+" + stringResource(R.string.p2_km_value, decimal(r.km)), r.date) } +
         bike.readings.filter { r -> bike.fuel.none { it.at == r.at && it.km == r.km } }.map { r -> Row(r.date + r.at, "gauge", stringResource(R.string.reading), stringResource(R.string.p2_km_value, distance(r.km)), r.date) }
     Column(Modifier.padding(horizontal = 6.dp)) {
         Cap(stringResource(R.string.log))
@@ -172,11 +173,15 @@ private fun Log(bike: Bike, currency: String, onDeleteFuel: (String) -> Unit) {
                     Text(r.sub, style = Mono.copy(fontSize = 11.sp), color = shop.ink2)
                 }
                 Text(localizedDate(r.date).uppercase(), style = Mono.copy(fontSize = 10.sp), color = shop.ink2)
-                r.fuelId?.let { id -> IconBtn("trash", stringResource(R.string.delete_fuel), { onDeleteFuel(id) }, size = 18.dp) }
+                r.fuelId?.let { id -> IconBtn("trash", stringResource(R.string.delete_fuel), { deletingFuel = id }, size = 18.dp) }
             }
             HorizontalDivider(color = shop.line)
         }
     }
+    deletingFuel?.let { id -> ConfirmDelete(stringResource(R.string.fillup), { deletingFuel = null }) {
+        onDeleteFuel(id); deletingFuel = null
+    } }
+
 }
 
 // ---------- Fill-up form ----------
@@ -200,10 +205,8 @@ fun FuelScreen(vm: AppViewModel, bike: Bike) {
             OdometerField(km, { km = it }, Modifier.fillMaxWidth())
             Hint(stringResource(R.string.fuel_hint, distance(est.km.toInt())))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                AppInput(liters, { liters = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(6) }, Modifier.weight(1f), label = { Text(stringResource(R.string.liters)) }, singleLine = true,
-                    textStyle = Mono.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                AppInput(total, { total = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(10) }, Modifier.weight(1f), label = { Text(stringResource(R.string.paid)) }, singleLine = true,
-                    textStyle = Mono.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                DecimalField(liters, { liters = it }, stringResource(R.string.liters), Modifier.weight(1f), maxFractionDigits = 2)
+                AmountField(total, { total = it }, Modifier.weight(1f), label = stringResource(R.string.paid))
             }
             Row(Modifier.fillMaxWidth().toggleable(full, role = Role.Checkbox) { full = it }, verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(full, null); Text(stringResource(R.string.full_tank), fontSize = 14.sp)
@@ -212,7 +215,7 @@ fun FuelScreen(vm: AppViewModel, bike: Bike) {
             preview?.let { p ->
                 Sheet {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                        PreviewStat(p.kmPerLiter?.let { "%.1f".format(it) } ?: "—", stringResource(R.string.kml))
+                        PreviewStat(p.kmPerLiter?.let { decimal(it) } ?: "—", stringResource(R.string.kml))
                         PreviewStat(if (totalN != null && litersN != null) currencyMoney(totalN / litersN, vm.garage.currency) else "—", stringResource(R.string.per_liter))
                         PreviewStat(p.costPerKm?.let { currencyMoney(it, vm.garage.currency) } ?: "—", stringResource(R.string.per_km))
                     }
