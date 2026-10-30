@@ -1,9 +1,6 @@
 package com.kaze.motoplus.ui
 
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +22,6 @@ import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.R
 import com.kaze.motoplus.*
 import com.kaze.motoplus.domain.*
-import java.time.LocalDate
 import java.util.UUID
 
 @Composable
@@ -34,8 +30,9 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Sheet {
             SectionTitle(stringResource(R.string.workshop_tab))
+            WorkshopRow("list-checks", stringResource(R.string.mt_title), null, hint = stringResource(R.string.mt_hint)) { vm.openMaintenance() }
             WorkshopRow("wrench", stringResource(R.string.p2_workshop_list), count) { vm.screen = Screen.order }
-            WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.startVisit() }
+            WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.openMaintenance(visit = true) }
         }
         if (vm.aiEnabled) Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
         Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size) { vm.screen = Screen.history } }
@@ -45,10 +42,13 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
 }
 
 @Composable
-private fun WorkshopRow(icon: String, title: String, count: Int?, subtitle: String? = null, onClick: () -> Unit) {
+private fun WorkshopRow(icon: String, title: String, count: Int?, subtitle: String? = null, hint: String? = null, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, LocalShop.current.ink2)
-        Text(title, Modifier.weight(1f).padding(horizontal = 12.dp))
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text(title)
+            hint?.let { Hint(it) }
+        }
         if (count != null) Text(count.toString(), style = Mono, color = LocalShop.current.ink2)
         subtitle?.let { Hint(it) }
         Spacer(Modifier.width(12.dp))
@@ -108,7 +108,7 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
                 }
                 ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), ctx.getString(R.string.p2_send_order)))
             }, Modifier.fillMaxWidth(), ghost = true, enabled = ids.isNotEmpty() || custom.isNotEmpty(), icon = "share")
-            Btn(stringResource(R.string.p2_from_workshop), { persist(); vm.startVisit() }, Modifier.fillMaxWidth(), enabled = ids.isNotEmpty() || custom.isNotEmpty())
+            Btn(stringResource(R.string.p2_from_workshop), { persist(); vm.openMaintenance(visit = true) }, Modifier.fillMaxWidth(), enabled = ids.isNotEmpty() || custom.isNotEmpty())
         }
     }) {
         if (ids.isEmpty() && custom.isEmpty()) Hint(stringResource(R.string.p2_empty_order))
@@ -154,8 +154,8 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
     if (picking) PartPicker(bike, ids.toSet(), { id ->
         if (id in ids) { picking = false; deletingPart = id } else { ids = ids + id; persist() }
     }, { picking = false })
-    if (adding) NewJobDialog(bike, ids.toSet(), allowParts = false, onDismiss = { adding = false }) { id, name, _ ->
-        custom = custom + PendingJob(id ?: UUID.randomUUID().toString(), name)
+    if (adding) NewJobDialog(onDismiss = { adding = false }) { name ->
+        custom = custom + PendingJob(UUID.randomUUID().toString(), name)
         persist(); adding = false
     }
 }
@@ -204,74 +204,10 @@ internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Mo
 }
 
 @Composable
-internal fun NewJobDialog(bike: Bike, excluded: Set<String>, allowParts: Boolean = true, onDismiss: () -> Unit, onAdd: (String?, String, Double?) -> Unit) {
-    var id by remember { mutableStateOf<String?>(null) }
+internal fun NewJobDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    val locale = LocalConfiguration.current.locales[0]
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(if (allowParts) R.string.p2_extra_work else R.string.p2_custom_job)) }, text = {
-        Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (allowParts) {
-                Cap(stringResource(R.string.p2_existing_part))
-                ChoiceRow(listOf("" to stringResource(R.string.p2_free_work)) + bike.parts.filter { it.id !in excluded }.map { it.id to partLabel(it) }, id.orEmpty()) { id = it.ifEmpty { null } }
-            }
-            if (id == null) FormField(name, stringResource(R.string.p2_job_name), { name = it.take(80) })
-            if (allowParts) AmountField(amount, { amount = it }, Modifier.fillMaxWidth())
-        }
-    }, confirmButton = { TextButton({ onAdd(id, name.trim(), parseAmount(amount, locale)) }, enabled = id != null || name.isNotBlank()) { Text(stringResource(R.string.save)) } },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.p2_custom_job)) }, text = {
+        FormField(name, stringResource(R.string.p2_job_name), { name = it.take(80) })
+    }, confirmButton = { TextButton({ onAdd(name.trim()) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } })
-}
-
-@Composable
-fun OrderReturnScreen(vm: AppViewModel, bike: Bike) {
-    val d = vm.visitDraft ?: return
-    val locale = LocalConfiguration.current.locales[0]
-    val currency = LocalCurrency.current
-    val costs = remember(d.sessionId) { mutableStateMapOf<String, String>().apply { d.costs.forEach { (id, n) -> put(id, n?.let { java.text.NumberFormat.getNumberInstance(locale).format(it) }.orEmpty()) } } }
-    var extra by remember(d.sessionId) { mutableStateOf(false) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) vm.importPhoto(uri)?.let { vm.visitDraft = vm.visitDraft?.copy(photo = it) } }
-    val parsedDate = runCatching { LocalDate.parse(d.date) }.getOrNull()
-    val valid = parsedDate != null && !parsedDate.isAfter(vm.today) && d.km.toIntOrNull()?.let { it >= 0 } == true && d.done.isNotEmpty() && d.customItems.filter { it.id in d.done }.all { it.name.isNotBlank() } && d.done.all { costs[it].isNullOrBlank() || parseAmount(costs[it]!!, locale) != null }
-    val jobs = d.partIds.mapNotNull { id -> bike.parts.firstOrNull { it.id == id }?.let { id to partLabel(it) } } + d.customItems.map { it.id to it.name }
-    WorkshopPage(stringResource(R.string.p2_from_workshop), { vm.screen = Screen.main }, footer = {
-        Btn(stringResource(if (d.done.size == 1) R.string.p2_save_job else R.string.p2_save_jobs, d.done.size), { vm.saveVisit(d) }, Modifier.fillMaxWidth(), enabled = valid)
-    }) {
-        if (vm.aiEnabled) Btn(stringResource(R.string.p2_read_invoice_ai), { vm.screen = Screen.invoiceAi }, Modifier.fillMaxWidth(), ghost = true, icon = "camera")
-        knownAiSource(d.source)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
-        Hint(stringResource(if (d.source != null || d.costs.isNotEmpty()) R.string.p2_ai_invoice_review else R.string.p2_return_hint))
-        jobs.forEach { (id, name) ->
-            val on = id in d.done
-            Sheet {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(on, { checked -> vm.visitDraft = d.copy(done = if (checked) d.done + id else d.done - id) })
-                    Text(name, Modifier.weight(1f))
-                    AmountField(costs[id].orEmpty(), { value -> costs[id] = value; vm.visitDraft = d.copy(costs = d.costs + (id to parseAmount(value, locale))) }, Modifier.width(140.dp), enabled = on)
-                }
-                d.customItems.firstOrNull { it.id == id }?.let { job ->
-                    FormField(job.name, stringResource(R.string.p2_job_name), { value -> vm.visitDraft = d.copy(customItems = d.customItems.map { if (it.id == id) it.copy(name = value.take(80)) else it }) })
-                }
-                val note = bike.openOrder()?.itemNotes?.get(id) ?: d.customItems.firstOrNull { it.id == id }?.note
-                if (!note.isNullOrBlank()) Hint(note)
-            }
-        }
-        Btn(stringResource(R.string.p2_extra_work), { extra = true }, Modifier.fillMaxWidth(), ghost = true, icon = "plus")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Cap(stringResource(R.string.p2_total), modifier = Modifier.weight(1f))
-            Text(currencyMoney(d.done.sumOf { d.costs[it] ?: 0.0 }, currency), style = Mono.copy(fontSize = 24.sp))
-        }
-        ServiceDateField(d.date) { vm.visitDraft = d.copy(date = it) }
-        OdometerField(d.km, { vm.visitDraft = d.copy(km = it) }, Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            d.photo?.let { Thumb(it, Modifier.size(56.dp)) }
-            Btn(stringResource(if (d.photo == null) R.string.p2_invoice_photo else R.string.p2_invoice_replace), { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, ghost = true, icon = "camera")
-        }
-        if (!valid) Hint(stringResource(R.string.p2_amount_invalid))
-    }
-    if (extra) NewJobDialog(bike, d.partIds.toSet(), onDismiss = { extra = false }) { partId, name, amount ->
-        val id = partId ?: UUID.randomUUID().toString()
-        if (partId == null) vm.visitDraft = d.copy(customItems = d.customItems + PendingJob(id, name), done = d.done + id, costs = d.costs + (id to amount))
-        else vm.visitDraft = d.copy(partIds = d.partIds + partId, done = d.done + partId, costs = d.costs + (id to amount))
-        costs[id] = amount?.let { java.text.NumberFormat.getNumberInstance(locale).format(it) }.orEmpty()
-        extra = false
-    }
 }

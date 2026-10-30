@@ -17,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -61,7 +63,7 @@ fun HistoryScreen(vm: AppViewModel, bike: Bike) {
     }
 }
 
-private data class HistoryEvent(val date: String, val icon: String, val title: String, val sub: String, val open: () -> Unit)
+private data class HistoryEvent(val date: String, val icon: String, val title: String, val sub: String, val group: List<ServiceRecord> = emptyList(), val open: () -> Unit)
 
 /** Month headings and a continuous rule match the prototype's event timeline. */
 @Composable
@@ -69,10 +71,17 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
     var orderDetail by remember { mutableStateOf<WorkOrder?>(null) }
     var reportDetail by remember { mutableStateOf<SavedReport?>(null) }
     var eventDetail by remember { mutableStateOf<HistoryEvent?>(null) }
+    var openGroups by remember { mutableStateOf(emptySet<String>()) }
     val locale = LocalConfiguration.current.locales[0]
-    val records = bike.history.map { r ->
-        val name = bike.parts.firstOrNull { it.id == r.partId }?.let { partLabel(it) } ?: r.partName ?: r.partId
-        HistoryEvent(r.date, "wrench", name, stringResource(R.string.p2_km_value, distance(r.km)) + (r.cost?.let { " · " + money(it) } ?: "")) { vm.editRecord(r) }
+    val records = bike.history.filter { it.group == null }.map { r ->
+        HistoryEvent(r.date, "wrench", recordName(bike, r), stringResource(R.string.p2_km_value, distance(r.km)) + (r.cost?.let { " · " + money(it) } ?: "")) { vm.editRecord(r) }
+    } + bike.history.filter { it.group != null }.groupBy { it.group!! }.map { (id, rs) ->
+        val first = rs.first()
+        val where = listOfNotNull(first.venue?.let { stringResource(if (it == Venue.shop) R.string.mt_shop else R.string.mt_self) }, first.place.ifBlank { null })
+        val sub = listOf(stringResource(R.string.p2_km_value, distance(first.km))) + where + listOfNotNull(rs.takeIf { l -> l.any { it.cost != null } }?.let { l -> money(l.sumOf { it.cost ?: 0.0 }) })
+        HistoryEvent(first.date, "list-checks", pluralStringResource(R.plurals.mt_group, rs.size, rs.size), sub.joinToString(" · "), rs) {
+            openGroups = if (id in openGroups) openGroups - id else openGroups + id
+        }
     }
     val orders = bike.orders.map { o -> HistoryEvent(o.date, "list-checks", stringResource(R.string.p2_workshop_list), stringResource(R.string.p2_km_value, distance(o.km))) { orderDetail = o } }
     val reports = bike.reports.map { r -> HistoryEvent(r.at, "bulb", r.data.title.ifBlank { stringResource(R.string.p2_report) }, stringResource(R.string.p2_km_value, distance(r.km))) { reportDetail = r } }
@@ -102,7 +111,18 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
                 Text(event.title)
                 if (event.sub.isNotBlank()) Hint(event.sub)
             }
-            Icon("chev", LocalShop.current.ink2, 16.dp)
+            val open = event.group.isNotEmpty() && event.group.first().group in openGroups
+            Icon("chev", LocalShop.current.ink2, 16.dp, modifier = Modifier.rotate(if (event.group.isEmpty()) 0f else if (open) -90f else 90f))
+        }
+        if (event.group.isNotEmpty() && event.group.first().group in openGroups) event.group.forEach { r ->
+            Row(Modifier.fillMaxWidth().clickable { vm.editRecord(r) }.padding(start = 62.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(bike.parts.firstOrNull { it.id == r.partId }?.let(::partIcon) ?: "wrench", LocalShop.current.ink2, 18.dp)
+                Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                    Text(recordName(bike, r))
+                    if (r.notes.isNotBlank()) Hint(r.notes)
+                }
+                r.cost?.let { Text(money(it), style = Mono) }
+            }
         }
     }
     orderDetail?.let { o ->
@@ -125,6 +145,9 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
     }
     eventDetail?.let { event -> AlertDialog(onDismissRequest = { eventDetail = null }, title = { Text(event.title) }, text = { Text(localizedDate(event.date) + " · " + event.sub) }, confirmButton = { TextButton({ eventDetail = null }) { Text(stringResource(R.string.close)) } }) }
 }
+
+@Composable
+private fun recordName(bike: Bike, r: ServiceRecord) = bike.parts.firstOrNull { it.id == r.partId }?.let { partLabel(it) } ?: r.partName ?: r.partId
 
 @Composable
 private fun RecordCard(r: ServiceRecord, name: String, onClick: () -> Unit) {
@@ -150,6 +173,13 @@ fun Thumb(path: String, modifier: Modifier) {
     bmp?.let { Image(it, stringResource(R.string.p2_invoice_photo), modifier.clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop) }
 }
 
+/** Service dates cannot be in the future. */
+@OptIn(ExperimentalMaterial3Api::class)
+private object PastDates : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long) = !Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate().isAfter(LocalDate.now())
+    override fun isSelectableYear(year: Int) = year <= LocalDate.now().year
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ServiceDateField(iso: String, onDate: (String) -> Unit) {
@@ -158,7 +188,8 @@ internal fun ServiceDateField(iso: String, onDate: (String) -> Unit) {
         textStyle = MaterialTheme.typography.bodyLarge,
         trailingIcon = { IconBtn("calendar", stringResource(R.string.p2_date), { picking = true }) })
     if (picking) {
-        val ps = rememberDatePickerState(initialSelectedDateMillis = LocalDate.parse(iso).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
+        val ps = rememberDatePickerState(initialSelectedDateMillis = LocalDate.parse(iso).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
+            selectableDates = PastDates)
         DatePickerDialog(onDismissRequest = { picking = false }, confirmButton = {
             TextButton({ ps.selectedDateMillis?.let { onDate(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()) }; picking = false }) { Text(stringResource(R.string.save)) }
         }, dismissButton = { TextButton({ picking = false }) { Text(stringResource(R.string.cancel)) } }) { DatePicker(ps) }

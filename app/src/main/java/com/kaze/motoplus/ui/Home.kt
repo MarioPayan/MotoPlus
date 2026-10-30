@@ -32,12 +32,16 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
     val odo = estimate(bike, today).km
     val zones = zoneStates(bike, odo, today)
     val states = bike.parts.map { it to partState(it, odo, today) }
+    val shop = LocalShop.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         HealthBar(health(bike, odo, today), states.count { it.second.status != Status.ok })
         BikeCanvas(rememberPlate(vm.drawingFor(bike)), zones, highlighted = vm.highlighted,
             callouts = callouts(bike, zones), flash = vm.flash, onZone = { vm.openZone(it) })
         Column {
-            Box(Modifier.padding(bottom = 10.dp)) { SectionTitle(stringResource(R.string.next)) }
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { SectionTitle(stringResource(R.string.next)) }
+                TextButton({ vm.openMaintenance(preset = QuickPick.overdue) }) { Text(stringResource(R.string.mt_several), color = shop.accent) }
+            }
             val alerts = states.filter { it.second.status != Status.ok && !it.first.snoozed(today) }.sortedByDescending { it.second.used }
             alerts.forEach { (p, state) -> PartRow(vm, p, state) }
             if (alerts.isEmpty()) Hint(stringResource(R.string.no_alerts))
@@ -125,7 +129,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
                 Hint(left, modifier = Modifier.padding(start = 12.dp))
             }
             SettingsEntry("check", stringResource(R.string.done)) { vm.markDone(p.id); menu = false }
-            SettingsEntry("calendar", stringResource(R.string.other_date)) { vm.newRecord(p.id); menu = false }
+            SettingsEntry("list-checks", stringResource(R.string.other_date)) { menu = false; vm.openMaintenance(partId = p.id) }
             SettingsEntry("clock", stringResource(R.string.snooze)) { snoozing = true; menu = false }
             SettingsEntry("wrench", stringResource(R.string.add_to_order)) {
                 val order = vm.bike?.openOrder()

@@ -12,6 +12,7 @@ import com.kaze.motoplus.data.Drawing
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
 import com.kaze.motoplus.ui.localizedLocale
+import com.kaze.motoplus.ui.localizedPlural
 import com.kaze.motoplus.ui.localizedString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +22,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, orderReturn, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi }
+enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, maintenance, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -58,7 +59,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var aiSource by mutableStateOf<String?>(null)
     var aiReview by mutableStateOf<ReportData?>(null)
     var aiError by mutableStateOf<Int?>(null)
-    var visitDraft by mutableStateOf<VisitDraft?>(null)
+    var maintenance by mutableStateOf<MaintenanceDraft?>(null)
+    /** Deshacer for the snackbar that shows [message]; taken by the snackbar when it appears. */
+    var messageUndo: MaintenanceUndo? = null
     var aiNotes by mutableStateOf("")
     var message by mutableStateOf<String?>(null)
     /** Zone that just had something marked done, plus a counter so the same zone can flash twice. */
@@ -111,7 +114,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun select(id: String) {
-        aiReview = null; visitDraft = null; pendingImport = ""
+        aiReview = null; maintenance = null; pendingImport = ""
         Repo.update { it.copy(selectedId = id) }; selectedZone = null; highlighted = emptySet(); screen = Screen.main
     }
 
@@ -134,7 +137,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun saveRecord(d: RecordDraft) {
         val km = d.km.toIntOrNull() ?: return
-        val r = ServiceRecord(d.id ?: UUID.randomUUID().toString(), d.partId, d.date, km, parseAmount(d.cost, localizedLocale(app)), d.notes.trim(), d.photo, bike?.history?.firstOrNull { it.id == d.id }?.partName)
+        val old = bike?.history?.firstOrNull { it.id == d.id }
+        val r = (old ?: ServiceRecord(UUID.randomUUID().toString(), d.partId, d.date, km))
+            .copy(date = d.date, km = km, cost = parseAmount(d.cost, localizedLocale(app)), notes = d.notes.trim(), photo = d.photo)
         updateBike { if (d.id == null) it.addRecord(r) else it.updateRecord(r) }
         recording = null
         message = if (d.id == null) text(R.string.record_saved) else text(R.string.record_updated)
@@ -196,17 +201,18 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                     r.currency != garage.currency -> aiError = R.string.p2_currency_mismatch
                     r.jobs.any { j -> b.parts.none { it.id == j.partId } } -> aiError = R.string.p2_ai_invalid_text
                     else -> {
-                        val extras = r.extras.map { PendingJob(UUID.randomUUID().toString(), it.name) }
-                        val jobs = r.jobs.map { it.partId } + extras.map { it.id }
-                        visitDraft = VisitDraft(
-                            orderId = b.openOrder()?.id,
-                            partIds = (b.openOrder()?.partIds.orEmpty() + r.jobs.map { it.partId }).distinct(),
-                            customItems = b.openOrder()?.customItems.orEmpty() + extras,
-                            done = jobs.toSet(),
-                            costs = r.jobs.associate { it.partId to it.cost } + extras.zip(r.extras).associate { it.first.id to it.second.cost },
-                            date = r.date ?: today.toString(), km = (r.km ?: estimate(b, today).km.toInt()).toString(), source = source,
+                        val base = maintenance?.takeIf { it.visit } ?: newMaintenance(b, visit = true).copy(back = Screen.main)
+                        val extras = r.extras.map { DraftJob(UUID.randomUUID().toString(), it.name, ai = true) }
+                        val stale = base.custom.filter { it.ai }.map { it.id }.toSet()
+                        val number = java.text.NumberFormat.getNumberInstance(localizedLocale(app))
+                        fun cost(n: Double?) = n?.let(number::format).orEmpty()
+                        maintenance = base.copy(
+                            checked = (base.checked.filterNot(stale::contains) + r.jobs.map { it.partId } + extras.map { it.id }).distinct(),
+                            custom = base.custom.filterNot { it.ai } + extras,
+                            costs = base.costs - stale + r.jobs.associate { it.partId to cost(it.cost) } + extras.zip(r.extras).associate { (j, x) -> j.id to cost(x.cost) },
+                            date = r.date ?: base.date, km = r.km?.toString() ?: base.km, source = source, fromInvoice = true,
                         )
-                        screen = Screen.orderReturn
+                        screen = Screen.maintenance
                     }
                 }
             }
@@ -226,24 +232,50 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         message = text(R.string.report_saved)
     }
 
-    fun startVisit() {
+    /** Registrar mantenimiento; [visit] opens it as Completar visita with the Taller list checked. */
+    fun openMaintenance(visit: Boolean = false, preset: QuickPick? = null, partId: String? = null) {
         val b = bike ?: return
-        val o = b.openOrder()
-        val items = b.workshopItems(estimate(b, today).km, today)
-        visitDraft = VisitDraft(o?.id, items.partIds, items.customItems,
-            (items.partIds + items.customItems.map { it.id }).toSet(),
-            date = today.toString(), km = estimate(b, today).km.toInt().toString())
-        screen = Screen.orderReturn
+        maintenance = newMaintenance(b, visit, preset, partId)
+        screen = Screen.maintenance
     }
 
-    fun saveVisit(draft: VisitDraft) {
-        val b = bike ?: return
-        val km = draft.km.toIntOrNull() ?: return
-        val order = b.orders.firstOrNull { it.id == draft.orderId }
-        updateBike { it.completeVisit(order, draft.done.associateWith { draft.costs[it] }, draft.customItems, draft.date, km, draft.photo) { UUID.randomUUID().toString() } }
-        visitDraft = null; pendingImport = ""; screen = Screen.main
+    private fun newMaintenance(b: Bike, visit: Boolean, preset: QuickPick? = null, partId: String? = null): MaintenanceDraft {
+        val odo = estimate(b, today).km
+        val order = if (visit) b.openOrder() else null
+        val checked = when {
+            visit -> b.quickPick(QuickPick.pending, odo, today)
+            preset != null -> b.quickPick(preset, odo, today)
+            partId != null && b.parts.any { it.id == partId } -> listOf(partId)
+            else -> emptyList()
+        }
+        return MaintenanceDraft(visit, screen, order?.id, today.toString(), odo.toInt().toString(), if (visit) Venue.shop else null,
+            checked = checked,
+            notes = order?.let { o -> o.itemNotes + o.customItems.filter { it.note.isNotBlank() }.associate { it.id to it.note } }.orEmpty(),
+            custom = if (visit) b.workshopItems(odo, today).customItems.map { DraftJob(it.id, it.name, fromOrder = true) } else emptyList())
+    }
+
+    fun saveMaintenance(d: MaintenanceDraft) {
+        val km = d.km.toIntOrNull() ?: return
+        val locale = localizedLocale(app)
+        val parts = bike?.parts.orEmpty().map { it.id }.toSet()
+        val jobs = d.checked.filter { id -> id in parts || d.custom.any { it.id == id } }.map { id ->
+            LoggedJob(id, d.custom.firstOrNull { it.id == id }?.name, d.costs[id]?.takeIf { it.isNotBlank() }?.let { parseAmount(it, locale) }, d.notes[id].orEmpty())
+        }
+        var undo: MaintenanceUndo? = null
+        updateBike { old -> old.logMaintenance(jobs, d.date, km, today, d.venue, d.place, d.photo, d.orderId, { UUID.randomUUID().toString() }, System.currentTimeMillis()).also { undo = MaintenanceUndo(old, it) } }
+        maintenance = null; pendingImport = ""
+        if (d.visit) { tab = Tab.report; screen = Screen.main } else screen = d.back
         com.kaze.motoplus.work.ReminderWorker.runNow(app)
-        message = text(R.string.jobs_saved, draft.done.size)
+        messageUndo = undo
+        message = localizedPlural(app, R.plurals.mt_saved, jobs.size)
+    }
+
+    fun undoMaintenance(u: MaintenanceUndo) {
+        Repo.updateBike(u.after.id) { it.undoMaintenance(u.before, u.after) }
+        val photos = Repo.garage.value.bikes.flatMap { b -> b.history.mapNotNull { it.photo } }.toSet()
+        u.after.history.mapNotNull { it.photo }.filter { it !in photos }.distinct().forEach { File(it).delete() }
+        com.kaze.motoplus.work.ReminderWorker.runNow(app)
+        message = text(R.string.mt_undone)
     }
 
     fun showZones(zones: Set<String>) {
@@ -383,16 +415,29 @@ fun AppViewModel.saveCheck(ok: List<String>, failed: List<String>, toOrder: List
 
 private fun AppViewModel.text(id: Int, vararg args: Any) = localizedString(getApplication<Application>(), id, *args)
 
-/** Unsaved visit state survives the AI handoff and returning to the form. */
-data class VisitDraft(
-    val orderId: String? = null,
-    val partIds: List<String> = emptyList(),
-    val customItems: List<PendingJob> = emptyList(),
-    val done: Set<String> = emptySet(),
-    val costs: Map<String, Double?> = emptyMap(),
+/** The state before and after one maintenance log, kept for Deshacer. */
+data class MaintenanceUndo(val before: Bike, val after: Bike)
+
+/** A free job on the maintenance screen: [fromOrder] ones come from the Taller list, [ai] ones from a read invoice. */
+data class DraftJob(val id: String, val name: String, val fromOrder: Boolean = false, val ai: Boolean = false)
+
+/** Unsaved Registrar mantenimiento (or Completar visita) state; it survives the AI invoice handoff. Costs keep the typed text. */
+data class MaintenanceDraft(
+    val visit: Boolean,
+    val back: Screen,
+    val orderId: String?,
     val date: String,
     val km: String,
+    val venue: Venue?,
+    val place: String = "",
+    val checked: List<String> = emptyList(),
+    val costs: Map<String, String> = emptyMap(),
+    val notes: Map<String, String> = emptyMap(),
+    val noteOpen: Set<String> = emptySet(),
+    val custom: List<DraftJob> = emptyList(),
+    val query: String = "",
     val photo: String? = null,
     val source: String? = null,
-    val sessionId: String = UUID.randomUUID().toString(),
+    /** Filled from an invoice the rider's AI read. */
+    val fromInvoice: Boolean = false,
 )

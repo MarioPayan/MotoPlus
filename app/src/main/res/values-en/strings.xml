@@ -20,7 +20,6 @@
     <string name="fuel_deleted">Fill-up deleted</string>
     <string name="reading_corrected">Reading corrected</string>
     <string name="one_job_saved">1 job saved to history</string>
-    <string name="jobs_saved">%1$s jobs saved to history</string>
     <string name="check_saved">Check saved. Enjoy your ride</string>
     <string name="check_failed_one">Check saved with 1 issue</string>
     <string name="check_failed">Check saved with %1$s issues</string>
@@ -44,7 +43,7 @@
     <string name="open">Open</string>
     <string name="done">Done today</string>
     <string name="history_action">View history</string>
-    <string name="other_date">Done another day</string>
+    <string name="other_date">Another day or several jobs</string>
     <string name="switch_bike">Your bikes</string>
     <string name="km_unit">KM</string>
     <string name="read_today">READ TODAY</string>
@@ -361,11 +360,6 @@
     <string name="p2_mechanic_notes">Notes for the mechanic</string>
     <string name="p2_choose_jobs">Add parts</string>
     <string name="p2_send_order">Share To do</string>
-    <string name="p2_extra_work">Add another job</string>
-    <string name="p2_free_work">Write a job</string>
-    <string name="p2_existing_part">Existing part</string>
-    <string name="p2_return_hint">Mark completed jobs and their cost.</string>
-    <string name="p2_total">Total</string>
     <string name="p2_cost">Cost</string>
     <string name="p2_invoice_photo">Invoice photo</string>
     <string name="p2_invoice_replace">Change invoice</string>
@@ -574,4 +568,26 @@
     <plurals name="interval_days"><item quantity="one">day</item><item quantity="other">days</item></plurals>
     <plurals name="interval_months"><item quantity="one">month</item><item quantity="other">months</item></plurals>
     <plurals name="interval_years"><item quantity="one">year</item><item quantity="other">years</item></plurals>
+
+    <!-- Registrar mantenimiento: many jobs at one date and odometer reading. -->
+    <string name="mt_title">Log maintenance</string>
+    <string name="mt_hint">Several jobs, one date and odometer</string>
+    <string name="mt_several">Log several</string>
+    <string name="mt_where">Where</string>
+    <string name="mt_shop">Workshop</string>
+    <string name="mt_self">Myself</string>
+    <string name="mt_where_placeholder">E.g.: corner shop</string>
+    <string name="mt_overdue">Overdue (%1$d)</string>
+    <string name="mt_soon">Due soon (%1$d)</string>
+    <string name="mt_pending">Pending (%1$d)</string>
+    <string name="mt_oil">Oil change</string>
+    <string name="mt_full">Full service</string>
+    <string name="mt_jobs">Jobs</string>
+    <string name="mt_no_matches">No matches.</string>
+    <string name="mt_undo">Undo</string>
+    <string name="mt_undone">Maintenance undone</string>
+    <plurals name="mt_checked"><item quantity="one">%1$d checked</item><item quantity="other">%1$d checked</item></plurals>
+    <plurals name="mt_count"><item quantity="one">%1$d job</item><item quantity="other">%1$d jobs</item></plurals>
+    <plurals name="mt_saved"><item quantity="one">%1$d job saved</item><item quantity="other">%1$d jobs saved</item></plurals>
+    <plurals name="mt_group"><item quantity="one">Maintenance · %1$d job</item><item quantity="other">Maintenance · %1$d jobs</item></plurals>
 </resources>

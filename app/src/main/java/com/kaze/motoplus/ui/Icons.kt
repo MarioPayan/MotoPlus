@@ -54,4 +54,5 @@ val ICONS = mapOf(
     "list-checks" to R.drawable.ph_list_checks,
     "clock" to R.drawable.ph_clock,
     "warning" to R.drawable.ph_warning,
+    "search" to R.drawable.ph_search,
 )

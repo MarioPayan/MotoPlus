@@ -36,11 +36,6 @@
     <string name="p2_mechanic_notes">Notas para el mecánico</string>
     <string name="p2_choose_jobs">Añadir piezas</string>
     <string name="p2_send_order">Compartir Pendientes</string>
-    <string name="p2_extra_work">Añadir otro trabajo</string>
-    <string name="p2_free_work">Escribir trabajo</string>
-    <string name="p2_existing_part">Pieza existente</string>
-    <string name="p2_return_hint">Marca lo hecho y su costo.</string>
-    <string name="p2_total">Total</string>
     <string name="p2_cost">Costo</string>
     <string name="p2_invoice_photo">Foto de la factura</string>
     <string name="p2_invoice_replace">Cambiar factura</string>
@@ -254,4 +249,6 @@
     <plurals name="interval_days"><item quantity="one">día</item><item quantity="other">días</item></plurals>
     <plurals name="interval_months"><item quantity="one">mes</item><item quantity="other">meses</item></plurals>
     <plurals name="interval_years"><item quantity="one">año</item><item quantity="other">años</item></plurals>
+
+    <string name="mt_where_placeholder">Ej.: Taller de la 80</string>
 </resources>

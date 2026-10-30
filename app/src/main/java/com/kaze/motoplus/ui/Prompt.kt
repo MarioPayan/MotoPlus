@@ -17,14 +17,15 @@ fun promptContract(bike: Bike, invoice: Boolean, currency: String): String = if 
         causes = listOf(Cause("…", zone = "drivetrain")), checks = listOf("…"), advice = "…", parts = bike.parts.take(1).map { it.id }))
 }
 
-fun buildPrompt(ctx: Context, bike: Bike, notes: String, today: LocalDate, currency: String, invoice: Boolean): String {
+/** [jobs] lists the visit being completed; without it the open Taller list is sent. */
+fun buildPrompt(ctx: Context, bike: Bike, notes: String, today: LocalDate, currency: String, invoice: Boolean, jobs: List<String>? = null): String {
     val est = estimate(bike, today)
     val locale = ctx.resources.configuration.locales[0]
     return buildList {
         add(ctx.getString(if (invoice) R.string.p2_ai_prompt_invoice else R.string.p2_prompt_intro))
         add(ctx.getString(R.string.p2_prompt_context, bike.title, formatKm(est.km.toInt(), locale), notes.ifBlank { ctx.getString(R.string.p2_general_review) }))
         addAll(bike.parts.map { p -> ctx.getString(R.string.p2_part_context, p.id + " · " + partLabel(p, ctx), p.zone, remaining(partState(p, est.km, today), ctx)) })
-        if (invoice) add(ctx.getString(R.string.p2_ai_prompt_jobs, bike.openOrder()?.let { o -> (o.partIds + o.customItems.map { it.id + " · " + it.name }).joinToString(", ") }.orEmpty()))
+        if (invoice) add(ctx.getString(R.string.p2_ai_prompt_jobs, (jobs ?: bike.openOrder()?.let { o -> o.partIds + o.customItems.map { it.id + " · " + it.name } }.orEmpty()).joinToString(", ")))
         add(ctx.getString(R.string.p2_ai_prompt_parts, bike.parts.joinToString(", ") { it.id }))
         add(ctx.getString(R.string.p2_ai_prompt_currency, currency))
         add(ctx.getString(R.string.p2_ai_prompt_link))

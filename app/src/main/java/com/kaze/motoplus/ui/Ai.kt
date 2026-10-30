@@ -21,9 +21,10 @@ fun AiScreen(vm: AppViewModel, bike: Bike) {
     var disclosure by remember { mutableStateOf(false) }
     var waiting by remember { mutableStateOf(false) }
     var answer by remember(vm.pendingImport) { mutableStateOf(if (error) vm.pendingImport.take(100_000) else "") }
-    val prompt = buildPrompt(ctx, bike, vm.aiNotes, vm.today, vm.garage.currency, invoice)
+    val prompt = buildPrompt(ctx, bike, vm.aiNotes, vm.today, vm.garage.currency, invoice, vm.maintenance?.takeIf { it.visit }?.let { d ->
+        d.checked.map { id -> d.custom.firstOrNull { it.id == id }?.let { id + " · " + it.name } ?: id } })
     WorkshopPage(stringResource(when { error -> R.string.p2_ai_invalid_link; invoice -> R.string.p2_read_invoice_ai; else -> R.string.p2_consult_ai }),
-        { vm.screen = if (invoice) Screen.orderReturn else Screen.main }) {
+        { vm.screen = if (invoice && vm.maintenance != null) Screen.maintenance else Screen.main }) {
         if (error) {
             Hint(stringResource(vm.aiError ?: R.string.p2_ai_invalid_text), LocalShop.current.bad)
         } else {

@@ -20,7 +20,6 @@
     <string name="fuel_deleted">Repostaje borrado</string>
     <string name="reading_corrected">Lectura corregida</string>
     <string name="one_job_saved">1 trabajo guardado en el historial</string>
-    <string name="jobs_saved">%1$s trabajos guardados en el historial</string>
     <string name="check_saved">Chequeo hecho. Buena ruta</string>
     <string name="check_failed_one">Chequeo guardado con 1 fallo</string>
     <string name="check_failed">Chequeo guardado con %1$s fallos</string>
@@ -44,7 +43,7 @@
     <string name="open">Abrir</string>
     <string name="done">Hecho hoy</string>
     <string name="history_action">Ver historial</string>
-    <string name="other_date">Hecho otro día</string>
+    <string name="other_date">Otro día o varios trabajos</string>
     <string name="switch_bike">Tus motos</string>
     <string name="km_unit">KM</string>
     <string name="read_today">LEÍDO HOY</string>
@@ -361,11 +360,6 @@
     <string name="p2_mechanic_notes">Notas para el mecánico</string>
     <string name="p2_choose_jobs">Añadir piezas</string>
     <string name="p2_send_order">Compartir Pendientes</string>
-    <string name="p2_extra_work">Añadir otro trabajo</string>
-    <string name="p2_free_work">Escribir trabajo</string>
-    <string name="p2_existing_part">Pieza existente</string>
-    <string name="p2_return_hint">Marca lo hecho y su costo.</string>
-    <string name="p2_total">Total</string>
     <string name="p2_cost">Coste</string>
     <string name="p2_invoice_photo">Foto de la factura</string>
     <string name="p2_invoice_replace">Cambiar factura</string>
@@ -574,4 +568,26 @@
     <plurals name="interval_days"><item quantity="one">día</item><item quantity="other">días</item></plurals>
     <plurals name="interval_months"><item quantity="one">mes</item><item quantity="other">meses</item></plurals>
     <plurals name="interval_years"><item quantity="one">año</item><item quantity="other">años</item></plurals>
+
+    <!-- Registrar mantenimiento: many jobs at one date and odometer reading. -->
+    <string name="mt_title">Registrar mantenimiento</string>
+    <string name="mt_hint">Varios trabajos, una fecha y un km</string>
+    <string name="mt_several">Registrar varios</string>
+    <string name="mt_where">Dónde</string>
+    <string name="mt_shop">Taller</string>
+    <string name="mt_self">Yo mismo</string>
+    <string name="mt_where_placeholder">Ej.: Taller del barrio</string>
+    <string name="mt_overdue">Vencidas (%1$d)</string>
+    <string name="mt_soon">Próximas (%1$d)</string>
+    <string name="mt_pending">Pendientes (%1$d)</string>
+    <string name="mt_oil">Cambio de aceite</string>
+    <string name="mt_full">Servicio completo</string>
+    <string name="mt_jobs">Trabajos</string>
+    <string name="mt_no_matches">Sin coincidencias.</string>
+    <string name="mt_undo">Deshacer</string>
+    <string name="mt_undone">Mantenimiento deshecho</string>
+    <plurals name="mt_checked"><item quantity="one">%1$d marcado</item><item quantity="other">%1$d marcados</item></plurals>
+    <plurals name="mt_count"><item quantity="one">%1$d trabajo</item><item quantity="other">%1$d trabajos</item></plurals>
+    <plurals name="mt_saved"><item quantity="one">%1$d trabajo guardado</item><item quantity="other">%1$d trabajos guardados</item></plurals>
+    <plurals name="mt_group"><item quantity="one">Mantenimiento · %1$d trabajo</item><item quantity="other">Mantenimiento · %1$d trabajos</item></plurals>
 </resources>

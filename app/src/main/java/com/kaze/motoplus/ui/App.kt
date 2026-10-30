@@ -38,7 +38,15 @@ fun App(vm: AppViewModel) {
 private fun AppContent(vm: AppViewModel) {
     val shop = LocalShop.current
     val snack = remember { SnackbarHostState() }
-    LaunchedEffect(vm.message) { vm.message?.let { snack.showSnackbar(it); vm.message = null } }
+    val undoLabel = stringResource(R.string.mt_undo)
+    LaunchedEffect(vm.message) {
+        vm.message?.let { text ->
+            val undo = vm.messageUndo.also { vm.messageUndo = null }
+            val result = snack.showSnackbar(text, actionLabel = undo?.let { undoLabel }, duration = if (undo != null) SnackbarDuration.Long else SnackbarDuration.Short)
+            vm.message = null
+            if (result == SnackbarResult.ActionPerformed && undo != null) vm.undoMaintenance(undo)
+        }
+    }
 
     if (vm.adding || vm.bike == null) {
         AddBikeScreen(vm, canCancel = vm.bike != null)
@@ -62,7 +70,7 @@ private fun AppContent(vm: AppViewModel) {
                 Screen.control -> ControlScreen(vm, bike)
                 Screen.fuel -> FuelScreen(vm, bike)
                 Screen.order -> OrderScreen(vm, bike)
-                Screen.orderReturn -> OrderReturnScreen(vm, bike)
+                Screen.maintenance -> vm.maintenance?.let { MaintenanceScreen(vm, bike, it) } ?: run { vm.screen = Screen.main }
                 Screen.ai, Screen.invoiceAi, Screen.aiError -> AiScreen(vm, bike)
                 Screen.aiReview -> AiReviewScreen(vm, bike)
                 Screen.check -> CheckScreen(vm, bike)

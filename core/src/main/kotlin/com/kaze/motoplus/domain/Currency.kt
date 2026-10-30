@@ -12,9 +12,11 @@ fun formatMoney(value: Double, currency: String = "COP", locale: Locale = Locale
         minimumFractionDigits = digits
         maximumFractionDigits = digits
     }.format(value)
-    val symbol = when (currency) { "COP" -> "$"; "USD" -> "US$"; "MXN" -> "MX$"; "EUR" -> "EUR"; else -> code.getSymbol(locale) }
-    return "$symbol $number"
+    return "${currencySymbol(currency, locale)} $number"
 }
+
+fun currencySymbol(currency: String, locale: Locale = Locale.forLanguageTag("es-CO")): String =
+    when (currency) { "COP" -> "$"; "USD" -> "US$"; "MXN" -> "MX$"; "EUR" -> "EUR"; else -> Currency.getInstance(currency).getSymbol(locale) }
 
 /** Parses the complete amount using the same separators as the displayed currency. */
 fun parseAmount(value: String, locale: Locale): Double? {

@@ -45,5 +45,6 @@ export const ICONS = {
   "settings": "gear",
   "list-checks": "list-checks",
   "clock": "clock",
-  "warning": "warning"
+  "warning": "warning",
+  "search": "magnifying-glass"
 };

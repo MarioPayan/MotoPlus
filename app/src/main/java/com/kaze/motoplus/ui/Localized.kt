@@ -137,11 +137,15 @@ private fun partResource(id: String): Int? = when (id) {
 }
 
 /** View-model messages use the same per-app locale as activity resources. */
-fun localizedString(ctx: android.content.Context, id: Int, vararg args: Any): String {
+fun localizedString(ctx: android.content.Context, id: Int, vararg args: Any): String = localizedContext(ctx).getString(id, *args)
+
+fun localizedPlural(ctx: android.content.Context, id: Int, n: Int): String = localizedContext(ctx).resources.getQuantityString(id, n, n)
+
+private fun localizedContext(ctx: android.content.Context): android.content.Context {
     val locales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
     val configuration = android.content.res.Configuration(ctx.resources.configuration)
     if (!locales.isEmpty) configuration.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
-    return ctx.createConfigurationContext(configuration).getString(id, *args)
+    return ctx.createConfigurationContext(configuration)
 }
 
 @Composable

@@ -13,6 +13,11 @@ data class ServiceRecord(
     val notes: String = "",
     val photo: String? = null,
     val partName: String? = null,
+    /** Records saved together by Registrar mantenimiento share this id. */
+    val group: String? = null,
+    val venue: Venue? = null,
+    /** Free text for where it was done, e.g. the workshop's name. */
+    val place: String = "",
 )
 
 fun Bike.addRecord(r: ServiceRecord) = copy(history = history + r).recompute(r.partId)
