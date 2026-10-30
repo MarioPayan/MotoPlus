@@ -40,7 +40,10 @@ fun SettingsScreen(vm: AppViewModel) {
                 )) { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(it)) }
                 SettingChoice(stringResource(R.string.currency_label), vm.garage.currency, listOf("COP", "USD", "EUR", "MXN").map { it to it }, vm::setCurrency)
             }
-            Sheet { Toggle(stringResource(R.string.ai_features), stringResource(R.string.ai_features_hint), vm.aiEnabled, vm::setAi) }
+            Sheet {
+                Toggle(stringResource(R.string.ai_features), stringResource(R.string.ai_features_hint), vm.aiEnabled,
+                    enabled = vm.aiAvailable, tag = if (vm.aiAvailable) null else stringResource(R.string.coming_soon), onChange = vm::setAi)
+            }
             Sheet {
                 SettingsEntry("cloud", stringResource(R.string.data_menu)) { vm.screen = Screen.data }
                 SettingsEntry("route", stringResource(R.string.sources)) { vm.screen = Screen.kmSources }

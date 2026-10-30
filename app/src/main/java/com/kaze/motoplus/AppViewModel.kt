@@ -39,9 +39,17 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { com.kaze.motoplus.work.updateWidgets(app) }
     }
 
-    /** AI features (consult, invoice reading, incoming AI links) stay hidden until the rider opts in. */
-    var aiEnabled by mutableStateOf(preferences.getBoolean("ai", false)); private set
-    fun setAi(on: Boolean) { aiEnabled = on; preferences.edit().putBoolean("ai", on).apply() }
+    /**
+     * AI features (consult, invoice reading, incoming AI links) are "Próximamente": Settings shows the switch
+     * disabled and they stay off whatever the stored "ai" preference says. The key is kept so they can come back
+     * by flipping [aiAvailable].
+     */
+    val aiAvailable = false
+    var aiEnabled by mutableStateOf(aiAvailable && preferences.getBoolean("ai", false)); private set
+    fun setAi(on: Boolean) {
+        if (!aiAvailable) return
+        aiEnabled = on; preferences.edit().putBoolean("ai", on).apply()
+    }
 
     var garage by mutableStateOf(Repo.garage.value); private set
     var catalog by mutableStateOf<Catalog?>(null); private set

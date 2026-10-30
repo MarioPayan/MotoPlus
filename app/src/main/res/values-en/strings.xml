@@ -537,6 +537,7 @@
     <string name="p3_tab_other">Other</string>
     <string name="ai_features">AI features</string>
     <string name="ai_features_hint">Ask your AI and read invoices. Off, MotoPlus ignores AI links.</string>
+    <string name="coming_soon">Coming soon</string>
     <string name="callout_more">+%1$d</string>
     <string name="widget_health">%1$s · HEALTH %2$d</string>
     <string name="widget_bike_description">The motorcycle with the status of each zone</string>

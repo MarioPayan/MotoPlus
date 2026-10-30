@@ -537,6 +537,7 @@
     <string name="p3_tab_other">Otro</string>
     <string name="ai_features">Funciones con IA</string>
     <string name="ai_features_hint">Consultar con tu IA y leer facturas. Apagado, MotoPlus ignora los enlaces de la IA.</string>
+    <string name="coming_soon">Próximamente</string>
     <string name="callout_more">+%1$d</string>
     <string name="widget_health">%1$s · SALUD %2$d</string>
     <string name="widget_bike_description">La moto con el estado de cada zona</string>
