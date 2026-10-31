@@ -3,6 +3,8 @@ name: Alta de moto desde el catálogo
 ---
 - launchApp:
     clearState: true
+# First launch opens the intro; Saltar goes to Añadir moto with the defaults.
+- tapOn: "Saltar"
 - tapOn: "Ej.: yamaha mt-07"
 - inputText: "yamaha mt-07"
 - hideKeyboard
@@ -16,6 +18,13 @@ name: Alta de moto desde el catálogo
     element: "Acabo de hacerle la revisión completa"
 - tapOn: "Acabo de hacerle la revisión completa"
 - tapOn: "Guardar moto"
+# The last step of Añadir moto is Mi moto: what to watch.
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- tapOn: "LISTO"
 - runFlow:
     when:
       visible: "Allow"
