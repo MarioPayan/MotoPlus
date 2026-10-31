@@ -62,15 +62,15 @@ fun KmScreen(vm: AppViewModel, bike: Bike) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Dial(bike, est, month) { value = est.km.toInt().toString(); fixing = true }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn(stringResource(R.string.refuel), { vm.screen = Screen.fuel }, Modifier.weight(1f), icon = "fuel")
+            if (vm.prefs.on(Feature.fuel)) Btn(stringResource(R.string.refuel), { vm.screen = Screen.fuel }, Modifier.weight(1f), icon = "fuel")
             Btn(stringResource(R.string.photo), { photo.launch(null) }, Modifier.weight(1f), ghost = true, icon = "camera")
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (vm.prefs.on(Feature.fuel)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat(stats.kmPerLiter?.let { decimal(it) } ?: "—", stringResource(R.string.mean_kml), Modifier.weight(1f))
             Stat(stats.costPerKm?.let { currencyMoney(it, vm.garage.currency) } ?: "—", stringResource(R.string.per_km), Modifier.weight(1f))
         }
         WeekBars(week)
-        TrackingSummary(vm)
+        if (vm.prefs.on(Feature.kmAuto)) TrackingSummary(vm)
         Log(bike, vm.garage.currency) { vm.deleteFuel(it) }
         Spacer(Modifier.height(4.dp))
     }

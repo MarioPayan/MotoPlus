@@ -591,4 +591,85 @@
     <plurals name="mt_count"><item quantity="one">%1$d job</item><item quantity="other">%1$d jobs</item></plurals>
     <plurals name="mt_saved"><item quantity="one">%1$d job saved</item><item quantity="other">%1$d jobs saved</item></plurals>
     <plurals name="mt_group"><item quantity="one">Maintenance · %1$d job</item><item quantity="other">Maintenance · %1$d jobs</item></plurals>
+    <!-- Round 9: part categories and My bike. -->
+    <string name="part_cat_tires">Tires</string>
+    <string name="part_cat_brakes">Brakes</string>
+    <string name="part_cat_engine">Engine and oil</string>
+    <string name="part_cat_drivetrain">Drivetrain</string>
+    <string name="part_cat_suspension">Suspension</string>
+    <string name="part_cat_electrical">Electrical</string>
+    <string name="part_cat_other">Other</string>
+    <string name="my_bike">My bike</string>
+    <string name="setup_bike">The bike</string>
+    <string name="setup_watch">What to watch</string>
+    <string name="setup_watch_hint">Watched parts count for health, alerts, Up next and reminders. Parts you switch off keep their history.</string>
+    <string name="watch_item">Watch · %1$s</string>
+    <string name="unwatched">Not watched</string>
+    <string name="watch_summary">%1$d of %2$d parts watched</string>
+    <string name="cat_count">%1$s · %2$d/%3$d</string>
+    <string name="add_own_part">Add your own part</string>
+    <string name="part_category">Category</string>
+    <string name="part_name">Name</string>
+    <string name="setup_added">Added: %1$s.</string>
+    <string name="setup_removed">No longer apply: %1$s. Their history is kept.</string>
+    <string name="setup_done">Done</string>
+    <string name="stop_watching">Stop watching</string>
+    <string name="now_unwatched">%1$s is no longer watched</string>
+    <string name="part_added">Part added</string>
+    <string name="list_separator">, </string>
+
+    <!-- Round 10: first-run intro and Customize. -->
+    <string name="welcome_line">Tracks your bike\'s maintenance part by part and warns you before anything is overdue.</string>
+    <string name="welcome_later">You can change your preferences later.</string>
+    <string name="welcome_skip">Skip</string>
+    <string name="welcome_next">Next</string>
+    <string name="welcome_start">Start</string>
+    <string name="welcome_skipped">Done. Change it any time in Customize.</string>
+    <string name="welcome_bike">Your bike</string>
+    <string name="welcome_bike_hint">Find it in the catalog: the model brings its parts and intervals.</string>
+    <string name="welcome_km_bad">Type the odometer km, numbers only.</string>
+    <string name="preset_essential">The essentials</string>
+    <string name="preset_all">Everything</string>
+    <string name="preset_none">Nothing, I\'ll do it</string>
+    <string name="show_parts">Show parts</string>
+    <string name="routines_title">Your routines</string>
+    <string name="routines_hint">What you turn off disappears from the app. Your data is kept.</string>
+    <string name="feat_checks_hint">A one-minute check before you set off.</string>
+    <string name="checks_pick">What to check</string>
+    <string name="feat_fuel">Fill-ups and consumption</string>
+    <string name="feat_fuel_hint">Log each fill-up to see km per litre and cost per km.</string>
+    <string name="feat_papers">Documents and expiry</string>
+    <string name="feat_papers_hint">Insurance, inspection, licence: reminds you before they expire.</string>
+    <string name="feat_workshop">Workshop</string>
+    <string name="feat_workshop_hint">A to-do list for the shop and Complete visit when you\'re back.</string>
+    <string name="feat_km_auto">Automatic km detection</string>
+    <string name="feat_km_auto_hint">Counts rides with GPS or your helmet intercom.</string>
+    <string name="feat_ai_hint">Your own AI looks into a noise or reads an invoice.</string>
+    <string name="interface_title">Interface</string>
+    <string name="ui_drawing">Bike blueprint</string>
+    <string name="ui_drawing_hint">The blueprint on the Bike tab. Without it, just the list.</string>
+    <string name="ui_density">Density</string>
+    <string name="density_comfortable">Comfortable</string>
+    <string name="density_compact">Compact</string>
+    <string name="ui_reminders">Reminders</string>
+    <string name="ui_reminders_hint">Notifications for parts and documents coming due.</string>
+    <string name="summary_hint">You can change it any time.</string>
+    <string name="yes_label">Yes</string>
+    <string name="no_label">No</string>
+    <string name="customize">Customize MotoPlus</string>
+    <string name="customize_short">Customize</string>
+    <string name="customize_hint">Choose what the app shows. Hidden things keep their data.</string>
+    <string name="show_all">Show everything again</string>
+    <string name="minimal_mode">Minimal mode</string>
+    <string name="minimal_hint">Only Bike and KM, watching the essentials.</string>
+    <string name="replay_intro">Replay the intro</string>
+    <string name="all_shown">Everything visible again</string>
+    <string name="minimal_on">Minimal mode on</string>
+    <string name="all_visible">Everything visible</string>
+    <string name="hidden_line">%1$s · %2$s</string>
+    <string name="reminders_off">Reminders are off. Turn them on in Customize.</string>
+    <string name="reminders_off_short">Reminders off</string>
+    <string name="ai_off_note">AI features are coming soon.</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <plurals name="hidden_features"><item quantity="one">%1$d hidden feature</item><item quantity="other">%1$d hidden features</item></plurals>
 </resources>

@@ -112,9 +112,10 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
                 if (event.sub.isNotBlank()) Hint(event.sub)
             }
             val open = event.group.isNotEmpty() && event.group.first().group in openGroups
-            Icon("chev", LocalShop.current.ink2, 16.dp, modifier = Modifier.rotate(if (event.group.isEmpty()) 0f else if (open) -90f else 90f))
+            if (event.group.isEmpty()) Icon("chev", LocalShop.current.ink2, 16.dp)
+            else Box(Modifier.rotate(90f)) { Chevron(open, size = 16.dp, openAngle = 180f) }
         }
-        if (event.group.isNotEmpty() && event.group.first().group in openGroups) event.group.forEach { r ->
+        if (event.group.isNotEmpty()) Collapse(event.group.first().group in openGroups) { event.group.forEach { r ->
             Row(Modifier.fillMaxWidth().clickable { vm.editRecord(r) }.padding(start = 62.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(bike.parts.firstOrNull { it.id == r.partId }?.let(::partIcon) ?: "wrench", LocalShop.current.ink2, 18.dp)
                 Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
@@ -123,7 +124,7 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
                 }
                 r.cost?.let { Text(money(it), style = Mono) }
             }
-        }
+        } }
     }
     orderDetail?.let { o ->
         AlertDialog(onDismissRequest = { orderDetail = null }, title = { Text(stringResource(R.string.p2_workshop_list)) }, text = {

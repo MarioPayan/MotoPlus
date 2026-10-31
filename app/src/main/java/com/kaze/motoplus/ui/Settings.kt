@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import com.kaze.motoplus.AppViewModel
 import com.kaze.motoplus.R
 import com.kaze.motoplus.Screen
+import com.kaze.motoplus.domain.Feature
+import com.kaze.motoplus.domain.watchedParts
 
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
@@ -24,20 +26,24 @@ fun SettingsScreen(vm: AppViewModel) {
     var paperLimits by remember { mutableStateOf(false) }
     if (about) { AboutScreen(vm) { about = false }; return }
     if (paperLimits) {
-        WorkshopPage(stringResource(R.string.p3_paper_limits), { paperLimits = false }) { PaperLimits(vm) }
+        WorkshopPage(stringResource(R.string.p3_paper_limits), { paperLimits = false }) {
+            if (!vm.prefs.reminders) Hint(stringResource(R.string.reminders_off), LocalShop.current.warn)
+            PaperLimits(vm)
+        }
         return
     }
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(stringResource(R.string.settings), { vm.screen = Screen.main })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            vm.bike?.let { b ->
+                Sheet {
+                    SettingsEntry("bike", stringResource(R.string.my_bike), b.title + " · " + stringResource(R.string.watch_summary, b.watchedParts.size, b.parts.size)) { vm.openSetup(Screen.settings) }
+                    SettingsEntry("sliders", stringResource(R.string.customize), hiddenText(vm.prefs)) { vm.screen = Screen.customize }
+                }
+            }
             Sheet {
-                SettingChoice(stringResource(R.string.theme), vm.theme, listOf(
-                    "system" to stringResource(R.string.system), "light" to stringResource(R.string.light), "dark" to stringResource(R.string.dark),
-                ), vm::chooseTheme)
-                SettingChoice(stringResource(R.string.language), AppCompatDelegate.getApplicationLocales().toLanguageTags(), listOf(
-                    "" to stringResource(R.string.system), "es" to stringResource(R.string.locales_es),
-                    "es-CO" to stringResource(R.string.locales_es_co), "en" to stringResource(R.string.locales_en),
-                )) { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(it)) }
+                SettingChoice(stringResource(R.string.theme), vm.theme, themeOptions(), vm::chooseTheme)
+                LanguageChoice()
                 SettingChoice(stringResource(R.string.currency_label), vm.garage.currency, listOf("COP", "USD", "EUR", "MXN").map { it to it }, vm::setCurrency)
             }
             Sheet {
@@ -46,10 +52,9 @@ fun SettingsScreen(vm: AppViewModel) {
             }
             Sheet {
                 SettingsEntry("cloud", stringResource(R.string.data_menu)) { vm.screen = Screen.data }
-                SettingsEntry("route", stringResource(R.string.sources)) { vm.screen = Screen.kmSources }
+                if (vm.prefs.on(Feature.kmAuto)) SettingsEntry("route", stringResource(R.string.sources)) { vm.screen = Screen.kmSources }
                 SettingsEntry("history", stringResource(R.string.history_title)) { vm.screen = Screen.history }
-                SettingsEntry("wrench", stringResource(R.string.part_limits)) { vm.screen = Screen.parts }
-                SettingsEntry("doc", stringResource(R.string.p3_paper_limits)) { paperLimits = !paperLimits }
+                if (vm.prefs.on(Feature.papers)) SettingsEntry("doc", stringResource(R.string.p3_paper_limits), if (vm.prefs.reminders) null else stringResource(R.string.reminders_off_short)) { paperLimits = !paperLimits }
                 SettingsEntry("info", stringResource(R.string.p3_about)) { about = true }
             }
         }
@@ -57,7 +62,21 @@ fun SettingsScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun SettingChoice(label: String, value: String, options: List<Pair<String, String>>, onPick: (String) -> Unit) {
+fun themeOptions() = listOf("system" to stringResource(R.string.system), "light" to stringResource(R.string.light), "dark" to stringResource(R.string.dark))
+
+@Composable
+fun languageOptions() = listOf(
+    "" to stringResource(R.string.system), "es" to stringResource(R.string.locales_es),
+    "es-CO" to stringResource(R.string.locales_es_co), "en" to stringResource(R.string.locales_en),
+)
+
+@Composable
+fun LanguageChoice() = SettingChoice(stringResource(R.string.language), AppCompatDelegate.getApplicationLocales().toLanguageTags(), languageOptions()) {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(it))
+}
+
+@Composable
+internal fun SettingChoice(label: String, value: String, options: List<Pair<String, String>>, onPick: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Column {
         Cap(label)
@@ -74,10 +93,13 @@ private fun SettingChoice(label: String, value: String, options: List<Pair<Strin
 }
 
 @Composable
-fun SettingsEntry(icon: String, label: String, onClick: () -> Unit) {
+fun SettingsEntry(icon: String, label: String, sub: String? = null, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, LocalShop.current.ink2)
-        Text(label, Modifier.weight(1f).padding(horizontal = 12.dp))
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text(label)
+            sub?.let { Hint(it) }
+        }
         Icon("chev", LocalShop.current.ink2, 18.dp)
     }
 }

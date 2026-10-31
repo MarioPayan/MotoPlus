@@ -9,9 +9,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kaze.motoplus.data.Catalog
 import com.kaze.motoplus.data.Drawing
+import com.kaze.motoplus.data.Prefs
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
+import com.kaze.motoplus.ui.localizedContext
 import com.kaze.motoplus.ui.localizedLocale
+import com.kaze.motoplus.ui.partLabel
 import com.kaze.motoplus.ui.localizedPlural
 import com.kaze.motoplus.ui.localizedString
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +25,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, parts, part, history, zone, doc, control, fuel, order, maintenance, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi }
+enum class Screen { main, setup, customize, part, history, zone, doc, control, fuel, order, maintenance, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -52,6 +55,35 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     var garage by mutableStateOf(Repo.garage.value); private set
+
+    /** What the app shows (intro, Personalizar). A rider who already has bikes never sees the intro by itself. */
+    var prefs by mutableStateOf(Prefs.load(app).let { if (!it.onboarded && garage.bikes.isNotEmpty()) it.copy(onboarded = true).also { p -> Prefs.save(app, p) } else it }); private set
+
+    fun updatePrefs(f: (Preferences) -> Preferences) {
+        val before = prefs
+        prefs = f(prefs)
+        Prefs.save(app, prefs)
+        if (before.on(Feature.kmAuto) != prefs.on(Feature.kmAuto)) com.kaze.motoplus.work.Tracker.register(app)
+        if (!before.reminders && prefs.reminders || !before.on(Feature.papers) && prefs.on(Feature.papers)) com.kaze.motoplus.work.ReminderWorker.runNow(app)
+    }
+
+    /** Tabs left after hidden features; the bar re-flows. */
+    val visibleTabs: List<Tab> get() = Tab.entries.filter { tabOpen(it) }
+    fun tabOpen(t: Tab) = when (t) { Tab.papers -> prefs.on(Feature.papers); Tab.report -> prefs.on(Feature.workshop); else -> true }
+
+    /** A hidden feature's screens are closed too: deep links and stale state land on Home. */
+    fun routeOpen(s: Screen) = when (s) {
+        Screen.fuel -> prefs.on(Feature.fuel)
+        Screen.check -> prefs.on(Feature.checks) && checkSteps().isNotEmpty()
+        Screen.order -> prefs.on(Feature.workshop)
+        Screen.maintenance -> maintenance?.visit != true || prefs.on(Feature.workshop)
+        Screen.doc, Screen.control -> prefs.on(Feature.papers)
+        Screen.ai, Screen.aiReview, Screen.aiError, Screen.invoiceAi -> aiEnabled
+        else -> true
+    }
+
+    /** Antes de salir steps for the selected bike: the drive decides the chain step, the rider's picks the rest. */
+    fun checkSteps(): List<String> = prefs.checkSteps(CHECK_STEPS.filter { it != "chain" || bike?.drive in setOf(Drive.chain, Drive.belt) })
     var catalog by mutableStateOf<Catalog?>(null); private set
     var tab by mutableStateOf(Tab.bike)
     var screen by mutableStateOf(Screen.main)
@@ -61,15 +93,20 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var selectedZone by mutableStateOf<String?>(null)
     var highlighted by mutableStateOf<Set<String>>(emptySet())
     var adding by mutableStateOf(garage.bikes.isEmpty())
-    var editingBike by mutableStateOf(false)
+    /** Mi moto: where it goes back to and the notice of the last part swap. */
+    var setup by mutableStateOf(SetupState())
+    /** The first-run intro while it is open. */
+    var welcome by mutableStateOf(if (!prefs.onboarded && garage.bikes.isEmpty()) WelcomeState() else null)
+    /** The intro's bike before it exists. */
+    var welcomeDraft by mutableStateOf(BikeDraft())
     var pendingImport by mutableStateOf("")
     var aiRevision by mutableStateOf(0); private set
     var aiSource by mutableStateOf<String?>(null)
     var aiReview by mutableStateOf<ReportData?>(null)
     var aiError by mutableStateOf<Int?>(null)
     var maintenance by mutableStateOf<MaintenanceDraft?>(null)
-    /** Deshacer for the snackbar that shows [message]; taken by the snackbar when it appears. */
-    var messageUndo: MaintenanceUndo? = null
+    /** The button (Deshacer, Personalizar) of the snackbar that shows [message]; taken by the snackbar when it appears. */
+    var messageAction: SnackAction? = null
     var aiNotes by mutableStateOf("")
     var message by mutableStateOf<String?>(null)
     /** Zone that just had something marked done, plus a counter so the same zone can flash twice. */
@@ -101,14 +138,115 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         var b = Bike(UUID.randomUUID().toString(), brand.trim(), model.trim(), year, category, drive, cooling, defaultParts(category, drive, cooling), listOf(Reading(d, km, System.currentTimeMillis())))
         if (allDoneToday) b.parts.forEach { p -> b = b.addRecord(ServiceRecord(UUID.randomUUID().toString(), p.id, d, km, notes = text(R.string.initial_service))) }
         Repo.update { it.copy(bikes = it.bikes + b, selectedId = b.id) }
-        adding = false; tab = Tab.bike; screen = Screen.main; selectedZone = null
+        adding = false; tab = Tab.bike; selectedZone = null
+        // The last step of Añadir moto is choosing what to watch.
+        setup = SetupState(back = Screen.main, fromAdd = true); screen = Screen.setup
     }
 
-    fun editBike(brand: String, model: String, year: Int?) {
-        updateBike { it.copy(brand = brand.trim(), model = model.trim(), year = year) }
-        editingBike = false
+    // ---------- Mi moto ----------
+
+    fun openSetup(back: Screen = screen, bikeId: String? = null) {
+        if (bikeId != null && bikeId != bike?.id) select(bikeId)
+        setup = SetupState(back = back); screen = Screen.setup
+    }
+
+    /** A catalog model brings its category and that category's usual transmission and cooling. */
+    fun setModel(brand: String, model: String, year: Int?, category: Category?) {
+        updateBike { b -> b.copy(brand = brand.trim(), model = model.trim(), year = year ?: b.year, category = category ?: b.category) }
+        if (category != null) setDrivetrain(defaultDrive(category), defaultCooling(category))
         message = text(R.string.bike_updated)
     }
+
+    fun setYear(year: Int?) = updateBike { it.copy(year = year) }
+
+    fun setCategory(c: Category) = updateBike { it.copy(category = c) }
+
+    /** Swaps the parts that depend on transmission and cooling and says which. */
+    fun setDrivetrain(drive: Drive, cooling: Cooling) {
+        val ctx = localizedContext(app)
+        var swap: PartSwap? = null
+        updateBike { b -> b.withDrivetrain(drive, cooling) { partLabel(it, ctx) }.also { swap = it }.bike }
+        val s = swap ?: return
+        val sep = ctx.getString(R.string.list_separator)
+        setup = setup.copy(notice = listOfNotNull(
+            s.added.takeIf { it.isNotEmpty() }?.let { l -> ctx.getString(R.string.setup_added, l.joinToString(sep) { partLabel(it, ctx) }) },
+            s.removed.takeIf { it.isNotEmpty() }?.let { l -> ctx.getString(R.string.setup_removed, l.joinToString(sep) { partLabel(it, ctx) }) },
+        ).joinToString(" ").ifEmpty { null })
+    }
+
+    fun watch(partId: String, on: Boolean) = updateBike { it.watch(partId, on) }
+
+    fun watchCategory(c: PartCategory, on: Boolean) = updateBike { it.watchCategory(c, on) }
+
+    fun watchPreset(p: WatchPreset) = updateBike { it.withPreset(p) }
+
+    /** Dejar de vigilar from a part's menu, with Deshacer. */
+    fun unwatch(partId: String) {
+        val p = bike?.parts?.firstOrNull { it.id == partId } ?: return
+        watch(partId, false)
+        messageAction = SnackAction(text(R.string.mt_undo)) { watch(partId, true) }
+        message = text(R.string.now_unwatched, partLabel(p, localizedContext(app)))
+    }
+
+    fun addCustomPart(name: String, category: PartCategory, km: Int?, days: Int?, unit: IntervalUnit, value: String) {
+        updateBike { it.addCustomPart(CUSTOM_PART_PREFIX + UUID.randomUUID().toString().replace("-", ""), name, category, km, days, unit, value.ifBlank { null }) }
+        message = text(R.string.part_added)
+    }
+
+    // ---------- Intro and Personalizar ----------
+
+    fun replayIntro() { welcome = WelcomeState(replay = true, km = bike?.let { estimate(it, today).km.toInt().toString() }.orEmpty()) }
+
+    /** Step 2 creates the bike (or, replaying, saves a new odometer reading) before Qué vigilar needs its parts. */
+    fun welcomeNext() {
+        val w = welcome ?: return
+        if (w.step == 1) {
+            val km = w.km.toIntOrNull()?.takeIf { it in 0..9_999_999 }
+            if (km == null) { welcome = w.copy(kmError = true); return }
+            val b = bike
+            if (b == null) {
+                val d = welcomeDraft
+                if (d.brand.isBlank() || d.model.isBlank()) return
+                val day = today.toString()
+                val nb = Bike(UUID.randomUUID().toString(), d.brand.trim(), d.model.trim(), d.year, d.category, defaultDrive(d.category), defaultCooling(d.category),
+                    defaultParts(d.category, defaultDrive(d.category), defaultCooling(d.category)), listOf(Reading(day, km, System.currentTimeMillis())))
+                Repo.update { it.copy(bikes = it.bikes + nb, selectedId = nb.id) }
+                adding = false
+            } else if (km != estimate(b, today).km.toInt()) updateBike { it.withReading(km, today, System.currentTimeMillis()) }
+        }
+        welcome = w.copy(step = (w.step + 1).coerceAtMost(WELCOME_STEPS - 1), forward = true, kmError = false)
+    }
+
+    fun welcomeBack() { welcome?.let { welcome = it.copy(step = (it.step - 1).coerceAtLeast(0), forward = false) } }
+
+    /** Saltar keeps what was chosen so far; the rest stays at its default. */
+    fun finishWelcome(skipped: Boolean) {
+        val replay = welcome?.replay == true
+        updatePrefs { it.copy(onboarded = true) }
+        welcome = null; welcomeDraft = BikeDraft()
+        tab = Tab.bike; screen = if (replay && skipped) Screen.customize else Screen.main
+        if (skipped && !replay) {
+            messageAction = SnackAction(text(R.string.customize_short)) { screen = Screen.customize }
+            message = text(R.string.welcome_skipped)
+        }
+    }
+
+    /** Volver a mostrar todo and Modo mínimo change many switches at once; Deshacer puts every one back. */
+    private fun bulkPrefs(change: (Preferences) -> Preferences, preset: WatchPreset, done: Int) {
+        val before = prefs
+        val watched = garage.bikes.associate { b -> b.id to b.parts.associate { it.id to it.watched } }
+        updatePrefs(change)
+        Repo.update { it.watchAll(preset) }
+        messageAction = SnackAction(text(R.string.mt_undo)) {
+            updatePrefs { before }
+            Repo.update { g -> g.copy(bikes = g.bikes.map { b -> watched[b.id]?.let { w -> b.copy(parts = b.parts.map { p -> w[p.id]?.let { p.copy(watched = it) } ?: p }) } ?: b }) }
+        }
+        message = text(done)
+    }
+
+    fun showAll() = bulkPrefs(Preferences::showAll, WatchPreset.all, R.string.all_shown)
+
+    fun minimalMode() = bulkPrefs(Preferences::minimal, WatchPreset.essential, R.string.minimal_on)
 
     fun deleteBike() {
         val b = bike ?: return
@@ -116,7 +254,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         b.history.mapNotNull { it.photo }.forEach { File(it).delete() }
         garage.documents.filter { it.bikeId == b.id }.flatMap { it.photos }.forEach { File(it).delete() }
         Repo.update { g -> g.copy(documents = g.documents.filter { it.bikeId != b.id }) }
-        editingBike = false; screen = Screen.main; selectedZone = null; highlighted = emptySet()
+        screen = Screen.main; selectedZone = null; highlighted = emptySet()
         if (garage.bikes.isEmpty()) adding = true
         message = text(R.string.bike_deleted)
     }
@@ -186,7 +324,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Every incoming route stops at review; no garage data changes here. */
     fun incoming(answer: String, source: String? = null) {
-        if (!aiEnabled) return
+        if (!aiEnabled) { tab = Tab.bike; screen = Screen.main; message = text(R.string.ai_off_note); return }
         aiRevision++
         pendingImport = answer
         aiSource = source
@@ -274,7 +412,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         maintenance = null; pendingImport = ""
         if (d.visit) { tab = Tab.report; screen = Screen.main } else screen = d.back
         com.kaze.motoplus.work.ReminderWorker.runNow(app)
-        messageUndo = undo
+        messageAction = undo?.let { u -> SnackAction(text(R.string.mt_undo)) { undoMaintenance(u) } }
         message = localizedPlural(app, R.plurals.mt_saved, jobs.size)
     }
 
@@ -316,7 +454,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun setCurrency(value: String) { if (value in listOf("COP", "USD", "EUR", "MXN")) Repo.update { it.copy(currency = value) } }
 
+    /** Only parts the rider added can be deleted; template parts are switched off instead. */
     fun removePart(id: String) {
+        if (bike?.parts?.firstOrNull { it.id == id }?.isCustom != true) return
         updateBike { it.withoutPart(id) }
         message = text(R.string.deleted)
     }
@@ -326,6 +466,19 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
 }
+
+data class SnackAction(val label: String, val run: () -> Unit)
+
+/** Mi moto came from [back]; [fromAdd] is the last step of Añadir moto and shows Listo. */
+data class SetupState(val back: Screen = Screen.settings, val fromAdd: Boolean = false, val notice: String? = null)
+
+const val WELCOME_STEPS = 6
+
+/** The intro's place: Bienvenida, Tu moto, Qué vigilar, Tus rutinas, Interfaz, Resumen. */
+data class WelcomeState(val step: Int = 0, val forward: Boolean = true, val km: String = "", val kmError: Boolean = false, val open: Set<PartCategory> = emptySet(), val replay: Boolean = false)
+
+/** The intro's bike before it is saved. */
+data class BikeDraft(val brand: String = "", val model: String = "", val year: Int? = null, val category: Category = Category.naked)
 
 data class RecordDraft(val id: String?, val partId: String, val date: String, val km: String, val cost: String, val notes: String, val photo: String?)
 

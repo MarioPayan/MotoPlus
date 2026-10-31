@@ -32,6 +32,7 @@ import com.kaze.motoplus.AppViewModel
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.domain.RideTrigger
 import com.kaze.motoplus.domain.Tracking
+import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.work.Tracker
 
 /** Km tab: the live ride or a manual start, and the way into ctx.getString(R.string.sources) with what is switched on. */
@@ -122,7 +123,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Hint(ctx.getString(R.string.sources_intro))
 
-            Sheet {
+            if (vm.prefs.on(Feature.kmAuto)) Sheet {
                 Cap(ctx.getString(R.string.auto_rides))
                 Toggle(ctx.getString(R.string.motion), ctx.getString(R.string.motion_hint), t.motion) { on ->
                     if (on) enable(t.copy(motion = true)) else vm.setTracking(t.copy(motion = false))
@@ -153,7 +154,7 @@ fun KmSourcesScreen(vm: AppViewModel) {
                 }
             }
 
-            Sheet {
+            if (vm.prefs.on(Feature.kmAuto)) Sheet {
                 Cap(ctx.getString(R.string.car_only))
                 Hint(ctx.getString(R.string.car_hint))
                 Toggle(ctx.getString(R.string.car_bluetooth), ctx.getString(R.string.car_connected), t.carDevices.isNotEmpty()) { on ->

@@ -251,4 +251,9 @@
     <plurals name="interval_years"><item quantity="one">año</item><item quantity="other">años</item></plurals>
 
     <string name="mt_where_placeholder">Ej.: Taller de la 80</string>
+    <string name="part_cat_tires">Llantas</string>
+    <string name="welcome_km_bad">Escribe los km del tablero, solo números.</string>
+    <string name="feat_fuel">Tanqueadas y consumo</string>
+    <string name="feat_fuel_hint">Anota cada tanqueada y ves km por litro y costo por km.</string>
+    <string name="feat_papers_hint">SOAT, tecnomecánica, licencia: avisa antes de que venzan.</string>
 </resources>

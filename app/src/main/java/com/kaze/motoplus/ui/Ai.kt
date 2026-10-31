@@ -113,7 +113,7 @@ fun AiReviewScreen(vm: AppViewModel, bike: Bike) {
         if (d.parts.isNotEmpty()) SectionTitle(stringResource(R.string.p2_ai_pending_parts))
         d.parts.forEachIndexed { i, id -> Sheet {
             IncludeRow(i in parts) { parts = if (it) parts + i else parts - i }
-            ChoiceRow(bike.parts.map { it.id to partLabel(it) }, id) { value -> d = d.copy(parts = d.parts.mapIndexed { j, p -> if (j == i) value else p }) }
+            ChoiceRow(bike.parts.sortedByCategory().map { it.id to partLabel(it) }, id) { value -> d = d.copy(parts = d.parts.mapIndexed { j, p -> if (j == i) value else p }) }
         } }
         TextButton({ pickParts = true }, enabled = d.parts.size < 60) { Text(stringResource(R.string.p2_ai_add_part)) }
         Hint(stringResource(R.string.p2_report_hint))

@@ -31,7 +31,7 @@ private data class Step(val id: String, val zone: String?, val title: String, va
 private fun steps(ctx: android.content.Context, vm: AppViewModel, bike: Bike): List<Step> {
     val today = vm.today
     val odo = estimate(bike, today).km
-    fun note(vararg ids: String) = ids.mapNotNull { id -> bike.parts.firstOrNull { it.id == id } }
+    fun note(vararg ids: String) = ids.mapNotNull { id -> bike.parts.firstOrNull { it.id == id && it.watched } }
         .map { it to partState(it, odo, today) }.filter { it.second.status != Status.ok }
         .joinToString(ctx.getString(R.string.or)) { (p, s) -> "${partLabel(p, ctx)}: ${remaining(s, ctx)}" }.ifEmpty { null }
     val papers = vm.papers.map { it to docState(it, today, vm.garage.paperReminderDays[it.type] ?: 30) }.filter { it.second.status != Status.ok }
@@ -47,7 +47,7 @@ private fun steps(ctx: android.content.Context, vm: AppViewModel, bike: Bike): L
         Step("brakes", "front_brake", ctx.getString(R.string.check_brakes), "disc", ctx.getString(R.string.brakes_how), note("front_pads", "rear_pads", "brake_fluid"), listOf("front_pads", "rear_pads", "brake_fluid")),
         Step("oil", "engine", ctx.getString(R.string.check_oil), "oil", ctx.getString(R.string.oil_how), note("engine_oil"), listOf("engine_oil")),
         Step("papers", null, ctx.getString(R.string.check_papers), "doc", ctx.getString(R.string.papers_how), papers, emptyList()),
-    )
+    ).filter { it.id in vm.checkSteps() }
 }
 
 @Composable
@@ -56,7 +56,7 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    val list = remember(bike, vm.garage.documents, vm.garage.paperReminderDays, ctx.resources.configuration) { steps(ctx, vm, bike) }
+    val list = remember(bike, vm.garage.documents, vm.garage.paperReminderDays, vm.prefs, ctx.resources.configuration) { steps(ctx, vm, bike) }
     val results = remember(bike.id) { mutableStateMapOf<String, Boolean>() }
     val pager = rememberPagerState { list.size + 1 }
     val today = vm.today
@@ -139,7 +139,7 @@ private fun Summary(vm: AppViewModel, bike: Bike, list: List<Step>, results: Map
             Hint(stringResource(R.string.check_counts))
         Spacer(Modifier.height(6.dp))
         val toOrder = failed.flatMap { it.parts }.filter { id -> bike.parts.any { it.id == id } }
-        if (toOrder.isNotEmpty()) Btn(stringResource(R.string.add_to_order), { vm.saveCheck(ok.map { it.id }, failed.map { it.id }, toOrder) }, Modifier.fillMaxWidth(), ghost = true, icon = "wrench")
+        if (toOrder.isNotEmpty() && vm.prefs.on(Feature.workshop)) Btn(stringResource(R.string.add_to_order), { vm.saveCheck(ok.map { it.id }, failed.map { it.id }, toOrder) }, Modifier.fillMaxWidth(), ghost = true, icon = "wrench")
         Btn(stringResource(R.string.finish), { vm.saveCheck(ok.map { it.id }, failed.map { it.id }, emptyList()) }, Modifier.fillMaxWidth(), enabled = results.isNotEmpty())
     }
 }

@@ -23,12 +23,7 @@ fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?, IntervalUn
         onDismissRequest = onDismiss, title = { SectionTitle(partLabel(part)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                FormField(km, stringResource(R.string.p2_each_km), { km = it.filter(Char::isDigit).take(6) }, numeric = true)
-                if (time.unit == IntervalUnit.days) {
-                    val wholeDays = time.text.toBigDecimalOrNull()?.setScale(0, java.math.RoundingMode.HALF_UP)?.toPlainString().orEmpty()
-                    IntegerField(wholeDays, { time = time.type(it) }, stringResource(R.string.p3_time), Modifier.fillMaxWidth(), maxDigits = 5)
-                } else DecimalField(time.text, { time = time.type(it) }, stringResource(R.string.p3_time), Modifier.fillMaxWidth())
-                ChoiceRow(IntervalUnit.entries.map { it.name to intervalUnitLabel(it) }, time.unit.name) { time = time.switchTo(IntervalUnit.valueOf(it)) }
+                IntervalFields(km, { km = it }, time, { time = it })
                 suggested?.let { sp ->
                     Cap(stringResource(R.string.p3_suggested))
                     Row(Modifier.fillMaxWidth().background(LocalShop.current.sheet2).border(1.dp, LocalShop.current.line), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -46,9 +41,27 @@ fun IntervalDialog(part: Part, suggested: Part?, onSave: (Int?, Int?, IntervalUn
                 }
             }
         },
-        confirmButton = { TextButton({ onSave(kmN, days, time.unit, time.text) }, enabled = (kmN != null || days != null) && (time.text.isBlank() || days != null) && (km.isBlank() || kmN != null)) { Text(stringResource(R.string.save)) } },
+        confirmButton = { TextButton({ onSave(kmN, days, time.unit, time.text) }, enabled = intervalValid(km, time)) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/** Km and time limits; at least one is set, and whatever is typed parses. */
+fun intervalValid(km: String, time: IntervalInput): Boolean {
+    val kmN = km.toIntOrNull()?.takeIf { it > 0 }
+    val days = time.toDays()
+    return (kmN != null || days != null) && (time.text.isBlank() || days != null) && (km.isBlank() || kmN != null)
+}
+
+/** Km field, time field and its unit; shared by the limits editor and Añadir pieza propia. */
+@Composable
+fun IntervalFields(km: String, onKm: (String) -> Unit, time: IntervalInput, onTime: (IntervalInput) -> Unit) {
+    FormField(km, stringResource(R.string.p2_each_km), { onKm(it.filter(Char::isDigit).take(6)) }, numeric = true)
+    if (time.unit == IntervalUnit.days) {
+        val wholeDays = time.text.toBigDecimalOrNull()?.setScale(0, java.math.RoundingMode.HALF_UP)?.toPlainString().orEmpty()
+        IntegerField(wholeDays, { onTime(time.type(it)) }, stringResource(R.string.p3_time), Modifier.fillMaxWidth(), maxDigits = 5)
+    } else DecimalField(time.text, { onTime(time.type(it)) }, stringResource(R.string.p3_time), Modifier.fillMaxWidth())
+    ChoiceRow(IntervalUnit.entries.map { it.name to intervalUnitLabel(it) }, time.unit.name) { onTime(time.switchTo(IntervalUnit.valueOf(it))) }
 }
 
 @Composable

@@ -55,4 +55,9 @@ val ICONS = mapOf(
     "clock" to R.drawable.ph_clock,
     "warning" to R.drawable.ph_warning,
     "search" to R.drawable.ph_search,
+    "engine" to R.drawable.ph_engine,
+    "lightning" to R.drawable.ph_lightning,
+    "dots-three-circle" to R.drawable.ph_dots_three_circle,
+    "sliders" to R.drawable.ph_sliders,
+    "eye-slash" to R.drawable.ph_eye_slash,
 )

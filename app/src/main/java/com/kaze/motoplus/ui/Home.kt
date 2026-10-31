@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,21 +32,22 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
     val today = vm.today
     val odo = estimate(bike, today).km
     val zones = zoneStates(bike, odo, today)
-    val states = bike.parts.map { it to partState(it, odo, today) }
+    val states = bike.watchedParts.map { it to partState(it, odo, today) }
     val shop = LocalShop.current
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(if (LocalCompact.current) 10.dp else 18.dp)) {
         HealthBar(health(bike, odo, today), states.count { it.second.status != Status.ok })
-        BikeCanvas(rememberPlate(vm.drawingFor(bike)), zones, highlighted = vm.highlighted,
+        if (vm.prefs.drawing) BikeCanvas(rememberPlate(vm.drawingFor(bike)), zones, highlighted = vm.highlighted,
             callouts = callouts(bike, zones), flash = vm.flash, onZone = { vm.openZone(it) })
         Column {
             Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { SectionTitle(stringResource(R.string.next)) }
                 TextButton({ vm.openMaintenance(preset = QuickPick.overdue) }) { Text(stringResource(R.string.mt_several), color = shop.accent) }
             }
-            val alerts = states.filter { it.second.status != Status.ok && !it.first.snoozed(today) }.sortedByDescending { it.second.used }
-            alerts.forEach { (p, state) -> PartRow(vm, p, state) }
+            val alerts = upNext(bike, odo, today)
+            alerts.forEach { (p, state) -> key(p.id) { PartRow(vm, p, state) } }
             if (alerts.isEmpty()) Hint(stringResource(R.string.no_alerts))
         }
+        HiddenLine(vm)
         Spacer(Modifier.height(12.dp))
     }
 }
@@ -110,13 +112,15 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
     var days by remember { mutableStateOf("7") }
     val name = partLabel(p)
     val left = remaining(s)
+    val status = if (p.watched) s.status else Status.none
     Column {
         HorizontalDivider(color = shop.line)
-        Row(Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.alert_actions)) { menu = true }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(partIcon(p), shop.status(s.status), 24.dp)
+        Row(Modifier.fillMaxWidth().alpha(if (p.watched) 1f else .5f).clickable(onClickLabel = stringResource(R.string.alert_actions)) { menu = true }
+            .padding(vertical = if (LocalCompact.current) 5.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(partIcon(p), shop.status(status), 24.dp)
             Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
                 Text(name, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(left + if (showInterval) " · ${localizedInterval(p)}" else "", style = Mono.copy(fontSize = 11.sp), color = shop.status(s.status))
+                Text((if (p.watched) left else stringResource(R.string.unwatched)) + if (showInterval) " · ${localizedInterval(p)}" else "", style = Mono.copy(fontSize = 11.sp), color = shop.status(status))
             }
             Icon("chev", shop.ink2, 18.dp)
         }
@@ -131,14 +135,15 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
             SettingsEntry("check", stringResource(R.string.done)) { vm.markDone(p.id); menu = false }
             SettingsEntry("list-checks", stringResource(R.string.other_date)) { menu = false; vm.openMaintenance(partId = p.id) }
             SettingsEntry("clock", stringResource(R.string.snooze)) { snoozing = true; menu = false }
-            SettingsEntry("wrench", stringResource(R.string.add_to_order)) {
+            if (vm.prefs.on(Feature.workshop)) SettingsEntry("wrench", stringResource(R.string.add_to_order)) {
                 val order = vm.bike?.openOrder()
                 vm.saveOrder(((order?.partIds ?: emptyList()) + p.id).distinct(), order?.notes ?: "")
                 menu = false
             }
             SettingsEntry("history", stringResource(R.string.history_action)) { vm.openPart(p.id); menu = false }
+            if (p.watched) SettingsEntry("eye-slash", stringResource(R.string.stop_watching)) { vm.unwatch(p.id); menu = false }
             Btn(stringResource(R.string.view_limits), { vm.editing = p.id; menu = false }, Modifier.fillMaxWidth(), ghost = true, icon = "settings")
-            TextButton({ deleting = true }) { Text(stringResource(R.string.delete), color = shop.bad) }
+            if (p.isCustom) TextButton({ deleting = true }) { Text(stringResource(R.string.delete), color = shop.bad) }
             Spacer(Modifier.height(20.dp))
         }
     }
@@ -169,7 +174,7 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
     val zones = zoneStates(bike, odo, today)
     val plate = rememberPlate(vm.drawingFor(bike))
     val st = zones.getValue(zone)
-    val last = bike.history.filter { r -> st.parts.any { it.first.id == r.partId } }.maxWithOrNull(compareBy({ it.date }, { it.km }))
+    val last = bike.history.filter { r -> st.all.any { it.first.id == r.partId } }.maxWithOrNull(compareBy({ it.date }, { it.km }))
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding()) {
         Header(zoneName(zone), { vm.screen = Screen.main })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -182,8 +187,8 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
                     BikeCanvas(plate, zones, focus = zone, window = plate.detail(listOf(zone)), flash = vm.flash, highlighted = vm.highlighted)
             }
             Column {
-                st.parts.forEach { (p, s) -> PartRow(vm, p, s, showInterval = true) }
-                if (st.parts.isEmpty()) Hint(stringResource(R.string.empty_zone), modifier = Modifier.padding(6.dp))
+                st.all.forEach { (p, s) -> key(p.id) { PartRow(vm, p, s, showInterval = true) } }
+                if (st.all.isEmpty()) Hint(stringResource(R.string.empty_zone), modifier = Modifier.padding(6.dp))
             }
             if (last != null) Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Cap(stringResource(R.string.last_work))

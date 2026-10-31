@@ -1,4 +1,5 @@
 <resources>
+    <string name="app_name" translatable="false">MotoPlus</string>
     <string name="settings">Configuración</string>
     <string name="part_limits">Límites de las piezas</string>
     <string name="currency_label">Moneda</string>
@@ -591,4 +592,85 @@
     <plurals name="mt_count"><item quantity="one">%1$d trabajo</item><item quantity="other">%1$d trabajos</item></plurals>
     <plurals name="mt_saved"><item quantity="one">%1$d trabajo guardado</item><item quantity="other">%1$d trabajos guardados</item></plurals>
     <plurals name="mt_group"><item quantity="one">Mantenimiento · %1$d trabajo</item><item quantity="other">Mantenimiento · %1$d trabajos</item></plurals>
+    <!-- Round 9: part categories and Mi moto. -->
+    <string name="part_cat_tires">Neumáticos</string>
+    <string name="part_cat_brakes">Frenos</string>
+    <string name="part_cat_engine">Motor y aceite</string>
+    <string name="part_cat_drivetrain">Transmisión</string>
+    <string name="part_cat_suspension">Suspensión</string>
+    <string name="part_cat_electrical">Eléctrico</string>
+    <string name="part_cat_other">Otros</string>
+    <string name="my_bike">Mi moto</string>
+    <string name="setup_bike">La moto</string>
+    <string name="setup_watch">Qué vigilar</string>
+    <string name="setup_watch_hint">Lo que vigilas cuenta para la salud, los avisos, Lo próximo y los recordatorios. Lo que apagas guarda su historial.</string>
+    <string name="watch_item">Vigilar · %1$s</string>
+    <string name="unwatched">No vigilado</string>
+    <string name="watch_summary">%1$d de %2$d piezas vigiladas</string>
+    <string name="cat_count">%1$s · %2$d/%3$d</string>
+    <string name="add_own_part">Añadir pieza propia</string>
+    <string name="part_category">Categoría</string>
+    <string name="part_name">Nombre</string>
+    <string name="setup_added">Se añadieron: %1$s.</string>
+    <string name="setup_removed">Ya no aplican: %1$s. Su historial se conserva.</string>
+    <string name="setup_done">Listo</string>
+    <string name="stop_watching">Dejar de vigilar</string>
+    <string name="now_unwatched">%1$s ya no se vigila</string>
+    <string name="part_added">Pieza añadida</string>
+    <string name="list_separator">, </string>
+
+    <!-- Round 10: first-run intro and Personalizar. -->
+    <string name="welcome_line">Lleva el mantenimiento de tu moto por piezas y te avisa antes de que algo se pase.</string>
+    <string name="welcome_later">Las preferencias se pueden cambiar después.</string>
+    <string name="welcome_skip">Saltar</string>
+    <string name="welcome_next">Siguiente</string>
+    <string name="welcome_start">Empezar</string>
+    <string name="welcome_skipped">Listo. Cámbialo cuando quieras en Personalizar.</string>
+    <string name="welcome_bike">Tu moto</string>
+    <string name="welcome_bike_hint">Búscala en el catálogo: con el modelo salen sus piezas e intervalos.</string>
+    <string name="welcome_km_bad">Escribe los km del cuadro, solo números.</string>
+    <string name="preset_essential">Lo esencial</string>
+    <string name="preset_all">Todo</string>
+    <string name="preset_none">Nada, lo hago yo</string>
+    <string name="show_parts">Ver piezas</string>
+    <string name="routines_title">Tus rutinas</string>
+    <string name="routines_hint">Lo que apagas desaparece de la app. Tus datos se guardan.</string>
+    <string name="feat_checks_hint">Un repaso de un minuto antes de arrancar.</string>
+    <string name="checks_pick">Qué revisar</string>
+    <string name="feat_fuel">Repostajes y consumo</string>
+    <string name="feat_fuel_hint">Anota cada repostaje y ves km por litro y coste por km.</string>
+    <string name="feat_papers">Papeles y vencimientos</string>
+    <string name="feat_papers_hint">Seguro, ITV, carné: avisa antes de que caduquen.</string>
+    <string name="feat_workshop">Taller</string>
+    <string name="feat_workshop_hint">Pendientes para llevar y Completar visita al volver.</string>
+    <string name="feat_km_auto">Detección automática de km</string>
+    <string name="feat_km_auto_hint">Cuenta las salidas con el GPS o el intercomunicador del casco.</string>
+    <string name="feat_ai_hint">Tu propia IA revisa un ruido o lee una factura.</string>
+    <string name="interface_title">Interfaz</string>
+    <string name="ui_drawing">Plano de la moto</string>
+    <string name="ui_drawing_hint">El plano en la pestaña Moto. Sin él queda la lista.</string>
+    <string name="ui_density">Densidad</string>
+    <string name="density_comfortable">Cómoda</string>
+    <string name="density_compact">Compacta</string>
+    <string name="ui_reminders">Recordatorios</string>
+    <string name="ui_reminders_hint">Notificaciones de piezas y papeles por vencer.</string>
+    <string name="summary_hint">Puedes cambiarlo cuando quieras.</string>
+    <string name="yes_label">Sí</string>
+    <string name="no_label">No</string>
+    <string name="customize">Personalizar MotoPlus</string>
+    <string name="customize_short">Personalizar</string>
+    <string name="customize_hint">Elige qué muestra la app. Lo que ocultas guarda sus datos.</string>
+    <string name="show_all">Volver a mostrar todo</string>
+    <string name="minimal_mode">Modo mínimo</string>
+    <string name="minimal_hint">Solo Moto y KM, vigilando lo esencial.</string>
+    <string name="replay_intro">Repetir la introducción</string>
+    <string name="all_shown">Todo visible otra vez</string>
+    <string name="minimal_on">Modo mínimo activado</string>
+    <string name="all_visible">Todo visible</string>
+    <string name="hidden_line">%1$s · %2$s</string>
+    <string name="reminders_off">Los recordatorios están apagados. Actívalos en Personalizar.</string>
+    <string name="reminders_off_short">Recordatorios apagados</string>
+    <string name="ai_off_note">Las funciones con IA llegan pronto.</string>
+    <string name="step_of">Paso %1$d de %2$d</string>
+    <plurals name="hidden_features"><item quantity="one">%1$d función oculta</item><item quantity="other">%1$d funciones ocultas</item></plurals>
 </resources>

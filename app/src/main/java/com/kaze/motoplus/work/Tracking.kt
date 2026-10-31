@@ -24,7 +24,9 @@ import androidx.lifecycle.Observer
 import com.google.android.gms.location.*
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.R
+import com.kaze.motoplus.data.Prefs
 import com.kaze.motoplus.data.Repo
+import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.domain.DiscardReason
 import com.kaze.motoplus.domain.DistanceMeter
 import com.kaze.motoplus.domain.Ride
@@ -76,7 +78,8 @@ object Tracker {
     /** Listens for "in vehicle" start/stop from the phone's activity sensor while motion detection is on, and stops listening when it's off. */
     @SuppressLint("MissingPermission")
     fun register(ctx: Context) {
-        if (!Repo.garage.value.tracking.motion) { unregister(ctx); return }
+        // Hiding Detección automática de km stops listening; the rider's detector settings stay for when it comes back.
+        if (!Repo.garage.value.tracking.motion || !Prefs.load(ctx).on(Feature.kmAuto)) { unregister(ctx); return }
         if (!hasActivity(ctx)) return
         val req = ActivityTransitionRequest(listOf(
             ActivityTransition.Builder().setActivityType(DetectedActivity.IN_VEHICLE).setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER).build(),
@@ -230,7 +233,7 @@ class TransitionReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (!ActivityTransitionResult.hasResult(intent)) return
         Repo.init(ctx)
-        if (!Repo.garage.value.tracking.motion) return
+        if (!Repo.garage.value.tracking.motion || !Prefs.load(ctx).on(Feature.kmAuto)) return
         val last = ActivityTransitionResult.extractResult(intent)!!.transitionEvents.lastOrNull { it.activityType == DetectedActivity.IN_VEHICLE } ?: return
         if (last.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) Tracker.start(ctx, RideTrigger.motion)
         else if (Tracker.live.value?.trigger == RideTrigger.motion) Tracker.stop(ctx)
@@ -246,6 +249,7 @@ class BluetoothReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Repo.init(ctx)
         val t = Repo.garage.value.tracking
+        if (!Prefs.load(ctx).on(Feature.kmAuto)) return
         val dev: BluetoothDevice = (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)) ?: return
         when {

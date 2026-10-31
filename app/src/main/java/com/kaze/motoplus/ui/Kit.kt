@@ -1,7 +1,15 @@
 package com.kaze.motoplus.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.res.stringResource
 import com.kaze.motoplus.R
@@ -29,7 +38,52 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.domain.Part
+import com.kaze.motoplus.domain.PartCategory
 import com.kaze.motoplus.domain.Status
+
+/** Everything that changes state moves for this long, easing out. The system's animation scale still applies (0 = none). */
+const val MOTION_MS = 200
+
+fun <T> motion(): FiniteAnimationSpec<T> = tween(MOTION_MS, easing = EaseOut)
+
+/** Compacta density: tighter lists, bars and gaps. */
+val LocalCompact = staticCompositionLocalOf { false }
+
+/** Expands and collapses [content] (job cost and note, category parts, check picks). */
+@Composable
+fun Collapse(open: Boolean, content: @Composable ColumnScope.() -> Unit) = AnimatedVisibility(
+    open, enter = expandVertically(motion()) + fadeIn(motion()), exit = shrinkVertically(motion()) + fadeOut(motion()),
+) { Column(content = content) }
+
+/** A chevron that points right when closed and down when open, turning between the two. */
+@Composable
+fun Chevron(open: Boolean, color: Color = LocalShop.current.ink2, size: Dp = 18.dp, openAngle: Float = 90f) {
+    val turn by animateFloatAsState(if (open) openAngle else 0f, motion(), label = "chevron")
+    Icon("chev", color, size, modifier = Modifier.rotate(turn))
+}
+
+fun categoryIcon(c: PartCategory) = when (c) {
+    PartCategory.tires -> "tire"; PartCategory.brakes -> "disc"; PartCategory.engine -> "engine"; PartCategory.drivetrain -> "chain"
+    PartCategory.suspension -> "shock"; PartCategory.electrical -> "lightning"; PartCategory.other -> "dots-three-circle"
+}
+
+/** Category heading in part lists: its icon and name. */
+@Composable
+fun CategoryCap(c: PartCategory, modifier: Modifier = Modifier) = Row(modifier.padding(top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Icon(categoryIcon(c), LocalShop.current.ink, 16.dp)
+    Spacer(Modifier.width(7.dp))
+    Cap(categoryLabel(c), LocalShop.current.ink)
+}
+
+/** A chip whose fill and text fade to the selected state. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Chip(selected: Boolean, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent, motion(), label = "chip")
+    val text by animateColorAsState(if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, motion(), label = "chipText")
+    FilterChip(selected = selected, onClick = onClick, enabled = enabled, label = { Text(label, style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(3.dp),
+        colors = FilterChipDefaults.filterChipColors(containerColor = container, selectedContainerColor = container, labelColor = text, selectedLabelColor = text))
+}
 
 /** Phosphor vector, tinted by the theme. */
 @Composable
@@ -41,7 +95,7 @@ fun Icon(name: String, color: Color, size: Dp = 22.dp, stroke: Float = 1.5f, mod
 }
 
 /** Which icon draws each maintenance item. */
-fun partIcon(p: Part): String = when (p.id) {
+fun partIcon(p: Part): String = if (p.id.startsWith(com.kaze.motoplus.domain.CUSTOM_PART_PREFIX)) "wrench" else when (p.id) {
     "engine_oil", "shaft_oil", "gear_oil" -> "oil"
     "oil_filter" -> "oilfilter"
     "spark_plugs" -> "plug"
@@ -160,7 +214,7 @@ fun Header(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -
 fun ChoiceRow(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         options.forEach { (k, label) ->
-            FilterChip(selected = k == selected, onClick = { onPick(k) }, label = { Text(label, style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(3.dp))
+            Chip(k == selected, label) { onPick(k) }
         }
     }
 }

@@ -13,7 +13,9 @@ import androidx.core.content.ContextCompat
 import androidx.work.*
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.R
+import com.kaze.motoplus.data.Prefs
 import com.kaze.motoplus.data.Repo
+import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.domain.Status
 import com.kaze.motoplus.domain.dueAlerts
 import com.kaze.motoplus.domain.estimate
@@ -58,6 +60,9 @@ fun createChannels(ctx: Context) {
 }
 
 fun notifyDue(ctx: Context) {
+    // Recordatorios off silences notifications only; baselines stay, so what is due shows once they are back on.
+    val prefs = Prefs.load(ctx)
+    if (!prefs.reminders) return
     val today = LocalDate.now()
     val allowed = ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     for (bike in Repo.garage.value.bikes) {
@@ -79,7 +84,7 @@ fun notifyDue(ctx: Context) {
         // Only move the baseline when the rider could actually see the alert.
         if (alerts.isEmpty() || allowed) Repo.updateBike(bike.id) { it.copy(notified = baseline) }
     }
-    notifyPapers(ctx, today, allowed)
+    if (prefs.on(Feature.papers)) notifyPapers(ctx, today, allowed)
 }
 
 /** One notification per paper reaching 30, 7 or 1 day before expiry, or expiring today. */

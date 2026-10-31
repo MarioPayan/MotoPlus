@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -112,7 +113,7 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
         }
     }) {
         if (ids.isEmpty() && custom.isEmpty()) Hint(stringResource(R.string.p2_empty_order))
-        ids.forEach { id ->
+        bike.parts.filter { it.id in ids }.sortedByCategory().map { it.id }.forEach { id -> key(id) {
             val part = bike.parts.firstOrNull { it.id == id }
             if (part != null) Sheet {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -121,9 +122,9 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
                     IconBtn("note-pencil", stringResource(R.string.p2_add_note), { notesOpen = notesOpen + id })
                     IconBtn("close", stringResource(R.string.delete), { deletingPart = id })
                 }
-                if (id in notesOpen || !itemNotes[id].isNullOrBlank()) FormField(itemNotes[id].orEmpty(), stringResource(R.string.p2_job_note), { itemNotes = itemNotes + (id to it.take(400)); persist() }, multiline = true)
+                Collapse(id in notesOpen || !itemNotes[id].isNullOrBlank()) { FormField(itemNotes[id].orEmpty(), stringResource(R.string.p2_job_note), { itemNotes = itemNotes + (id to it.take(400)); persist() }, multiline = true) }
             }
-        }
+        } }
         custom.forEach { job -> Sheet {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon("wrench", LocalShop.current.ink2)
@@ -168,13 +169,22 @@ internal fun PartPicker(bike: Bike, picked: Set<String>, onToggle: (String) -> U
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionTitle(stringResource(R.string.p2_choose_jobs))
             FormField(search, stringResource(R.string.p2_search_parts), { search = it.take(80) })
-            bike.parts.forEach { part ->
-                val label = partLabel(part)
-                if (label.contains(search, ignoreCase = true)) Row(Modifier.fillMaxWidth().clickable { onToggle(part.id) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(partIcon(part), LocalShop.current.ink2)
-                    Text(label, Modifier.weight(1f).padding(start = 12.dp))
-                    Checkbox(part.id in picked, { onToggle(part.id) })
-                }
+            val groups = bike.parts.filter { partLabel(it).contains(search, ignoreCase = true) }.byCategory()
+            if (groups.isEmpty()) Hint(stringResource(R.string.mt_no_matches))
+            groups.forEach { (category, parts) ->
+                CategoryCap(category)
+                parts.forEach { part -> key(part.id) {
+                    Row(Modifier.fillMaxWidth().clickable { onToggle(part.id) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.weight(1f).alpha(if (part.watched) 1f else .5f), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(partIcon(part), LocalShop.current.ink2)
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(partLabel(part))
+                                if (!part.watched) Hint(stringResource(R.string.unwatched))
+                            }
+                        }
+                        Checkbox(part.id in picked, { onToggle(part.id) })
+                    }
+                } }
             }
             Btn(stringResource(R.string.close), onDismiss, Modifier.fillMaxWidth())
             Spacer(Modifier.height(24.dp))

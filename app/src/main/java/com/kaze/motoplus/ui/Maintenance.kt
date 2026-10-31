@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -63,8 +64,7 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
             Cap(stringResource(R.string.mt_where))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 listOf(Venue.shop to R.string.mt_shop, Venue.self to R.string.mt_self).forEach { (venue, label) ->
-                    FilterChip(d.venue == venue, { set { it.copy(venue = if (it.venue == venue) null else venue) } },
-                        label = { Text(stringResource(label), style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(3.dp))
+                    Chip(d.venue == venue, stringResource(label)) { set { it.copy(venue = if (it.venue == venue) null else venue) } }
                 }
                 AppInput(d.place, { value -> set { it.copy(place = value.take(60)) } }, Modifier.weight(1f), singleLine = true,
                     placeholder = { Text(stringResource(R.string.mt_where_placeholder), maxLines = 1) })
@@ -89,24 +89,27 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
             }
             val query = d.query.trim()
             fun matches(name: String) = query.isEmpty() || name.contains(query, ignoreCase = true)
-            val zones = Zone.entries.map { z -> z.id to bike.parts.filter { it.zone == z.id && matches(partLabel(it)) } }.filter { it.second.isNotEmpty() }
+            val groups = bike.parts.filter { matches(partLabel(it)) }.byCategory()
             val custom = d.custom.filter { matches(it.name) }
-            if (zones.isEmpty() && custom.isEmpty()) Hint(stringResource(R.string.mt_no_matches))
-            zones.forEach { (zone, parts) ->
-                Cap(zoneName(zone), modifier = Modifier.padding(top = 6.dp))
+            if (groups.isEmpty() && custom.isEmpty()) Hint(stringResource(R.string.mt_no_matches))
+            groups.forEach { (category, parts) ->
+                CategoryCap(category)
                 parts.forEach { p -> key(p.id) {
                     val s = partState(p, odo, today)
+                    val status = if (p.watched) s.status else Status.none
                     val on = p.id in d.checked
                     Column {
                         Row(Modifier.fillMaxWidth().toggleable(on, role = Role.Checkbox) { toggle(p.id, it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(on, null)
-                            Box(Modifier.padding(start = 4.dp).size(9.dp).background(shop.status(s.status), CircleShape))
-                            Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                                Text(partLabel(p), fontSize = 18.sp)
-                                Text(remaining(s), style = Mono.copy(fontSize = 11.sp), color = shop.status(s.status))
+                            Row(Modifier.weight(1f).alpha(if (p.watched) 1f else .5f), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.padding(start = 4.dp).size(9.dp).background(shop.status(status), CircleShape))
+                                Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                                    Text(partLabel(p), fontSize = 18.sp)
+                                    Text(if (p.watched) remaining(s) else stringResource(R.string.unwatched), style = Mono.copy(fontSize = 11.sp), color = shop.status(status))
+                                }
                             }
                         }
-                        if (on) JobExtra(d, p.id, ::set)
+                        Collapse(on) { JobExtra(d, p.id, ::set) }
                         HorizontalDivider(color = shop.line)
                     }
                 } }
@@ -121,7 +124,7 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
                             FormField(job.name, stringResource(R.string.p2_job_name), { value -> set { m -> m.copy(custom = m.custom.map { if (it.id == job.id) it.copy(name = value.take(80)) else it }) } })
                         }
                     }
-                    if (on) JobExtra(d, job.id, ::set)
+                    Collapse(on) { JobExtra(d, job.id, ::set) }
                     HorizontalDivider(color = shop.line)
                 }
             } }
@@ -161,8 +164,7 @@ private fun QuickPicks(bike: Bike, d: MaintenanceDraft, odo: Double, today: Loca
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         picks.forEach { (pick, label) ->
             val ids = bike.quickPick(pick, odo, today)
-            FilterChip(ids.isNotEmpty() && ids.all(d.checked::contains), { onPick(ids) }, enabled = ids.isNotEmpty(),
-                label = { Text(stringResource(label, ids.size), style = MaterialTheme.typography.bodyMedium) }, shape = RoundedCornerShape(3.dp))
+            Chip(ids.isNotEmpty() && ids.all(d.checked::contains), stringResource(label, ids.size), enabled = ids.isNotEmpty()) { onPick(ids) }
         }
     }
 }
@@ -179,6 +181,6 @@ private fun JobExtra(d: MaintenanceDraft, id: String, set: ((MaintenanceDraft) -
                 label = stringResource(R.string.p2_cost) + " · " + currencySymbol(currency, locale))
             if (!noteOpen) IconBtn("note-pencil", stringResource(R.string.p2_add_note), { set { it.copy(noteOpen = it.noteOpen + id) } })
         }
-        if (noteOpen) FormField(d.notes[id].orEmpty(), stringResource(R.string.p2_job_note), { value -> set { it.copy(notes = it.notes + (id to value.take(400))) } }, multiline = true)
+        Collapse(noteOpen) { FormField(d.notes[id].orEmpty(), stringResource(R.string.p2_job_note), { value -> set { it.copy(notes = it.notes + (id to value.take(400))) } }, multiline = true) }
     }
 }

@@ -46,5 +46,10 @@ export const ICONS = {
   "list-checks": "list-checks",
   "clock": "clock",
   "warning": "warning",
-  "search": "magnifying-glass"
+  "search": "magnifying-glass",
+  "engine": "engine",
+  "lightning": "lightning",
+  "dots-three-circle": "dots-three-circle",
+  "sliders": "sliders",
+  "eye-slash": "eye-slash"
 };

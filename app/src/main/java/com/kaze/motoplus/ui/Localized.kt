@@ -64,6 +64,19 @@ fun categoryLabel(value: Category) = stringResource(when (value) {
 })
 
 @Composable
+fun categoryLabel(value: PartCategory) = stringResource(partCategoryResource(value))
+
+fun partCategoryResource(value: PartCategory) = when (value) {
+    PartCategory.tires -> R.string.part_cat_tires
+    PartCategory.brakes -> R.string.part_cat_brakes
+    PartCategory.engine -> R.string.part_cat_engine
+    PartCategory.drivetrain -> R.string.part_cat_drivetrain
+    PartCategory.suspension -> R.string.part_cat_suspension
+    PartCategory.electrical -> R.string.part_cat_electrical
+    PartCategory.other -> R.string.part_cat_other
+}
+
+@Composable
 fun driveLabel(value: Drive) = stringResource(when (value) {
     Drive.chain -> R.string.drives_chain
     Drive.belt -> R.string.drives_belt
@@ -141,7 +154,7 @@ fun localizedString(ctx: android.content.Context, id: Int, vararg args: Any): St
 
 fun localizedPlural(ctx: android.content.Context, id: Int, n: Int): String = localizedContext(ctx).resources.getQuantityString(id, n, n)
 
-private fun localizedContext(ctx: android.content.Context): android.content.Context {
+internal fun localizedContext(ctx: android.content.Context): android.content.Context {
     val locales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
     val configuration = android.content.res.Configuration(ctx.resources.configuration)
     if (!locales.isEmpty) configuration.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
