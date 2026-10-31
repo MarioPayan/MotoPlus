@@ -673,4 +673,6 @@
     <string name="ai_off_note">Las funciones con IA llegan pronto.</string>
     <string name="step_of">Paso %1$d de %2$d</string>
     <plurals name="hidden_features"><item quantity="one">%1$d función oculta</item><item quantity="other">%1$d funciones ocultas</item></plurals>
+    <string name="feedback_title">Anotar sugerencia</string>
+    <string name="feedback_hint">Qué notaste, qué cambiarías…</string>
 </resources>

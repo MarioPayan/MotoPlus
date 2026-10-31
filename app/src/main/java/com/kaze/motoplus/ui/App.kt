@@ -103,6 +103,7 @@ private fun AppContent(vm: AppViewModel) {
             }
             val overTabs = route == Screen.main
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (overTabs) tabBarHeight() else 0.dp)) { ShopSnackbar(it) }
+            FeedbackButton(if (overTabs) "main/${vm.tab}" else route.toString(), Modifier.align(Alignment.CenterEnd))
         }
         val bike = vm.bike
         if (route is Screen && bike != null) {

@@ -672,4 +672,6 @@
     <string name="ai_off_note">AI features are coming soon.</string>
     <string name="step_of">Step %1$d of %2$d</string>
     <plurals name="hidden_features"><item quantity="one">%1$d hidden feature</item><item quantity="other">%1$d hidden features</item></plurals>
+    <string name="feedback_title">Write a suggestion</string>
+    <string name="feedback_hint">What you noticed, what you would change…</string>
 </resources>
