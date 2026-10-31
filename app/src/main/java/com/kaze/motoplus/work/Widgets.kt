@@ -50,8 +50,8 @@ private fun dark(ctx: Context) = when (ctx.getSharedPreferences("display", Conte
 }
 private fun Shop.argb(s: Status) = status(s).toArgb()
 
-/** Most urgent part of the selected bike, for the small widget. */
-private fun urgent(bike: Bike, today: LocalDate) = bike.parts.map { it to partState(it, estimate(bike, today).km, today) }.maxByOrNull { it.second.used }
+/** Most urgent watched part of the selected bike, for the small widget. */
+private fun urgent(bike: Bike, today: LocalDate) = bike.watchedParts.map { it to partState(it, estimate(bike, today).km, today) }.maxByOrNull { it.second.used }
 
 /** 2×2: the most urgent part in its life ring. */
 class SmallWidget : GlanceAppWidget() {
@@ -167,8 +167,9 @@ private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, 
     var x = vx; while (x < vx + vw) { c.drawLine(x, vy, x, vy + vh, grid); x += 20f }
     var y = vy; while (y < vy + vh) { c.drawLine(vx, y, vx + vw, y, grid); y += 20f }
     for (i in d.items) {
-        val st = i.z?.let { zones[it]?.status }
-        val line = if (st == null || st == Status.ok) shop.plate.copy(alpha = .75f) else shop.status(st)
+        // The whole-bike widget shows every zone's state, ok included; a zone with no watched part stays neutral.
+        val st = i.z?.let { z -> zones[z]?.takeIf { it.parts.isNotEmpty() }?.status }
+        val line = if (st == null) shop.plate.copy(alpha = .75f) else shop.status(st)
         val path = PathParser().parsePathString(i.d).toPath().asAndroidPath().apply { if (i.eo) fillType = android.graphics.Path.FillType.EVEN_ODD }
         val k = i.k.split(' ')
         stroke.color = line.toArgb()
