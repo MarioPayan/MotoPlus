@@ -47,21 +47,11 @@ fun WelcomeScreen(vm: AppViewModel) {
     BackHandler(w.step > 0) { vm.welcomeBack() }
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 4.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(64.dp)) {
+            Box(Modifier.weight(1f)) {
                 if (w.step > 0) IconBtn("back", stringResource(R.string.atras), vm::welcomeBack, shop.ink)
                 else if (w.replay) IconBtn("back", stringResource(R.string.back), { vm.welcome = null; vm.screen = Screen.customize }, shop.ink)
             }
-            val label = stringResource(R.string.step_of, w.step + 1, WELCOME_STEPS)
-            Row(Modifier.weight(1f).semantics { contentDescription = label }, horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally)) {
-                repeat(WELCOME_STEPS) { i ->
-                    val width by animateDpAsState(if (i == w.step) 22.dp else 8.dp, motion(), label = "dot")
-                    val color by animateColorAsState(when { i == w.step -> shop.accent; i < w.step -> shop.ink2; else -> shop.line }, motion(), label = "dotColor")
-                    Box(Modifier.size(width, 8.dp).background(color, RoundedCornerShape(4.dp)))
-                }
-            }
-            Box(Modifier.width(64.dp), contentAlignment = Alignment.CenterEnd) {
-                if (w.step < last) TextButton({ vm.finishWelcome(skipped = true) }) { Text(stringResource(R.string.welcome_skip)) }
-            }
+            if (w.step < last) TextButton({ vm.finishWelcome(skipped = true) }) { Text(stringResource(R.string.welcome_skip), maxLines = 1, softWrap = false) }
         }
         val shift = with(LocalDensity.current) { 32.dp.roundToPx() }
         AnimatedContent(w.step, Modifier.weight(1f), transitionSpec = {
@@ -84,7 +74,15 @@ fun WelcomeScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(12.dp))
             }
         }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val label = stringResource(R.string.step_of, w.step + 1, WELCOME_STEPS)
+            Row(Modifier.fillMaxWidth().semantics { contentDescription = label }, horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally)) {
+                repeat(WELCOME_STEPS) { i ->
+                    val width by animateDpAsState(if (i == w.step) 22.dp else 8.dp, motion(), label = "dot")
+                    val color by animateColorAsState(when { i == w.step -> shop.accent; i < w.step -> shop.ink2; else -> shop.line }, motion(), label = "dotColor")
+                    Box(Modifier.size(width, 8.dp).background(color, RoundedCornerShape(4.dp)))
+                }
+            }
             val ready = w.step != 1 || (w.km.isNotEmpty() && (vm.bike != null || (vm.welcomeDraft.brand.isNotBlank() && vm.welcomeDraft.model.isNotBlank())))
             if (w.step == last) Btn(stringResource(R.string.welcome_start), { vm.finishWelcome(skipped = false) }, Modifier.fillMaxWidth(), icon = "check")
             else Btn(stringResource(R.string.welcome_next), vm::welcomeNext, Modifier.fillMaxWidth(), enabled = ready)
