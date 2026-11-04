@@ -30,4 +30,14 @@ class RideFilterTest {
             assertNull(discardReason(t, true, true, both))
         }
     }
+
+    @Test fun parkedAfterSixMinutesWithoutMoving() {
+        val min = 60_000L
+        assertFalse(isParked(now = 6 * min, lastMovingAt = 0, startedAt = 0))
+        assertTrue(isParked(now = 6 * min + 1, lastMovingAt = 0, startedAt = 0))
+        assertFalse("movement restarts the clock", isParked(now = 20 * min, lastMovingAt = 15 * min, startedAt = 0))
+        assertTrue(isParked(now = 22 * min, lastMovingAt = 15 * min, startedAt = 0))
+        assertFalse("no fix yet counts from the start", isParked(now = 13 * min, lastMovingAt = 0, startedAt = 10 * min))
+        assertTrue(isParked(now = 17 * min, lastMovingAt = 0, startedAt = 10 * min))
+    }
 }

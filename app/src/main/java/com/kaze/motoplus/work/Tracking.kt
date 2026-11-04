@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -32,6 +33,7 @@ import com.kaze.motoplus.domain.DistanceMeter
 import com.kaze.motoplus.domain.Ride
 import com.kaze.motoplus.domain.RideTrigger
 import com.kaze.motoplus.domain.discardReason
+import com.kaze.motoplus.domain.isParked
 import com.kaze.motoplus.ui.rideSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,8 +138,14 @@ class RideService : Service() {
             for (l in r.locations) meter.add(l.latitude, l.longitude, l.accuracy, l.time)
             Tracker.set(LiveRide(trigger, device, meter.km, startedAt))
             Tracker.notify(this@RideService, ID_LIVE, liveNotification())
-            val idle = System.currentTimeMillis() - maxOf(meter.lastMovingAt, startedAt)
-            if (idle > 6 * 60_000) finish()
+        }
+    }
+    // Lives outside the location callback: with a minimum update distance a parked phone gets no callbacks at all.
+    private val handler = Handler(Looper.getMainLooper())
+    private val parkedCheck = object : Runnable {
+        override fun run() {
+            if (isParked(System.currentTimeMillis(), meter.lastMovingAt, startedAt)) finish()
+            else handler.postDelayed(this, 60_000)
         }
     }
 
@@ -163,6 +171,7 @@ class RideService : Service() {
             LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).setMinUpdateDistanceMeters(15f).build(),
             callback, Looper.getMainLooper(),
         )
+        handler.postDelayed(parkedCheck, 60_000)
         if (trigger == RideTrigger.motion) watchCars()
         return START_NOT_STICKY
     }
@@ -205,6 +214,7 @@ class RideService : Service() {
     private fun finish() {
         if (finished) return
         finished = true
+        handler.removeCallbacks(parkedCheck)
         if (::client.isInitialized) client.removeLocationUpdates(callback)
         carConnection?.removeObserver(autoObserver)
         val km = meter.km

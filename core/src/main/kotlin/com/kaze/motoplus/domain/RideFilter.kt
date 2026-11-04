@@ -14,3 +14,8 @@ fun discardReason(trigger: RideTrigger, carBluetoothConnected: Boolean, androidA
     androidAutoConnected && settings.androidAutoInCar -> DiscardReason.androidAuto
     else -> null
 }
+
+private const val PARKED_AFTER_MS = 6 * 60_000L
+
+/** The bike hasn't moved for 6 minutes. A ride that never moved counts from its start. */
+fun isParked(now: Long, lastMovingAt: Long, startedAt: Long) = now - maxOf(lastMovingAt, startedAt) > PARKED_AFTER_MS
