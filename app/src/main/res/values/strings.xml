@@ -573,7 +573,7 @@
     <!-- Registrar mantenimiento: many jobs at one date and odometer reading. -->
     <string name="mt_title">Registrar mantenimiento</string>
     <string name="mt_hint">Varios trabajos, una fecha y un km</string>
-    <string name="mt_several">Registrar varios</string>
+    <string name="mt_several">Mantenimiento</string>
     <string name="mt_where">Dónde</string>
     <string name="mt_shop">Taller</string>
     <string name="mt_self">Yo mismo</string>

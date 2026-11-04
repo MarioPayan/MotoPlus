@@ -572,7 +572,7 @@
     <!-- Registrar mantenimiento: many jobs at one date and odometer reading. -->
     <string name="mt_title">Log maintenance</string>
     <string name="mt_hint">Several jobs, one date and odometer</string>
-    <string name="mt_several">Log several</string>
+    <string name="mt_several">Maintenance</string>
     <string name="mt_where">Where</string>
     <string name="mt_shop">Workshop</string>
     <string name="mt_self">Myself</string>

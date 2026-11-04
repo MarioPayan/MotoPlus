@@ -265,4 +265,5 @@
     <string name="change_cars">Cambiar carros</string>
     <string name="car_picker">Tu carro</string>
     <string name="car_pair">Empareja el carro en los ajustes de Bluetooth y vuelve.</string>
+    <string name="mt_several">Mantenimiento</string>
 </resources>
