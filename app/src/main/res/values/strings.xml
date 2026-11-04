@@ -677,4 +677,15 @@
     <string name="android_auto_in_car">Mi Android Auto se conecta a coches y motos</string>
     <string name="android_auto_in_car_hint">Actívalo solo si usas Android Auto tanto en el coche como en la moto: las salidas detectadas por movimiento con Android Auto conectado no contarán. Apagado, Android Auto no cambia nada.</string>
     <string name="density_preview">Vista previa</string>
+    <string name="problem_report">Reportar un problema</string>
+    <string name="problem_pick_part">¿Qué pieza falla?</string>
+    <string name="problem_broken">Se dañó</string>
+    <string name="problem_not_responding">Creo que ya no responde</string>
+    <string name="problem_note">Nota (opcional)</string>
+    <string name="problem_hint">Se mostrará como urgente hasta que registres su mantenimiento o quites el reporte.</string>
+    <string name="problem_clear">Quitar reporte</string>
+    <string name="problem_edit">Editar reporte</string>
+    <string name="problem_saved">Problema reportado</string>
+    <string name="problem_cleared">Reporte quitado</string>
+    <string name="problem_reported_on">Reportado el %1$s</string>
 </resources>

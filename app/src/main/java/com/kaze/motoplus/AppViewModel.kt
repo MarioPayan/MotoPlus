@@ -461,6 +461,16 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         message = text(R.string.deleted)
     }
 
+    fun reportProblem(partId: String, kind: ProblemKind, note: String) {
+        updateBike { it.reportProblem(partId, PartProblem(kind, today.toString(), note.trim())) }
+        message = text(R.string.problem_saved)
+    }
+
+    fun clearProblem(partId: String) {
+        updateBike { it.clearProblem(partId) }
+        message = text(R.string.problem_cleared)
+    }
+
     fun snooze(partId: String, days: Long) = updateBike { b ->
         b.copy(parts = b.parts.map { if (it.id == partId) it.copy(snoozedUntil = today.plusDays(days).toString()) else it }, notified = b.notified - partId)
     }

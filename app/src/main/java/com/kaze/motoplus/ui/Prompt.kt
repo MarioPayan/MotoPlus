@@ -24,7 +24,7 @@ fun buildPrompt(ctx: Context, bike: Bike, notes: String, today: LocalDate, curre
     return buildList {
         add(ctx.getString(if (invoice) R.string.p2_ai_prompt_invoice else R.string.p2_prompt_intro))
         add(ctx.getString(R.string.p2_prompt_context, bike.title, formatKm(est.km.toInt(), locale), notes.ifBlank { ctx.getString(R.string.p2_general_review) }))
-        addAll(bike.watchedParts.sortedByCategory().map { p -> ctx.getString(R.string.p2_part_context, p.id + " · " + partLabel(p, ctx), p.zone, remaining(partState(p, est.km, today), ctx)) })
+        addAll(bike.watchedParts.sortedByCategory().map { p -> ctx.getString(R.string.p2_part_context, p.id + " · " + partLabel(p, ctx), p.zone, remaining(partState(p, est.km, today), ctx) + (p.problem?.note?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")) })
         if (invoice) add(ctx.getString(R.string.p2_ai_prompt_jobs, (jobs ?: bike.openOrder()?.let { o -> o.partIds + o.customItems.map { it.id + " · " + it.name } }.orEmpty()).joinToString(", ")))
         add(ctx.getString(R.string.p2_ai_prompt_parts, bike.parts.joinToString(", ") { it.id }))
         add(ctx.getString(R.string.p2_ai_prompt_currency, currency))

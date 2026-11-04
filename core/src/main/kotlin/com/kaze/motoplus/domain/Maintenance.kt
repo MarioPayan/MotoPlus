@@ -11,7 +11,7 @@ enum class Status { ok, warn, bad, none }
 enum class Measure { km, days }
 
 /** How far a part is through its interval. [left] counts in [measure] and goes negative once overdue; null measure = never recorded. */
-data class PartState(val status: Status, val used: Double, val measure: Measure?, val left: Int)
+data class PartState(val status: Status, val used: Double, val measure: Measure?, val left: Int, val problem: PartProblem? = null)
 
 /** [parts] are the zone's watched parts, which set its status; [all] adds the unwatched ones, shown dimmed. No watched part leaves the zone ok and [parts] empty. */
 data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair<Part, PartState>>, val all: List<Pair<Part, PartState>> = parts)
@@ -55,7 +55,15 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
     )
 }
 
+/** Above any real interval use, so reported parts sort first wherever parts are ranked by urgency. */
+private const val REPORTED_USED = 1e6
+
 fun partState(p: Part, odo: Double, today: LocalDate): PartState {
+    val state = intervalState(p, odo, today)
+    return if (p.problem != null) state.copy(status = Status.bad, used = REPORTED_USED, problem = p.problem) else state
+}
+
+private fun intervalState(p: Part, odo: Double, today: LocalDate): PartState {
     if (p.lastKm == null && p.lastDate == null) return PartState(Status.none, 1.0, null, 0)
     val byKm = if (p.km != null && p.lastKm != null) (odo - p.lastKm) / p.km else 0.0
     val byTime = if (p.days != null && p.lastDate != null) daysBetween(p.lastDate, today) / p.days else 0.0
@@ -80,7 +88,7 @@ fun zoneStates(bike: Bike, odo: Double, today: LocalDate): Map<String, ZoneState
             .sortedByDescending { it.second.used }
         val parts = all.filter { it.first.watched }
         ZoneState(
-            status = parts.maxByOrNull { rank.getValue(it.second.status) }?.second?.status ?: Status.ok,
+            status = if (parts.any { it.second.problem != null }) Status.bad else parts.maxByOrNull { rank.getValue(it.second.status) }?.second?.status ?: Status.ok,
             worst = parts.maxOfOrNull { it.second.used } ?: 0.0,
             parts = parts,
             all = all,

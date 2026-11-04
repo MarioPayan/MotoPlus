@@ -20,7 +20,8 @@ data class ServiceRecord(
     val place: String = "",
 )
 
-fun Bike.addRecord(r: ServiceRecord) = copy(history = history + r).recompute(r.partId)
+/** Logging maintenance on a part also settles any problem reported on it. */
+fun Bike.addRecord(r: ServiceRecord) = copy(history = history + r).recompute(r.partId).clearProblem(r.partId)
 
 fun Bike.updateRecord(r: ServiceRecord) = copy(history = history.map { if (it.id == r.id) r else it }).recompute(r.partId)
 

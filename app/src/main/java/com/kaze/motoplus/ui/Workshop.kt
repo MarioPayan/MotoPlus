@@ -36,7 +36,7 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
             WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.openMaintenance(visit = true) }
         }
         if (vm.aiEnabled) Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
-        Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size) { vm.screen = Screen.history } }
+        Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size + bike.parts.count { it.problem != null }) { vm.screen = Screen.history } }
         HistoryTimeline(vm, bike, compact = true)
         Spacer(Modifier.height(12.dp))
     }
@@ -163,11 +163,11 @@ fun OrderScreen(vm: AppViewModel, bike: Bike) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PartPicker(bike: Bike, picked: Set<String>, onToggle: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun PartPicker(bike: Bike, picked: Set<String>, onToggle: (String) -> Unit, onDismiss: () -> Unit, title: String = stringResource(R.string.p2_choose_jobs)) {
     var search by remember { mutableStateOf("") }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = LocalShop.current.sheet) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionTitle(stringResource(R.string.p2_choose_jobs))
+            SectionTitle(title)
             FormField(search, stringResource(R.string.p2_search_parts), { search = it.take(80) })
             val groups = bike.parts.filter { partLabel(it).contains(search, ignoreCase = true) }.byCategory()
             if (groups.isEmpty()) Hint(stringResource(R.string.mt_no_matches))

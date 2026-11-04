@@ -70,7 +70,7 @@ fun Bike.undoMaintenance(before: Bike, after: Bike): Bike {
     val readings = after.readings.filterNot(before.readings::contains).toSet()
     return copy(
         history = history.filterNot { it.id in added },
-        parts = parts.map { p -> before.parts.firstOrNull { it.id == p.id }?.let { p.copy(lastKm = it.lastKm, lastDate = it.lastDate) } ?: p },
+        parts = parts.map { p -> before.parts.firstOrNull { it.id == p.id }?.let { p.copy(lastKm = it.lastKm, lastDate = it.lastDate, problem = it.problem) } ?: p },
         readings = this.readings.filterNot(readings::contains),
         gpsFactor = if (readings.isEmpty()) gpsFactor else before.gpsFactor,
         orders = orders.map { o -> before.orders.firstOrNull { it.id == o.id } ?: o },

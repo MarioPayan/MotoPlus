@@ -44,6 +44,8 @@ data class Part(
     val category: PartCategory? = null,
     /** Unwatched parts keep their history but leave health, alerts, Lo próximo, reminders and the drawing. */
     val watched: Boolean = true,
+    /** What the rider reported on it, until maintenance or the rider clears it. */
+    val problem: PartProblem? = null,
 )
 
 @Serializable

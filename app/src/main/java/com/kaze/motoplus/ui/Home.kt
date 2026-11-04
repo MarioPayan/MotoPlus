@@ -46,6 +46,7 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
             val alerts = upNext(bike, odo, today)
             alerts.forEach { (p, state) -> key(p.id) { PartRow(vm, p, state) } }
             if (alerts.isEmpty()) Hint(stringResource(R.string.no_alerts))
+            ReportPartButton(vm, bike, Modifier.fillMaxWidth().padding(top = 10.dp))
         }
         HiddenLine(vm)
         Spacer(Modifier.height(12.dp))
@@ -60,6 +61,7 @@ fun callouts(bike: Bike, zones: Map<String, ZoneState>): List<Callout> = zones.e
     if (st.status == Status.ok) return@mapNotNull null
     val (_, s) = st.parts.firstOrNull { it.second.status == st.status } ?: return@mapNotNull null
     val value = when {
+        s.problem != null -> "!"
         s.measure == null -> "?"
         s.measure == Measure.km -> (if (s.left < 0) "−" else "") + distance(kotlin.math.abs(s.left)) + " " + stringResource(R.string.km_unit)
         else -> (if (s.left < 0) "−" else "") + kotlin.math.abs(s.left) + " " + stringResource(R.string.day_short)
@@ -109,6 +111,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
     var menu by remember { mutableStateOf(false) }
     var snoozing by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var reporting by remember { mutableStateOf(false) }
     var days by remember { mutableStateOf("7") }
     val name = partLabel(p)
     val left = remaining(s)
@@ -132,9 +135,11 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
                 LifeRing(partIcon(p), s.status, s.used)
                 Hint(left, modifier = Modifier.padding(start = 12.dp))
             }
+            s.problem?.let { ProblemDetails(it, Modifier.padding(bottom = 12.dp)) }
             SettingsEntry("check", stringResource(R.string.done)) { vm.markDone(p.id); menu = false }
             SettingsEntry("list-checks", stringResource(R.string.other_date)) { menu = false; vm.openMaintenance(partId = p.id) }
-            SettingsEntry("clock", stringResource(R.string.snooze)) { snoozing = true; menu = false }
+            SettingsEntry("warning", stringResource(if (s.problem == null) R.string.problem_report else R.string.problem_edit)) { reporting = true; menu = false }
+            if (s.problem == null) SettingsEntry("clock", stringResource(R.string.snooze)) { snoozing = true; menu = false }
             if (vm.prefs.on(Feature.workshop)) SettingsEntry("wrench", stringResource(R.string.add_to_order)) {
                 val order = vm.bike?.openOrder()
                 vm.saveOrder(((order?.partIds ?: emptyList()) + p.id).distinct(), order?.notes ?: "")
@@ -148,6 +153,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
         }
     }
     if (deleting) ConfirmDelete(name, { deleting = false }) { vm.removePart(p.id); deleting = false; menu = false }
+    if (reporting) ProblemDialog(vm, p) { reporting = false }
     if (snoozing) AlertDialog(onDismissRequest = { snoozing = false }, title = { Text(stringResource(R.string.snooze)) }, text = {
         IntegerField(days, { days = it }, stringResource(R.string.snooze_days), maxDigits = 3)
     }, confirmButton = { TextButton({ vm.snooze(p.id, days.toLong()); snoozing = false }, enabled = days.toIntOrNull() in 1..365) { Text(stringResource(R.string.save)) } },

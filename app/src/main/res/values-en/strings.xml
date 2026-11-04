@@ -676,4 +676,15 @@
     <string name="android_auto_in_car">My Android Auto connects to both cars and bikes</string>
     <string name="android_auto_in_car_hint">Turn on only if you use Android Auto in both a car and on the bike: motion rides with Android Auto connected will not count. Off, Android Auto changes nothing.</string>
     <string name="density_preview">Preview</string>
+    <string name="problem_report">Report a problem</string>
+    <string name="problem_pick_part">Which part has a problem?</string>
+    <string name="problem_broken">It broke</string>
+    <string name="problem_not_responding">I think it no longer responds</string>
+    <string name="problem_note">Note (optional)</string>
+    <string name="problem_hint">It shows as urgent until you log its maintenance or clear the report.</string>
+    <string name="problem_clear">Clear report</string>
+    <string name="problem_edit">Edit report</string>
+    <string name="problem_saved">Problem reported</string>
+    <string name="problem_cleared">Report cleared</string>
+    <string name="problem_reported_on">Reported on %1$s</string>
 </resources>

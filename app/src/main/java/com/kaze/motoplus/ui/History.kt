@@ -45,6 +45,7 @@ fun PartScreen(vm: AppViewModel, bike: Bike, partId: String) {
         Sheet {
             Cap(zoneName(part.zone))
             PartRow(vm, part, partState(part, estimate(bike, vm.today).km, vm.today), showInterval = true)
+            PartProblemSection(vm, part)
             Btn(stringResource(R.string.p2_record_with_details), { vm.newRecord(part.id) }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
         }
         SectionTitle(stringResource(R.string.history))
@@ -89,7 +90,8 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
     val rides = bike.rides.map { r -> HistoryEvent(r.date, "route", rideSource(r), stringResource(R.string.p2_km_value, distance(r.km.toInt()))) {} }
     val readings = bike.readings.map { r -> HistoryEvent(r.date, "gauge", stringResource(R.string.reading), stringResource(R.string.p2_km_value, distance(r.km))) {} }
     val papers = vm.papers.map { d -> HistoryEvent(vm.today.toString(), "doc", documentLabel(d, androidx.compose.ui.platform.LocalContext.current), "") { vm.editDoc(d) } }
-    val events = (records + orders + reports + fuel + rides + readings + papers).sortedByDescending { it.date }
+    val problems = bike.parts.mapNotNull { p -> p.problem?.let { HistoryEvent(it.date, "warning", partLabel(p), stringResource(problemLabel(it.kind))) { vm.openPart(p.id) } } }
+    val events = (records + orders + reports + fuel + rides + readings + papers + problems).sortedByDescending { it.date }
     if (events.isEmpty()) Hint(stringResource(R.string.p2_empty_history))
     var month = ""
     val rowHeight = if (LocalCompact.current) 48.dp else 70.dp

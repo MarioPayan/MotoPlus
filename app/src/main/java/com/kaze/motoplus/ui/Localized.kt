@@ -90,7 +90,7 @@ fun coolingLabel(value: Cooling) = stringResource(when (value) {
     Cooling.air -> R.string.coolings_air
 })
 
-fun remaining(state: PartState, ctx: android.content.Context): String = when (state.measure) {
+fun remaining(state: PartState, ctx: android.content.Context): String = state.problem?.let { ctx.getString(problemLabel(it.kind)) } ?: when (state.measure) {
     null -> ctx.getString(R.string.no_record)
     Measure.km -> ctx.getString(if (state.left < 0) R.string.km_over else R.string.km_left, formatKm(kotlin.math.abs(state.left), ctx.resources.configuration.locales[0]))
     Measure.days -> when {
@@ -99,6 +99,8 @@ fun remaining(state: PartState, ctx: android.content.Context): String = when (st
         else -> ctx.getString(R.string.days_left, state.left)
     }
 }
+
+fun problemLabel(kind: ProblemKind) = when (kind) { ProblemKind.broken -> R.string.problem_broken; ProblemKind.notResponding -> R.string.problem_not_responding }
 
 fun documentLabel(doc: Document, ctx: android.content.Context): String = doc.title.ifBlank {
     ctx.getString(when (doc.type) {
