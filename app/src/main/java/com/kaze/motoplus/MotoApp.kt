@@ -19,6 +19,7 @@ class MotoApp : Application() {
         Repo.init(this)
         createChannels(this)
         com.kaze.motoplus.work.createRideChannel(this)
+        com.kaze.motoplus.work.Tracker.recoverOrphan(this)
         com.kaze.motoplus.work.Tracker.register(this)
         ReminderWorker.schedule(this)
         // Widgets follow the garage: any change redraws them, a moment later so bursts of edits redraw once.

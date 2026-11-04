@@ -27,17 +27,23 @@ import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.R
 import com.kaze.motoplus.data.Prefs
 import com.kaze.motoplus.data.Repo
+import com.kaze.motoplus.domain.Bike
 import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.domain.DiscardReason
 import com.kaze.motoplus.domain.DistanceMeter
+import com.kaze.motoplus.domain.MIN_RIDE_KM
 import com.kaze.motoplus.domain.Ride
+import com.kaze.motoplus.domain.RideCheckpoint
 import com.kaze.motoplus.domain.RideTrigger
 import com.kaze.motoplus.domain.discardReason
 import com.kaze.motoplus.domain.isParked
+import com.kaze.motoplus.domain.orphanRide
 import com.kaze.motoplus.ui.rideSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 import java.time.LocalDate
+import java.time.ZoneId
 
 const val CHANNEL_RIDE = "rides"
 private const val ID_LIVE = 4100
@@ -101,6 +107,40 @@ object Tracker {
         runCatching { ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.CAR)) }
     }
 
+    private fun checkpointFile(ctx: Context) = File(ctx.filesDir, "ride_checkpoint.json")
+
+    /** Called on every location update, on the main thread: a rename survives a process kill without the cost of an fsync each time. */
+    internal fun writeCheckpoint(ctx: Context, c: RideCheckpoint) {
+        val tmp = File(ctx.filesDir, "ride_checkpoint.tmp")
+        runCatching { tmp.writeText(c.encode()); tmp.renameTo(checkpointFile(ctx)) }
+    }
+
+    internal fun deleteCheckpoint(ctx: Context) { checkpointFile(ctx).delete() }
+
+    /**
+     * Saves the ride a killed process left behind. Runs from [com.kaze.motoplus.MotoApp.onCreate], which every way back
+     * into the process passes through and which always precedes [RideService.onStartCommand], so whatever
+     * checkpoint is here belongs to a dead process, never to a live ride. The service is START_NOT_STICKY: nothing else revives it.
+     */
+    fun recoverOrphan(ctx: Context) {
+        val file = checkpointFile(ctx)
+        if (!file.exists()) return
+        runCatching { file.readText() }.getOrNull()?.let(RideCheckpoint::decode)?.let { c ->
+            val g = Repo.garage.value
+            g.orphanRide(c, ZoneId.systemDefault())?.let { saveRide(ctx, g.bikes.first { it.id == c.bikeId }, it) }
+        }
+        file.delete()
+    }
+
+    internal fun saveRide(ctx: Context, bike: Bike, ride: Ride) {
+        Repo.updateBike(bike.id) { it.copy(rides = it.rides + ride) }
+        ReminderWorker.runNow(ctx)
+        notify(ctx, ID_DONE, NotificationCompat.Builder(ctx, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
+            .setContentTitle(ctx.getString(R.string.ride_recorded, "%.1f".format(ride.km))).setContentText("${bike.brand} ${bike.model} · ${rideSource(ride, ctx).lowercase()}")
+            .setContentIntent(PendingIntent.getActivity(ctx, 5, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setAutoCancel(true).build())
+    }
+
     private fun transitionIntent(ctx: Context) = PendingIntent.getBroadcast(
         ctx, 11, Intent(ctx, TransitionReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
     )
@@ -138,6 +178,7 @@ class RideService : Service() {
             for (l in r.locations) meter.add(l.latitude, l.longitude, l.accuracy, l.time)
             Tracker.set(LiveRide(trigger, device, meter.km, startedAt))
             Tracker.notify(this@RideService, ID_LIVE, liveNotification())
+            checkpoint()
         }
     }
     // Lives outside the location callback: with a minimum update distance a parked phone gets no callbacks at all.
@@ -166,6 +207,7 @@ class RideService : Service() {
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         ServiceCompat.startForeground(this, ID_LIVE, liveNotification(), type)
         Tracker.set(LiveRide(trigger, device, 0.0, startedAt))
+        checkpoint()
         client = LocationServices.getFusedLocationProviderClient(this)
         client.requestLocationUpdates(
             LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).setMinUpdateDistanceMeters(15f).build(),
@@ -197,6 +239,11 @@ class RideService : Service() {
         }
     }
 
+    private fun checkpoint() {
+        val bike = Repo.garage.value.selected ?: return
+        Tracker.writeCheckpoint(this, RideCheckpoint(bike.id, trigger, device, meter.km, startedAt, System.currentTimeMillis(), carBluetooth, androidAuto))
+    }
+
     private fun checkCar() {
         if (discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking) != null) finish()
     }
@@ -224,14 +271,10 @@ class RideService : Service() {
         if (discarded != null) {
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
                 .setContentTitle(getString(R.string.ride_discarded, getString(if (discarded == DiscardReason.carBluetooth) R.string.p3_car_connected else R.string.android_auto))).setAutoCancel(true).build())
-        } else if (km >= 0.3 && bike != null) {
-            Repo.updateBike(bike.id) { it.copy(rides = it.rides + Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis())) }
-            ReminderWorker.runNow(this)
-            Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-                .setContentTitle(getString(R.string.ride_recorded, "%.1f".format(km))).setContentText("${bike.brand} ${bike.model} · ${rideSource(Ride("", km, trigger, device), this).lowercase()}")
-                .setContentIntent(PendingIntent.getActivity(this, 5, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
-                .setAutoCancel(true).build())
+        } else if (km >= MIN_RIDE_KM && bike != null) {
+            Tracker.saveRide(this, bike, Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis()))
         }
+        Tracker.deleteCheckpoint(this)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
