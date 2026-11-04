@@ -52,8 +52,18 @@ class CodecTest {
     }
 
     @Test fun keepsCurrentTracking() {
-        val g = Garage(tracking = Tracking(motion = true, carDevices = mapOf("CC:DD" to "Coche"), androidAuto = true))
+        val g = Garage(tracking = Tracking(motion = true, carDevices = mapOf("CC:DD" to "Coche"), androidAutoInCar = true))
         assertEquals(g, GarageCodec.decode(GarageCodec.encode(g)))
+    }
+
+    // A garage.json as 0.10.0 wrote it, with the Android Auto rule on: it threw away every ride on a bike that connects to Android Auto.
+    @Test fun oldAndroidAutoSettingDecodesAndDoesNotCarryOver() {
+        val old = """{"schema":3,"bikes":[],"tracking":{"motion":true,"carDevices":{"CC:DD":"Carro"},"androidAuto":true}}"""
+        val t = GarageCodec.decode(old).tracking
+        assertFalse(t.androidAutoInCar)
+        assertTrue(t.motion)
+        assertEquals(mapOf("CC:DD" to "Carro"), t.carDevices)
+        assertFalse(GarageCodec.encode(GarageCodec.decode(old)).contains("\"androidAuto\""))
     }
 
     @Test fun roundTrips() {

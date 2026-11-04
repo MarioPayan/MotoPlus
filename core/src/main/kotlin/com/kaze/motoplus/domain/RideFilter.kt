@@ -11,6 +11,6 @@ enum class DiscardReason { carBluetooth, androidAuto }
 fun discardReason(trigger: RideTrigger, carBluetoothConnected: Boolean, androidAutoConnected: Boolean, settings: Tracking): DiscardReason? = when {
     trigger != RideTrigger.motion -> null
     carBluetoothConnected && settings.carDevices.isNotEmpty() -> DiscardReason.carBluetooth
-    androidAutoConnected && settings.androidAuto -> DiscardReason.androidAuto
+    androidAutoConnected && settings.androidAutoInCar -> DiscardReason.androidAuto
     else -> null
 }

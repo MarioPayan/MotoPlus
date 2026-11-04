@@ -60,7 +60,7 @@ fun TrackingSummary(vm: AppViewModel) {
                 Text(ctx.getString(R.string.sources), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 val on = listOfNotNull(
                     ctx.getString(R.string.motion).takeIf { t.motion }, ctx.getString(R.string.intercom).takeIf { t.bluetooth },
-                    ctx.getString(R.string.no_car_rides).takeIf { t.motion && (t.carDevices.isNotEmpty() || t.androidAuto) },
+                    ctx.getString(R.string.no_car_rides).takeIf { t.motion && (t.carDevices.isNotEmpty() || t.androidAutoInCar) },
                 )
                 Hint(on.joinToString(ctx.getString(R.string.or)).ifEmpty { ctx.getString(R.string.nothing_automatic) })
             }
@@ -165,8 +165,8 @@ fun KmSourcesScreen(vm: AppViewModel) {
                     TextButton({ pick(Picker.car) }, contentPadding = PaddingValues(0.dp)) { Text(ctx.getString(R.string.change_cars)) }
                 }
                 HorizontalDivider(color = shop.line)
-                Toggle(ctx.getString(R.string.android_auto), ctx.getString(R.string.android_auto_hint), t.androidAuto) { on -> vm.setTracking(t.copy(androidAuto = on)) }
-                if (!t.motion && (t.carDevices.isNotEmpty() || t.androidAuto)) Hint(ctx.getString(R.string.motion_only), shop.warn)
+                Toggle(ctx.getString(R.string.android_auto_in_car), ctx.getString(R.string.android_auto_in_car_hint), t.androidAutoInCar) { on -> vm.setTracking(t.copy(androidAutoInCar = on)) }
+                if (!t.motion && (t.carDevices.isNotEmpty() || t.androidAutoInCar)) Hint(ctx.getString(R.string.motion_only), shop.warn)
             }
 
             Sheet {

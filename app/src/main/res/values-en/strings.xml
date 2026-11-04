@@ -298,11 +298,10 @@
     <string name="weekly_hint">Bars fill with rides recorded by GPS.</string>
     <string name="no_car_rides">Exclude car journeys</string>
     <string name="car_only">Only the bike, no car journeys</string>
-    <string name="car_hint">The motion sensor cannot tell a car from a bike. Car journeys are discarded. Helmet and manual rides always count.</string>
+    <string name="car_hint">The motion sensor cannot tell a car from a bike. Choose here how to recognise your car journeys so they do not count. Helmet and manual rides always count.</string>
     <string name="car_bluetooth">Car Bluetooth</string>
     <string name="car_connected">Does not count while connected.</string>
     <string name="change_cars">Change cars</string>
-    <string name="android_auto_hint">Does not count while the phone is using Android Auto.</string>
     <string name="motion_only">Only applies when the motion sensor is enabled.</string>
     <string name="permission_location">location</string>
     <string name="permission_background">background location</string>
@@ -674,4 +673,6 @@
     <plurals name="hidden_features"><item quantity="one">%1$d hidden feature</item><item quantity="other">%1$d hidden features</item></plurals>
     <string name="feedback_title">Write a suggestion</string>
     <string name="feedback_hint">What you noticed, what you would change…</string>
+    <string name="android_auto_in_car">My Android Auto connects to both cars and bikes</string>
+    <string name="android_auto_in_car_hint">Turn on only if you use Android Auto in both a car and on the bike: motion rides with Android Auto connected will not count. Off, Android Auto changes nothing.</string>
 </resources>

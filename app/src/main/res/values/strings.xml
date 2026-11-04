@@ -299,11 +299,10 @@
     <string name="weekly_hint">Las barras se llenan con las salidas que registra el GPS.</string>
     <string name="no_car_rides">Sin viajes en coche</string>
     <string name="car_only">Solo la moto, no el coche</string>
-    <string name="car_hint">El sensor de movimiento no distingue el coche de la moto. Si vas en coche, la salida se descarta. Las del casco y las que empiezas tú cuentan siempre.</string>
+    <string name="car_hint">El sensor de movimiento no distingue el coche de la moto. Elige aquí cómo reconocer tus viajes en coche para no contarlos. Las salidas del casco y las que empiezas tú cuentan siempre.</string>
     <string name="car_bluetooth">Bluetooth del coche</string>
     <string name="car_connected">Mientras esté conectado, no cuenta.</string>
     <string name="change_cars">Cambiar coches</string>
-    <string name="android_auto_hint">Mientras el móvil esté en Android Auto, no cuenta.</string>
     <string name="motion_only">Solo se aplica con el sensor de movimiento activado.</string>
     <string name="permission_location">ubicación</string>
     <string name="permission_background">ubicación todo el tiempo</string>
@@ -675,4 +674,6 @@
     <plurals name="hidden_features"><item quantity="one">%1$d función oculta</item><item quantity="other">%1$d funciones ocultas</item></plurals>
     <string name="feedback_title">Anotar sugerencia</string>
     <string name="feedback_hint">Qué notaste, qué cambiarías…</string>
+    <string name="android_auto_in_car">Mi Android Auto se conecta a coches y motos</string>
+    <string name="android_auto_in_car_hint">Actívalo solo si usas Android Auto tanto en el coche como en la moto: las salidas detectadas por movimiento con Android Auto conectado no contarán. Apagado, Android Auto no cambia nada.</string>
 </resources>

@@ -105,8 +105,11 @@ data class Tracking(
     val devices: Map<String, String> = emptyMap(),
     /** The rider's cars, address to name: while one is connected, a motion ride is a car trip. Empty turns the rule off. */
     val carDevices: Map<String, String> = emptyMap(),
-    /** While the phone projects to Android Auto, a motion ride is a car trip. */
-    val androidAuto: Boolean = false,
+    /**
+     * The rider's Android Auto connects to cars as well as bikes, so while it projects a motion ride is a car trip.
+     * Replaces the old `androidAuto` key, which is deliberately not migrated: bikes connect to Android Auto too, so off is the right default.
+     */
+    val androidAutoInCar: Boolean = false,
 ) {
     /** Some detector can start a ride without the rider. */
     val detects get() = motion || bluetooth

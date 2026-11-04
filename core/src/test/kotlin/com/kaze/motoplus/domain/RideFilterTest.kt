@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RideFilterTest {
-    private val both = Tracking(motion = true, bluetooth = true, carDevices = mapOf("CC:DD" to "Coche"), androidAuto = true)
+    private val both = Tracking(motion = true, bluetooth = true, carDevices = mapOf("CC:DD" to "Coche"), androidAutoInCar = true)
     private val none = Tracking(motion = true, bluetooth = true)
 
     @Test fun motionRideInACarIsDiscarded() {
@@ -16,8 +16,13 @@ class RideFilterTest {
 
     @Test fun rulesSwitchedOffKeepTheRide() {
         assertNull(discardReason(RideTrigger.motion, true, true, none))
-        assertEquals(DiscardReason.androidAuto, discardReason(RideTrigger.motion, true, true, none.copy(androidAuto = true)))
+        assertEquals(DiscardReason.androidAuto, discardReason(RideTrigger.motion, true, true, none.copy(androidAutoInCar = true)))
         assertEquals(DiscardReason.carBluetooth, discardReason(RideTrigger.motion, true, true, none.copy(carDevices = both.carDevices)))
+    }
+
+    @Test fun androidAutoAloneIsNotACarTripUnlessTheRiderSaysSo() {
+        assertNull(discardReason(RideTrigger.motion, false, true, Tracking(motion = true)))
+        assertEquals(DiscardReason.androidAuto, discardReason(RideTrigger.motion, false, true, Tracking(motion = true, androidAutoInCar = true)))
     }
 
     @Test fun intercomAndManualRidesAlwaysCount() {

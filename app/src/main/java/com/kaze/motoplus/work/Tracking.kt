@@ -171,7 +171,7 @@ class RideService : Service() {
     @SuppressLint("MissingPermission")
     private fun watchCars() {
         val t = Repo.garage.value.tracking
-        if (t.androidAuto) carConnection = CarConnection(this).type.also { it.observeForever(autoObserver) }
+        if (t.androidAutoInCar) carConnection = CarConnection(this).type.also { it.observeForever(autoObserver) }
         if (t.carDevices.isEmpty()) return
         if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
         val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return

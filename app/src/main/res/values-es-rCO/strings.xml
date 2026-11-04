@@ -203,7 +203,7 @@
     <string name="p3_progress">%1$d/%2$d</string>
     <string name="p3_score_max">/100</string>
     <string name="p3_bullet">• %1$s</string>
-    <string name="p3_car_connected">Coche conectado</string>
+    <string name="p3_car_connected">Carro conectado</string>
     <string name="p3_tab_transit_license">Tránsito</string>
     <string name="p3_tab_soat">SOAT</string>
     <string name="p3_tab_inspection">RTM</string>
@@ -256,4 +256,13 @@
     <string name="feat_fuel">Tanqueadas y consumo</string>
     <string name="feat_fuel_hint">Anota cada tanqueada y ves km por litro y costo por km.</string>
     <string name="feat_papers_hint">SOAT, tecnomecánica, licencia: avisa antes de que venzan.</string>
+    <string name="android_auto_in_car">Mi Android Auto se conecta a carros y motos</string>
+    <string name="android_auto_in_car_hint">Actívalo solo si usas Android Auto tanto en el carro como en la moto: las salidas detectadas por movimiento con Android Auto conectado no contarán. Apagado, Android Auto no cambia nada.</string>
+    <string name="car_hint">El sensor de movimiento no distingue el carro de la moto. Elige aquí cómo reconocer tus viajes en carro para no contarlos. Las salidas del casco y las que empiezas tú cuentan siempre.</string>
+    <string name="no_car_rides">Sin viajes en carro</string>
+    <string name="car_only">Solo la moto, no el carro</string>
+    <string name="car_bluetooth">Bluetooth del carro</string>
+    <string name="change_cars">Cambiar carros</string>
+    <string name="car_picker">Tu carro</string>
+    <string name="car_pair">Empareja el carro en los ajustes de Bluetooth y vuelve.</string>
 </resources>
