@@ -170,5 +170,18 @@ class DistanceTest {
         assertEquals(before, m.meters, 0.0)
     }
 
+    @Test fun parkedGpsJitterIsNotMovement() {
+        val m = DistanceMeter()
+        m.add(40.0, -3.7, 25f, 0)
+        val parkedSince = m.lastMovingAt
+        // 20 m of drift with a 25 m error, the way a phone indoors reports it
+        for (i in 1..20) m.add(40.0 + (i % 2) * 0.00018, -3.7, 25f, i * 5000L)
+        assertEquals(0.0, m.meters, 0.0)
+        assertEquals(parkedSince, m.lastMovingAt)
+        // Riding slowly with the same error still counts: 15 m steps add up against the anchor
+        for (i in 1..20) m.add(40.0 + i * 0.000135, -3.7, 25f, 100_000 + i * 5000L)
+        assertEquals(0.27, m.km, 0.04)
+    }
+
     @Test fun haversineKnownDistance() = assertEquals(111_195.0, haversine(0.0, 0.0, 1.0, 0.0), 50.0)
 }

@@ -230,7 +230,7 @@ class RideService : Service() {
         checkpoint()
         client = LocationServices.getFusedLocationProviderClient(this)
         client.requestLocationUpdates(
-            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).setMinUpdateDistanceMeters(15f).build(),
+            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000).build(),
             callback, Looper.getMainLooper(),
         )
         handler.postDelayed(parkedCheck, 60_000)

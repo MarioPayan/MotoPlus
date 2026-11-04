@@ -24,7 +24,8 @@ class DistanceMeter(
         if (!has) { lat = latitude; lon = longitude; at = timeMs; has = true; lastMovingAt = timeMs; return false }
         val d = haversine(lat, lon, latitude, longitude)
         val dt = (timeMs - at) / 1000.0
-        if (d < minStepM) return false
+        // A step smaller than the fix's own error is jitter: keep the anchor, so slow real movement still adds up.
+        if (d < maxOf(minStepM, accuracyM.toDouble())) return false
         if (dt > 0 && d / dt > maxSpeedMs) { lat = latitude; lon = longitude; at = timeMs; return false }
         meters += d; lat = latitude; lon = longitude; at = timeMs; lastMovingAt = timeMs
         return true
