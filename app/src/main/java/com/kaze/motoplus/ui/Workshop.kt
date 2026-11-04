@@ -193,7 +193,7 @@ internal fun PartPicker(bike: Bike, picked: Set<String>, onToggle: (String) -> U
 }
 
 @Composable
-internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, label: String? = null) {
+internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, label: String? = null, placeholder: String? = null) {
     val locale = LocalConfiguration.current.locales[0]
     val currency = LocalCurrency.current
     val display = formatAmountInput(value, currency, locale)
@@ -209,13 +209,14 @@ internal fun AmountField(value: String, onChange: (String) -> Unit, modifier: Mo
         }.let { if (significant == 0) 0 else if (it < 0) formatted.length else it + 1 }
         field = TextFieldValue(formatted, TextRange(cursor))
         onChange(formatted)
-    }, modifier, enabled = enabled, label = { Text(label ?: stringResource(R.string.p2_cost)) }, singleLine = true,
-        textStyle = Mono.copy(fontSize = 16.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+    }, modifier, enabled = enabled, label = if (placeholder != null) null else ({ Text(label ?: stringResource(R.string.p2_cost)) }), singleLine = true,
+        textStyle = Mono.copy(fontSize = 16.sp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        placeholder = placeholder?.let { { Text(it, maxLines = 1, softWrap = false) } })
 }
 
 @Composable
-internal fun NewJobDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
-    var name by remember { mutableStateOf("") }
+internal fun NewJobDialog(initial: String = "", onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+    var name by remember { mutableStateOf(initial) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.p2_custom_job)) }, text = {
         FormField(name, stringResource(R.string.p2_job_name), { name = it.take(80) })
     }, confirmButton = { TextButton({ onAdd(name.trim()) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.save)) } },

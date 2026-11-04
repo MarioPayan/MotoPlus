@@ -52,7 +52,7 @@ val LocalCompact = staticCompositionLocalOf { false }
 /** Vertical padding of a list row, the number that makes Cómoda and Compacta visibly different. */
 val rowPad: Dp @Composable get() = if (LocalCompact.current) 4.dp else 12.dp
 
-/** Expands and collapses [content] (job cost and note, category parts, check picks). */
+/** Expands and collapses [content] (category parts, check picks). */
 @Composable
 fun Collapse(open: Boolean, content: @Composable ColumnScope.() -> Unit) = AnimatedVisibility(
     open, enter = expandVertically(motion()) + fadeIn(motion()), exit = shrinkVertically(motion()) + fadeOut(motion()),

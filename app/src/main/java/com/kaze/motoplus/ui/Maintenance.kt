@@ -3,7 +3,13 @@ package com.kaze.motoplus.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -15,11 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.*
@@ -51,6 +60,8 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
         jobs.all { d.costs[it].isNullOrBlank() || parseAmount(d.costs[it]!!, locale) != null }
     val total = jobs.sumOf { id -> d.costs[id]?.let { parseAmount(it, locale) } ?: 0.0 }
     val back = { vm.maintenance = null; vm.screen = d.back }
+    var adding by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf<DraftJob?>(null) }
 
     Column(Modifier.fillMaxSize().background(shop.paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Header(stringResource(if (d.visit) R.string.p2_from_workshop else R.string.mt_title), back)
@@ -98,40 +109,27 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
                     val s = partState(p, odo, today)
                     val status = if (p.watched) s.status else Status.none
                     val on = p.id in d.checked
-                    Column {
-                        Row(Modifier.fillMaxWidth().toggleable(on, role = Role.Checkbox) { toggle(p.id, it) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    JobRow(d, p.id, on, ::set) {
+                        Row(Modifier.weight(1f).fillMaxHeight().toggleable(on, role = Role.Checkbox) { toggle(p.id, it) }, verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(on, null)
                             Row(Modifier.weight(1f).alpha(if (p.watched) 1f else .5f), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.padding(start = 4.dp).size(9.dp).background(shop.status(status), CircleShape))
-                                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                                    Text(partLabel(p), fontSize = 18.sp)
-                                    Text(if (p.watched) remaining(s) else stringResource(R.string.unwatched), style = Mono.copy(fontSize = 11.sp), color = shop.status(status))
-                                }
+                                JobText(partLabel(p), if (p.watched) remaining(s) else stringResource(R.string.unwatched), shop.status(status), Modifier.weight(1f).padding(start = 10.dp))
                             }
                         }
-                        Collapse(on) { JobExtra(d, p.id, ::set) }
-                        HorizontalDivider(color = shop.line)
                     }
                 } }
             }
             if (custom.isNotEmpty()) Cap(stringResource(R.string.p2_custom_job), modifier = Modifier.padding(top = 6.dp))
             custom.forEach { job -> key(job.id) {
                 val on = job.id in d.checked
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(on, { toggle(job.id, it) })
-                        Box(Modifier.weight(1f)) {
-                            FormField(job.name, stringResource(R.string.p2_job_name), { value -> set { m -> m.copy(custom = m.custom.map { if (it.id == job.id) it.copy(name = value.take(80)) else it }) } })
-                        }
-                    }
-                    Collapse(on) { JobExtra(d, job.id, ::set) }
-                    HorizontalDivider(color = shop.line)
+                JobRow(d, job.id, on, ::set) {
+                    Checkbox(on, { toggle(job.id, it) })
+                    JobText(job.name, stringResource(R.string.p2_custom_job), shop.ink2,
+                        Modifier.weight(1f).fillMaxHeight().clickable(onClickLabel = stringResource(R.string.p2_job_name)) { renaming = job }.padding(start = 2.dp))
                 }
             } }
-            Btn(stringResource(R.string.p2_custom_job), {
-                val id = UUID.randomUUID().toString()
-                set { it.copy(custom = it.custom + DraftJob(id, ""), checked = it.checked + id, query = "") }
-            }, Modifier.fillMaxWidth(), ghost = true, icon = "plus")
+            Btn(stringResource(R.string.p2_custom_job), { adding = true }, Modifier.fillMaxWidth(), ghost = true, icon = "plus")
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 d.photo?.let { Thumb(it, Modifier.size(56.dp)) }
                 Btn(stringResource(if (d.photo == null) R.string.p2_invoice_photo else R.string.p2_invoice_replace),
@@ -149,6 +147,25 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
             Text(summary, style = Mono.copy(fontSize = 12.sp), color = shop.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             Btn(if (jobs.size == 1) stringResource(R.string.p2_save_job) else stringResource(R.string.p2_save_jobs, jobs.size), { vm.saveMaintenance(d) },
                 Modifier.fillMaxWidth(), enabled = valid)
+        }
+    }
+    if (adding) NewJobDialog(onDismiss = { adding = false }) { name ->
+        val id = UUID.randomUUID().toString()
+        set { it.copy(custom = it.custom + DraftJob(id, name), checked = it.checked + id, query = "") }
+        adding = false
+    }
+    renaming?.let { job ->
+        NewJobDialog(job.name, { renaming = null }) { name ->
+            set { m -> m.copy(custom = m.custom.map { if (it.id == job.id) it.copy(name = name) else it }) }
+            renaming = null
+        }
+    }
+    d.noteOpen.firstOrNull()?.let { id ->
+        val name = bike.parts.firstOrNull { it.id == id }?.let { partLabel(it) } ?: d.custom.firstOrNull { it.id == id }?.name.orEmpty()
+        key(id) {
+            JobNoteDialog(name, d.notes[id].orEmpty(), { set { it.copy(noteOpen = it.noteOpen - id) } }) { note ->
+                set { it.copy(notes = it.notes + (id to note), noteOpen = it.noteOpen - id) }
+            }
         }
     }
 }
@@ -169,18 +186,51 @@ private fun QuickPicks(bike: Bike, d: MaintenanceDraft, odo: Double, today: Loca
     }
 }
 
-/** A checked job's cost and note. */
+/**
+ * One job. Checking it slides the cost and note in from the right and only narrows [content]: the height is fixed, room for
+ * two lines of name and the status line, so the rows below never move.
+ */
+@Composable
+private fun JobRow(d: MaintenanceDraft, id: String, on: Boolean, set: ((MaintenanceDraft) -> MaintenanceDraft) -> Unit, content: @Composable RowScope.() -> Unit) {
+    val height = with(LocalDensity.current) { maxOf(56.sp.toDp(), 56.dp) }
+    Column {
+        Row(Modifier.fillMaxWidth().padding(vertical = if (LocalCompact.current) 0.dp else 8.dp).height(height), verticalAlignment = Alignment.CenterVertically) {
+            content()
+            AnimatedVisibility(on, enter = expandHorizontally(motion()) + fadeIn(motion()), exit = shrinkHorizontally(motion()) + fadeOut(motion())) { JobExtra(d, id, set) }
+        }
+        HorizontalDivider(color = LocalShop.current.line)
+    }
+}
+
+/** A job's name, at most two lines, over its one-line status. */
+@Composable
+private fun JobText(name: String, status: String, statusColor: Color, modifier: Modifier = Modifier) {
+    Column(modifier.padding(end = 6.dp), verticalArrangement = Arrangement.Center) {
+        Text(name, fontSize = 18.sp, lineHeight = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(status, style = Mono.copy(fontSize = 11.sp), color = statusColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A checked job's cost and note. The field is wide enough for a seven-figure COP amount at 360 dp and has no label above it, to fit the row. */
 @Composable
 private fun JobExtra(d: MaintenanceDraft, id: String, set: ((MaintenanceDraft) -> MaintenanceDraft) -> Unit) {
+    val shop = LocalShop.current
     val currency = LocalCurrency.current
     val locale = LocalConfiguration.current.locales[0]
-    val noteOpen = id in d.noteOpen || !d.notes[id].isNullOrBlank()
-    Column(Modifier.padding(start = 32.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            AmountField(d.costs[id].orEmpty(), { value -> set { it.copy(costs = it.costs + (id to value)) } }, Modifier.width(170.dp),
-                label = stringResource(R.string.p2_cost) + " · " + currencySymbol(currency, locale))
-            if (!noteOpen) IconBtn("note-pencil", stringResource(R.string.p2_add_note), { set { it.copy(noteOpen = it.noteOpen + id) } })
-        }
-        Collapse(noteOpen) { FormField(d.notes[id].orEmpty(), stringResource(R.string.p2_job_note), { value -> set { it.copy(notes = it.notes + (id to value.take(400))) } }, multiline = true) }
+    val hasNote = !d.notes[id].isNullOrBlank()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AmountField(d.costs[id].orEmpty(), { value -> set { it.copy(costs = it.costs + (id to value)) } }, Modifier.width(124.dp),
+            placeholder = stringResource(R.string.p2_cost) + " · " + currencySymbol(currency, locale))
+        IconBtn("note-pencil", stringResource(if (hasNote) R.string.p2_job_note else R.string.p2_add_note), { set { it.copy(noteOpen = it.noteOpen + id) } },
+            color = if (hasNote) shop.accent else shop.ink2)
     }
+}
+
+@Composable
+private fun JobNoteDialog(name: String, initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var note by remember { mutableStateOf(initial) }
+    AlertDialog(onDismissRequest = onDismiss, containerColor = LocalShop.current.sheet, title = { Text(name) },
+        text = { FormField(note, stringResource(R.string.p2_job_note), { note = it.take(400) }, multiline = true) },
+        confirmButton = { TextButton({ onSave(note) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } })
 }

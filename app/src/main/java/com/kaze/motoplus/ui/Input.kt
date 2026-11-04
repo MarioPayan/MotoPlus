@@ -81,10 +81,11 @@ fun AppInput(
     label: @Composable (() -> Unit)? = null, singleLine: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     textStyle: TextStyle = inputStyle(keyboardOptions), enabled: Boolean = true,
+    placeholder: @Composable (() -> Unit)? = null,
 ) {
     InputFrame(modifier, label) {
         OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth(), singleLine = singleLine,
-            keyboardOptions = keyboardOptions, textStyle = textStyle, enabled = enabled,
+            keyboardOptions = keyboardOptions, textStyle = textStyle, enabled = enabled, placeholder = placeholder,
             shape = RoundedCornerShape(3.dp), colors = inputColors())
     }
 }
