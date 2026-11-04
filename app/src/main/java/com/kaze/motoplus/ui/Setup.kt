@@ -157,7 +157,7 @@ private fun SetupRow(p: Part, s: PartState, onOpen: () -> Unit, onWatch: (Boolea
     val name = partLabel(p)
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).alpha(if (p.watched) 1f else .5f).clickable(onClickLabel = stringResource(R.string.view_limits), onClick = onOpen).padding(vertical = 9.dp),
+            Row(Modifier.weight(1f).alpha(if (p.watched) 1f else .5f).clickable(onClickLabel = stringResource(R.string.view_limits), onClick = onOpen).padding(vertical = rowPad),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(partIcon(p), shop.status(if (p.watched) s.status else Status.none), 22.dp)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {

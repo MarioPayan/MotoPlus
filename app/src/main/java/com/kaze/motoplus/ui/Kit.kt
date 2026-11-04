@@ -49,6 +49,9 @@ fun <T> motion(): FiniteAnimationSpec<T> = tween(MOTION_MS, easing = EaseOut)
 /** Compacta density: tighter lists, bars and gaps. */
 val LocalCompact = staticCompositionLocalOf { false }
 
+/** Vertical padding of a list row, the number that makes Cómoda and Compacta visibly different. */
+val rowPad: Dp @Composable get() = if (LocalCompact.current) 4.dp else 12.dp
+
 /** Expands and collapses [content] (job cost and note, category parts, check picks). */
 @Composable
 fun Collapse(open: Boolean, content: @Composable ColumnScope.() -> Unit) = AnimatedVisibility(
@@ -161,9 +164,10 @@ fun LifeRing(icon: String, status: Status, used: Double, size: Dp = 46.dp) {
 @Composable
 fun Sheet(modifier: Modifier = Modifier, padding: Dp = 12.dp, content: @Composable ColumnScope.() -> Unit) {
     val shop = LocalShop.current
+    val compact = LocalCompact.current
     Column(
-        modifier.fillMaxWidth().padding(vertical = 2.dp).drawBehind { drawLine(shop.line, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }.padding(vertical = padding),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier.fillMaxWidth().padding(vertical = 2.dp).drawBehind { drawLine(shop.line, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }.padding(vertical = if (compact) padding / 2 else padding),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 10.dp),
         content = content,
     )
 }

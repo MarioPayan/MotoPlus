@@ -27,6 +27,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kaze.motoplus.AppViewModel
@@ -35,6 +37,7 @@ import com.kaze.motoplus.R
 import com.kaze.motoplus.Screen
 import com.kaze.motoplus.WELCOME_STEPS
 import com.kaze.motoplus.domain.*
+import java.time.LocalDate
 
 private val STEP_TITLES = listOf(R.string.welcome_bike, R.string.welcome_bike, R.string.setup_watch, R.string.routines_title, R.string.interface_title, R.string.summary)
 
@@ -233,8 +236,30 @@ fun InterfaceOptions(vm: AppViewModel) {
         ChoiceRow(listOf(Density.comfortable.name to stringResource(R.string.density_comfortable), Density.compact.name to stringResource(R.string.density_compact)), p.density.name) { d ->
             vm.updatePrefs { it.copy(density = Density.valueOf(d)) }
         }
+        vm.bike?.let { DensityPreview(it, vm.today) }
         HorizontalDivider(color = LocalShop.current.line)
         Toggle(stringResource(R.string.ui_reminders), stringResource(R.string.ui_reminders_hint), p.reminders) { on -> vm.updatePrefs { it.copy(reminders = on) } }
+    }
+}
+
+/** Nothing else on the intro's Interfaz step is a part list, so a few real rows show the choice where it is made. */
+@Composable
+private fun DensityPreview(bike: Bike, today: LocalDate) {
+    val shop = LocalShop.current
+    val odo = estimate(bike, today).km
+    Column {
+        Cap(stringResource(R.string.density_preview), modifier = Modifier.padding(bottom = 6.dp))
+        bike.watchedParts.ifEmpty { bike.parts }.take(3).forEach { p ->
+            val s = partState(p, odo, today)
+            HorizontalDivider(color = shop.line)
+            Row(Modifier.fillMaxWidth().padding(vertical = rowPad), verticalAlignment = Alignment.CenterVertically) {
+                Icon(partIcon(p), shop.status(s.status), 24.dp)
+                Column(Modifier.padding(start = 20.dp)) {
+                    Text(partLabel(p), fontWeight = FontWeight.SemiBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(remaining(s), style = Mono.copy(fontSize = 11.sp), color = shop.status(s.status))
+                }
+            }
+        }
     }
 }
 

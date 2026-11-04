@@ -676,4 +676,5 @@
     <string name="feedback_hint">Qué notaste, qué cambiarías…</string>
     <string name="android_auto_in_car">Mi Android Auto se conecta a coches y motos</string>
     <string name="android_auto_in_car_hint">Actívalo solo si usas Android Auto tanto en el coche como en la moto: las salidas detectadas por movimiento con Android Auto conectado no contarán. Apagado, Android Auto no cambia nada.</string>
+    <string name="density_preview">Vista previa</string>
 </resources>

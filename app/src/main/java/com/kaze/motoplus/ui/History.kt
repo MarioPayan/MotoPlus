@@ -92,16 +92,17 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
     val events = (records + orders + reports + fuel + rides + readings + papers).sortedByDescending { it.date }
     if (events.isEmpty()) Hint(stringResource(R.string.p2_empty_history))
     var month = ""
+    val rowHeight = if (LocalCompact.current) 48.dp else 70.dp
     (if (compact) events.take(5) else events).forEach { event ->
         val key = event.date.take(7)
         if (month != key) {
             month = key
             Text(LocalDate.parse("$key-01").format(DateTimeFormatter.ofPattern("LLLL yyyy", locale)), style = Display.copy(fontSize = 23.sp), modifier = Modifier.padding(top = 12.dp))
         }
-        Row(Modifier.fillMaxWidth().heightIn(min = 70.dp).clickable {
+        Row(Modifier.fillMaxWidth().heightIn(min = rowHeight).clickable {
             if (event in fuel || event in rides || event in readings) eventDetail = event else event.open()
         }, verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(28.dp).height(70.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(28.dp).height(rowHeight), contentAlignment = Alignment.Center) {
                 Box(Modifier.width(1.dp).fillMaxHeight().background(LocalShop.current.line))
                 Box(Modifier.size(7.dp).background(LocalShop.current.ink2, CircleShape))
             }
@@ -116,7 +117,7 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
             else Box(Modifier.rotate(90f)) { Chevron(open, size = 16.dp, openAngle = 180f) }
         }
         if (event.group.isNotEmpty()) Collapse(event.group.first().group in openGroups) { event.group.forEach { r ->
-            Row(Modifier.fillMaxWidth().clickable { vm.editRecord(r) }.padding(start = 62.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { vm.editRecord(r) }.padding(start = 62.dp, top = rowPad, bottom = rowPad), verticalAlignment = Alignment.CenterVertically) {
                 Icon(bike.parts.firstOrNull { it.id == r.partId }?.let(::partIcon) ?: "wrench", LocalShop.current.ink2, 18.dp)
                 Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                     Text(recordName(bike, r))

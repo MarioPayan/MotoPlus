@@ -116,7 +116,7 @@ fun PartRow(vm: AppViewModel, p: Part, s: PartState, showInterval: Boolean = fal
     Column {
         HorizontalDivider(color = shop.line)
         Row(Modifier.fillMaxWidth().alpha(if (p.watched) 1f else .5f).clickable(onClickLabel = stringResource(R.string.alert_actions)) { menu = true }
-            .padding(vertical = if (LocalCompact.current) 5.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            .padding(vertical = rowPad), verticalAlignment = Alignment.CenterVertically) {
             Icon(partIcon(p), shop.status(status), 24.dp)
             Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
                 Text(name, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

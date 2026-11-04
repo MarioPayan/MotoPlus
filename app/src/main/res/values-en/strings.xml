@@ -675,4 +675,5 @@
     <string name="feedback_hint">What you noticed, what you would change…</string>
     <string name="android_auto_in_car">My Android Auto connects to both cars and bikes</string>
     <string name="android_auto_in_car_hint">Turn on only if you use Android Auto in both a car and on the bike: motion rides with Android Auto connected will not count. Off, Android Auto changes nothing.</string>
+    <string name="density_preview">Preview</string>
 </resources>

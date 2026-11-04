@@ -94,7 +94,7 @@ internal fun SettingChoice(label: String, value: String, options: List<Pair<Stri
 
 @Composable
 fun SettingsEntry(icon: String, label: String, sub: String? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = rowPad), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, LocalShop.current.ink2)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(label)
