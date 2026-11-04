@@ -20,8 +20,8 @@ android {
         applicationId = "com.kaze.motoplus"
         minSdk = 29
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.11.0"
+        versionCode = 5
+        versionName = "0.12.0"
     }
 
     signingConfigs {
