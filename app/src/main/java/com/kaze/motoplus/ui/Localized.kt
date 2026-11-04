@@ -23,11 +23,7 @@ fun estimateSource(est: OdoEstimate): String = when (est.basis) {
 }
 
 @Composable
-fun rideSource(ride: Ride): String = when (ride.trigger) {
-    RideTrigger.manual -> stringResource(R.string.manual)
-    RideTrigger.motion -> stringResource(R.string.motion)
-    RideTrigger.bluetooth -> stringResource(R.string.bluetooth) + (ride.device?.let { ": $it" } ?: "")
-}
+fun rideSource(ride: Ride): String = rideSource(ride, androidx.compose.ui.platform.LocalContext.current)
 
 @Composable
 fun currencyMoney(value: Double, currency: String) = formatMoney(value, currency, LocalConfiguration.current.locales[0])
@@ -204,7 +200,7 @@ fun rideSource(ride: Ride, ctx: android.content.Context): String = ctx.getString
     RideTrigger.manual -> R.string.manual
     RideTrigger.motion -> R.string.motion
     RideTrigger.bluetooth -> R.string.bluetooth
-}) + (ride.device?.let { ": $it" } ?: "")
+}).let { source -> (source + (ride.device?.let { ": $it" } ?: "")).let { if (ride.estimated) ctx.getString(R.string.ride_estimated, it) else it } }
 
 
 @Composable
