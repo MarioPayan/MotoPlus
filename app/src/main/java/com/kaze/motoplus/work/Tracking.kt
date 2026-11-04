@@ -35,7 +35,13 @@ import com.kaze.motoplus.domain.MIN_RIDE_KM
 import com.kaze.motoplus.domain.Ride
 import com.kaze.motoplus.domain.RideCheckpoint
 import com.kaze.motoplus.domain.RideTrigger
+import com.kaze.motoplus.domain.EstimateDrop
+import com.kaze.motoplus.domain.EstimateSession
+import com.kaze.motoplus.domain.TrackingMode
 import com.kaze.motoplus.domain.discardReason
+import com.kaze.motoplus.domain.endEstimate
+import com.kaze.motoplus.domain.estimateIsOver
+import com.kaze.motoplus.domain.isPastEstimateCap
 import com.kaze.motoplus.domain.isParked
 import com.kaze.motoplus.domain.orphanRide
 import com.kaze.motoplus.ui.rideSource
@@ -52,15 +58,16 @@ const val CHANNEL_RIDE = "rides"
 private const val ID_LIVE = 4100
 private const val ID_DONE = 4101
 
-data class LiveRide(val trigger: RideTrigger, val device: String?, val km: Double, val startedAt: Long) {
-    fun label(ctx: Context) = rideSource(Ride("", km, trigger, device), ctx)
+/** [km] stays 0 for an [estimated] ride: its km come from the clock, see [com.kaze.motoplus.domain.estimatedKm]. */
+data class LiveRide(val trigger: RideTrigger, val device: String?, val km: Double, val startedAt: Long, val estimated: Boolean = false) {
+    fun label(ctx: Context) = rideSource(Ride("", km, trigger, device, estimated = estimated), ctx)
 }
 
 // ponytail: tester-only ride log so a "0 km" can be diagnosed without root (release isn't debuggable), read with
 // `adb pull /sdcard/Android/data/com.kaze.motoplus/files/salidas.txt`. Remove before a public release, like ui/Feedback.kt.
-private fun rideLog(ctx: Context, trigger: RideTrigger, event: String, km: Double, outcome: String = "") {
+private fun rideLog(ctx: Context, trigger: RideTrigger, event: String, km: Double, outcome: String = "", mode: TrackingMode = TrackingMode.precision) {
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-    runCatching { File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "salidas.txt").appendText("$stamp · $trigger · $event · ${"%.2f".format(Locale.ROOT, km)} km · $outcome\n") }
+    runCatching { File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "salidas.txt").appendText("$stamp · $mode · $trigger · $event · ${"%.2f".format(Locale.ROOT, km)} km · $outcome\n") }
 }
 
 private fun rideOutcome(km: Double, discarded: DiscardReason?, kept: String) = when {
@@ -80,8 +87,15 @@ object Tracker {
     fun hasActivity(ctx: Context) = granted(ctx, Manifest.permission.ACTIVITY_RECOGNITION)
     private fun granted(ctx: Context, p: String) = ContextCompat.checkSelfPermission(ctx, p) == PackageManager.PERMISSION_GRANTED
 
+    /** Estimación needs no location to start a ride. */
+    fun canStart(ctx: Context) = Repo.garage.value.tracking.mode == TrackingMode.estimate || hasLocation(ctx)
+
     fun start(ctx: Context, trigger: RideTrigger, device: String? = null) {
-        if (state.value != null || !hasLocation(ctx)) return
+        // A session that lost its end event mustn't hold back the next ride; one still in its time keeps its clock.
+        state.value?.let { if (it.estimated && isPastEstimateCap(it.startedAt, System.currentTimeMillis())) stop(ctx) }
+        if (state.value != null) return
+        if (Repo.garage.value.tracking.mode == TrackingMode.estimate) { startEstimate(ctx, trigger, device); return }
+        if (!hasLocation(ctx)) return
         val i = Intent(ctx, RideService::class.java).putExtra("trigger", trigger.name).putExtra("device", device)
         try {
             ContextCompat.startForegroundService(ctx, i)
@@ -95,8 +109,9 @@ object Tracker {
     }
 
     fun stop(ctx: Context) {
-        if (state.value == null) return
-        ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.STOP))
+        val live = state.value ?: return
+        if (live.estimated) endEstimate(ctx)
+        else ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.STOP))
     }
 
     /** Listens for "in vehicle" start/stop from the phone's activity sensor while motion detection is on, and stops listening when it's off. */
@@ -119,16 +134,19 @@ object Tracker {
 
     /** One of the rider's cars connected: the live ride checks again whether it is a car trip. */
     fun carConnected(ctx: Context) {
-        if (state.value == null) return
+        val live = state.value ?: return
+        if (live.estimated) { estimateSawCar(ctx); return }
         runCatching { ctx.startService(Intent(ctx, RideService::class.java).setAction(RideService.CAR)) }
     }
 
     private fun checkpointFile(ctx: Context) = File(ctx.filesDir, "ride_checkpoint.json")
 
     /** Called on every location update, on the main thread: a rename survives a process kill without the cost of an fsync each time. */
-    internal fun writeCheckpoint(ctx: Context, c: RideCheckpoint) {
-        val tmp = File(ctx.filesDir, "ride_checkpoint.tmp")
-        runCatching { tmp.writeText(c.encode()); tmp.renameTo(checkpointFile(ctx)) }
+    internal fun writeCheckpoint(ctx: Context, c: RideCheckpoint) = writeAtomically(ctx, checkpointFile(ctx), c.encode())
+
+    private fun writeAtomically(ctx: Context, file: File, text: String) {
+        val tmp = File(ctx.filesDir, file.name + ".tmp")
+        runCatching { tmp.writeText(text); tmp.renameTo(file) }
     }
 
     internal fun deleteCheckpoint(ctx: Context) { checkpointFile(ctx).delete() }
@@ -149,6 +167,83 @@ object Tracker {
                 if (ride != null) "recovered" else "not recovered: already saved or bike gone"))
         }
         file.delete()
+    }
+
+    // ---------- Estimación: a start time on disk, no service and no location ----------
+
+    /** A separate file from the checkpoint, so [recoverOrphan] can never mistake an open session for a dead GPS ride. */
+    private fun sessionFile(ctx: Context) = File(ctx.filesDir, "estimate_session.json")
+
+    private fun readSession(ctx: Context) = runCatching { sessionFile(ctx).readText() }.getOrNull()?.let(EstimateSession::decode)
+
+    private fun startEstimate(ctx: Context, trigger: RideTrigger, device: String?) {
+        val g = Repo.garage.value
+        val bike = g.selected ?: return
+        val s = EstimateSession(bike.id, trigger, device, System.currentTimeMillis())
+        writeAtomically(ctx, sessionFile(ctx), s.encode())
+        state.value = LiveRide(trigger, device, 0.0, s.startedAt, estimated = true)
+        rideLog(ctx, trigger, "start", 0.0, mode = TrackingMode.estimate)
+        notifyEstimate(ctx)
+        // A car that connected before the ride started sends no event now, so ask the phone once.
+        if (trigger == RideTrigger.motion) whenCarConnected(ctx.applicationContext, g.tracking.carDevices.keys) { estimateSawCar(ctx) }
+    }
+
+    /** Puts an open session back after the process died: [live] and the Km tab read it as if nothing happened. */
+    fun restoreEstimate(ctx: Context) {
+        val s = readSession(ctx) ?: return
+        state.value = LiveRide(s.trigger, s.device, 0.0, s.startedAt, estimated = true)
+        if (Repo.garage.value.estimateIsOver(s, System.currentTimeMillis(), ZoneId.systemDefault())) endEstimate(ctx) else notifyEstimate(ctx)
+    }
+
+    private fun estimateSawCar(ctx: Context) {
+        val s = readSession(ctx)?.copy(carBluetooth = true) ?: return
+        writeAtomically(ctx, sessionFile(ctx), s.encode())
+        if (discardReason(s.trigger, true, false, Repo.garage.value.tracking) != null) endEstimate(ctx)
+    }
+
+    private fun endEstimate(ctx: Context) {
+        readSession(ctx)?.let { s ->
+            val g = Repo.garage.value
+            val end = g.endEstimate(s, System.currentTimeMillis(), ZoneId.systemDefault())
+            end.ride?.let { saveRide(ctx, g.bikes.first { b -> b.id == s.bikeId }, it) }
+            rideLog(ctx, s.trigger, "end", end.km, end.dropped?.let { "dropped $it" } ?: "saved", TrackingMode.estimate)
+            val why = when (end.dropped) {
+                EstimateDrop.tooLong -> R.string.ride_too_long
+                EstimateDrop.carBluetooth -> R.string.p3_car_connected
+                else -> null
+            }
+            if (why != null) notify(ctx, ID_DONE, NotificationCompat.Builder(ctx, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
+                .setContentTitle(ctx.getString(R.string.ride_discarded, ctx.getString(why))).setAutoCancel(true).build())
+        }
+        sessionFile(ctx).delete()
+        state.value = null
+        NotificationManagerCompat.from(ctx).cancel(ID_LIVE)
+    }
+
+    private fun notifyEstimate(ctx: Context) {
+        val stop = PendingIntent.getBroadcast(ctx, 12, Intent(ctx, EstimateStopReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val open = PendingIntent.getActivity(ctx, 4, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        notify(ctx, ID_LIVE, NotificationCompat.Builder(ctx, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
+            .setContentTitle(ctx.getString(R.string.ride_estimating)).setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+            .addAction(0, ctx.getString(R.string.ride_stop), stop).build())
+    }
+
+    /** Asks the phone once whether one of [cars] is connected: a car connects for calls (headset profile) and music (A2DP); either one counts. */
+    @SuppressLint("MissingPermission")
+    internal fun whenCarConnected(ctx: Context, cars: Set<String>, then: () -> Unit) {
+        if (cars.isEmpty()) return
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
+        val adapter = ctx.getSystemService(BluetoothManager::class.java)?.adapter ?: return
+        for (profile in listOf(BluetoothProfile.HEADSET, BluetoothProfile.A2DP)) {
+            adapter.getProfileProxy(ctx, object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(p: Int, proxy: BluetoothProfile) {
+                    val connected = runCatching { proxy.connectedDevices.any { it.address in cars } }.getOrDefault(false)
+                    adapter.closeProfileProxy(p, proxy)
+                    if (connected) then()
+                }
+                override fun onServiceDisconnected(p: Int) {}
+            }, profile)
+        }
     }
 
     internal fun saveRide(ctx: Context, bike: Bike, ride: Ride) {
@@ -239,24 +334,10 @@ class RideService : Service() {
     }
 
     /** Asks the phone whether a car is connected now, and keeps watching Android Auto for the rest of the ride. */
-    @SuppressLint("MissingPermission")
     private fun watchCars() {
         val t = Repo.garage.value.tracking
         if (t.androidAutoInCar) carConnection = CarConnection(this).type.also { it.observeForever(autoObserver) }
-        if (t.carDevices.isEmpty()) return
-        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
-        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return
-        // A car connects for calls (headset profile) and music (A2DP); either one counts.
-        for (profile in listOf(BluetoothProfile.HEADSET, BluetoothProfile.A2DP)) {
-            adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
-                override fun onServiceConnected(p: Int, proxy: BluetoothProfile) {
-                    val connected = runCatching { proxy.connectedDevices.any { it.address in t.carDevices } }.getOrDefault(false)
-                    adapter.closeProfileProxy(p, proxy)
-                    if (connected) { carBluetooth = true; checkCar() }
-                }
-                override fun onServiceDisconnected(p: Int) {}
-            }, profile)
-        }
+        Tracker.whenCarConnected(this, t.carDevices.keys) { carBluetooth = true; checkCar() }
     }
 
     private fun checkpoint() {
@@ -292,7 +373,7 @@ class RideService : Service() {
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
                 .setContentTitle(getString(R.string.ride_discarded, getString(if (discarded == DiscardReason.carBluetooth) R.string.p3_car_connected else R.string.android_auto))).setAutoCancel(true).build())
         } else if (km >= MIN_RIDE_KM && bike != null) {
-            Tracker.saveRide(this, bike, Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis()))
+            Tracker.saveRide(this, bike, Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis(), durationMs = maxOf(meter.lastMovingAt, startedAt) - startedAt))
         }
         Tracker.deleteCheckpoint(this)
         if (startedAt != 0L) rideLog(this, trigger, "end", km, rideOutcome(km, discarded, if (bike != null) "saved" else "not saved: no bike"))
@@ -301,6 +382,11 @@ class RideService : Service() {
     }
 
     override fun onDestroy() { if (!finished) finish(); super.onDestroy() }
+}
+
+/** Terminar on the Estimación notification: there is no service to send it to, and the process may be long gone. */
+class EstimateStopReceiver : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) = Tracker.stop(ctx)
 }
 
 class TransitionReceiver : BroadcastReceiver() {

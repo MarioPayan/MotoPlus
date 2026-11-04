@@ -134,7 +134,7 @@ class LubeAction : ActionCallback {
 class RideAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         Repo.init(context)
-        if (Tracker.hasLocation(context)) Tracker.start(context, RideTrigger.manual)
+        if (Tracker.canStart(context)) Tracker.start(context, RideTrigger.manual)
         else context.startActivity(android.content.Intent(context, MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }

@@ -295,7 +295,7 @@
     <string name="ocr_reading">Reading the odometer…</string>
     <string name="ocr_found">Read from photo: %1$s. Check before saving.</string>
     <string name="ocr_missing">No number found in the photo. Enter it manually.</string>
-    <string name="weekly_hint">Bars fill with rides recorded by GPS.</string>
+    <string name="weekly_hint">Bars fill with the rides you record.</string>
     <string name="no_car_rides">Exclude car journeys</string>
     <string name="car_only">Only the bike, no car journeys</string>
     <string name="car_hint">The motion sensor cannot tell a car from a bike. Choose here how to recognise your car journeys so they do not count. Helmet and manual rides always count.</string>
@@ -642,7 +642,7 @@
     <string name="feat_workshop">Workshop</string>
     <string name="feat_workshop_hint">A to-do list for the shop and Complete visit when you\'re back.</string>
     <string name="feat_km_auto">Automatic km detection</string>
-    <string name="feat_km_auto_hint">Counts rides with GPS or your helmet intercom.</string>
+    <string name="feat_km_auto_hint">Counts rides with the motion sensor or your helmet intercom.</string>
     <string name="feat_ai_hint">Your own AI looks into a noise or reads an invoice.</string>
     <string name="interface_title">Interface</string>
     <string name="ui_drawing">Bike blueprint</string>
@@ -687,4 +687,20 @@
     <string name="problem_saved">Problem reported</string>
     <string name="problem_cleared">Report cleared</string>
     <string name="problem_reported_on">Reported on %1$s</string>
+    <string name="mode_title">How to count km</string>
+    <string name="mode_precision">Precision</string>
+    <string name="mode_precision_hint">Real km. Uses location and more battery.</string>
+    <string name="mode_estimate">Estimate</string>
+    <string name="mode_estimate_hint">Approximate km from time. Does not use location and uses less battery.</string>
+    <string name="mode_estimate_permissions">No location, but each detector needs its permission: the motion sensor, physical activity; Bluetooth, nearby devices.</string>
+    <string name="mode_location_granted">MotoPlus still has the location permission and does not use it in this mode. You can remove it in Android settings.</string>
+    <string name="android_auto_in_car_estimate_hint">In Estimate mode the app cannot tell whether Android Auto was connected during a ride, so this option does not apply and those trips count. To discard them use the car Bluetooth or Precision.</string>
+    <string name="estimate_kmh">Average speed (km/h)</string>
+    <string name="estimate_kmh_bad">Enter %1$d to %2$d km/h. The previous one stays.</string>
+    <string name="estimate_measured">Measured on your GPS rides: %1$d km/h</string>
+    <string name="estimate_use">Use</string>
+    <string name="ride_estimated">%1$s · estimated</string>
+    <string name="ride_estimating">Ride in progress (estimated km)</string>
+    <string name="ride_too_long">over 3 hours without ending</string>
+    <string name="live_estimate">Ride in progress · about %1$s km</string>
 </resources>

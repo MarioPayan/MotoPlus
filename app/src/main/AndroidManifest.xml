@@ -68,6 +68,7 @@
         </service>
         <service android:name=".work.RideService" android:exported="false" android:foregroundServiceType="location" />
         <receiver android:name=".work.TransitionReceiver" android:exported="false" />
+        <receiver android:name=".work.EstimateStopReceiver" android:exported="false" />
         <receiver android:name=".work.BluetoothReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />

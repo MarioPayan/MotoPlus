@@ -430,6 +430,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Saves how km are kept current, and starts or stops listening to the activity sensor to match. */
     fun setTracking(t: Tracking) {
+        // A ride in progress ends under the mode it started in.
+        if (t.mode != garage.tracking.mode) com.kaze.motoplus.work.Tracker.stop(app)
         Repo.update { it.copy(tracking = t) }
         com.kaze.motoplus.work.Tracker.register(app)
     }

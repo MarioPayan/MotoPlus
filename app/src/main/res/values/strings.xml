@@ -296,7 +296,7 @@
     <string name="ocr_reading">Leyendo el cuadro…</string>
     <string name="ocr_found">Leído de la foto: %1$s. Revísalo antes de guardar.</string>
     <string name="ocr_missing">No encontré el número en la foto. Escríbelo a mano.</string>
-    <string name="weekly_hint">Las barras se llenan con las salidas que registra el GPS.</string>
+    <string name="weekly_hint">Las barras se llenan con las salidas que registras.</string>
     <string name="no_car_rides">Sin viajes en coche</string>
     <string name="car_only">Solo la moto, no el coche</string>
     <string name="car_hint">El sensor de movimiento no distingue el coche de la moto. Elige aquí cómo reconocer tus viajes en coche para no contarlos. Las salidas del casco y las que empiezas tú cuentan siempre.</string>
@@ -643,7 +643,7 @@
     <string name="feat_workshop">Taller</string>
     <string name="feat_workshop_hint">Pendientes para llevar y Completar visita al volver.</string>
     <string name="feat_km_auto">Detección automática de km</string>
-    <string name="feat_km_auto_hint">Cuenta las salidas con el GPS o el intercomunicador del casco.</string>
+    <string name="feat_km_auto_hint">Cuenta las salidas con el sensor de movimiento o el intercomunicador del casco.</string>
     <string name="feat_ai_hint">Tu propia IA revisa un ruido o lee una factura.</string>
     <string name="interface_title">Interfaz</string>
     <string name="ui_drawing">Plano de la moto</string>
@@ -688,4 +688,20 @@
     <string name="problem_saved">Problema reportado</string>
     <string name="problem_cleared">Reporte quitado</string>
     <string name="problem_reported_on">Reportado el %1$s</string>
+    <string name="mode_title">Cómo contar los km</string>
+    <string name="mode_precision">Precisión</string>
+    <string name="mode_precision_hint">Km reales. Usa la ubicación y gasta más batería.</string>
+    <string name="mode_estimate">Estimación</string>
+    <string name="mode_estimate_hint">Km aproximados por tiempo. No usa la ubicación y gasta menos batería.</string>
+    <string name="mode_estimate_permissions">Sin ubicación, pero cada detector necesita su permiso: el sensor de movimiento, actividad física; el Bluetooth, dispositivos cercanos.</string>
+    <string name="mode_location_granted">MotoPlus todavía tiene el permiso de ubicación y en este modo no lo usa. Puedes quitarlo en los ajustes de Android.</string>
+    <string name="android_auto_in_car_estimate_hint">En Estimación no se puede saber si Android Auto estuvo conectado durante la salida, así que esta opción no se aplica y esos viajes cuentan. Para descartarlos usa el Bluetooth del coche o Precisión.</string>
+    <string name="estimate_kmh">Velocidad media (km/h)</string>
+    <string name="estimate_kmh_bad">Escribe entre %1$d y %2$d km/h. Se mantiene la anterior.</string>
+    <string name="estimate_measured">Medida en tus salidas con GPS: %1$d km/h</string>
+    <string name="estimate_use">Usar</string>
+    <string name="ride_estimated">%1$s · estimada</string>
+    <string name="ride_estimating">Salida en curso (km estimados)</string>
+    <string name="ride_too_long">más de 3 horas sin terminar</string>
+    <string name="live_estimate">Salida en curso · unos %1$s km</string>
 </resources>
