@@ -43,7 +43,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 const val CHANNEL_RIDE = "rides"
 private const val ID_LIVE = 4100
@@ -51,6 +54,19 @@ private const val ID_DONE = 4101
 
 data class LiveRide(val trigger: RideTrigger, val device: String?, val km: Double, val startedAt: Long) {
     fun label(ctx: Context) = rideSource(Ride("", km, trigger, device), ctx)
+}
+
+// ponytail: tester-only ride log so a "0 km" can be diagnosed without root (release isn't debuggable), read with
+// `adb pull /sdcard/Android/data/com.kaze.motoplus/files/salidas.txt`. Remove before a public release, like ui/Feedback.kt.
+private fun rideLog(ctx: Context, trigger: RideTrigger, event: String, km: Double, outcome: String = "") {
+    val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    runCatching { File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "salidas.txt").appendText("$stamp · $trigger · $event · ${"%.2f".format(Locale.ROOT, km)} km · $outcome\n") }
+}
+
+private fun rideOutcome(km: Double, discarded: DiscardReason?, kept: String) = when {
+    discarded != null -> "discarded $discarded"
+    km < MIN_RIDE_KM -> "too short"
+    else -> kept
 }
 
 /** Starts and stops ride recording; the UI watches [live]. */
@@ -127,7 +143,10 @@ object Tracker {
         if (!file.exists()) return
         runCatching { file.readText() }.getOrNull()?.let(RideCheckpoint::decode)?.let { c ->
             val g = Repo.garage.value
-            g.orphanRide(c, ZoneId.systemDefault())?.let { saveRide(ctx, g.bikes.first { it.id == c.bikeId }, it) }
+            val ride = g.orphanRide(c, ZoneId.systemDefault())
+            ride?.let { saveRide(ctx, g.bikes.first { it.id == c.bikeId }, it) }
+            rideLog(ctx, c.trigger, "end", c.km, rideOutcome(c.km, discardReason(c.trigger, c.carBluetooth, c.androidAuto, g.tracking),
+                if (ride != null) "recovered" else "not recovered: already saved or bike gone"))
         }
         file.delete()
     }
@@ -207,6 +226,7 @@ class RideService : Service() {
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         ServiceCompat.startForeground(this, ID_LIVE, liveNotification(), type)
         Tracker.set(LiveRide(trigger, device, 0.0, startedAt))
+        rideLog(this, trigger, "start", 0.0)
         checkpoint()
         client = LocationServices.getFusedLocationProviderClient(this)
         client.requestLocationUpdates(
@@ -275,6 +295,7 @@ class RideService : Service() {
             Tracker.saveRide(this, bike, Ride(LocalDate.now().toString(), km, trigger, device, at = System.currentTimeMillis()))
         }
         Tracker.deleteCheckpoint(this)
+        if (startedAt != 0L) rideLog(this, trigger, "end", km, rideOutcome(km, discarded, if (bike != null) "saved" else "not saved: no bike"))
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
