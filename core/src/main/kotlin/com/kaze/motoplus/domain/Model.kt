@@ -63,6 +63,10 @@ data class Ride(
     val device: String? = null,
     val wet: Boolean = false,
     val at: Long = 0,
+    /** Moving time of a GPS ride, from its start to its last movement; 0 when unknown. */
+    val durationMs: Long = 0,
+    /** Km from time × average speed (Estimación), not measured by GPS. */
+    val estimated: Boolean = false,
 ) {
     /** Rides on the reading's own day count only if they ended after it was taken. */
     fun after(r: Reading) = date > r.date || (date == r.date && at > 0 && r.at > 0 && at > r.at)
@@ -96,6 +100,10 @@ data class Bike(
     val title get() = listOfNotNull(brand, model, year?.toString()).joinToString(" ")
 }
 
+/** How a ride's km are obtained: GPS (real km, location, more battery) or time × average speed (approximate, no location, less battery). */
+@Serializable
+enum class TrackingMode { precision, estimate }
+
 /** How this phone keeps the odometer estimate current: each ride detector and each car exclusion is switched on its own. */
 @Serializable
 data class Tracking(
@@ -112,6 +120,9 @@ data class Tracking(
      * Replaces the old `androidAuto` key, which is deliberately not migrated: bikes connect to Android Auto too, so off is the right default.
      */
     val androidAutoInCar: Boolean = false,
+    val mode: TrackingMode = TrackingMode.precision,
+    /** Average speed behind Estimación's km. */
+    val estimateKmh: Int = DEFAULT_ESTIMATE_KMH,
 ) {
     /** Some detector can start a ride without the rider. */
     val detects get() = motion || bluetooth

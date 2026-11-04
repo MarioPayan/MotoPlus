@@ -59,7 +59,7 @@ fun kmThisMonth(bike: Bike, today: LocalDate): Int {
     return (estimate(bike, today).km - base).toInt().coerceAtLeast(0)
 }
 
-/** GPS km per day for the 7 days ending today, oldest first. */
+/** Ride km per day for the 7 days ending today, oldest first. */
 fun weekRides(bike: Bike, today: LocalDate): List<Double> = (6 downTo 0).map { back ->
     val d = today.minusDays(back.toLong()).toString()
     bike.rides.filter { it.date == d }.sumOf { it.km }

@@ -19,7 +19,7 @@ data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair
 enum class EstimateBasis { rides, todayReading, lastReading, average }
 
 /** [rides] counts GPS rides since the last reading; [kmPerDay] is the rider's average when [basis] is average. */
-data class OdoEstimate(val km: Double, val margin: Int, val basis: EstimateBasis, val gpsSinceReading: Double, val rides: Int = 0, val kmPerDay: Double = 0.0)
+data class OdoEstimate(val km: Double, val margin: Int, val basis: EstimateBasis, val gpsSinceReading: Double, val rides: Int = 0, val kmPerDay: Double = 0.0, val estimatedSinceReading: Double = 0.0)
 
 private fun daysBetween(from: String, to: LocalDate) =
     max(0L, ChronoUnit.DAYS.between(LocalDate.parse(from), to)).toDouble()
@@ -32,13 +32,16 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
     val last = bike.readings.maxWith(compareBy({ it.date }, { it.at }))
     val after = bike.rides.filter { it.after(last) }
     if (after.isNotEmpty()) {
-        val gps = after.sumOf { it.km }
+        // The GPS factor corrects GPS error only; estimated km come from a speed the rider set and are far less sure.
+        val gps = after.filter { !it.estimated }.sumOf { it.km }
+        val guessed = after.filter { it.estimated }.sumOf { it.km }
         return OdoEstimate(
-            km = last.km + gps * bike.gpsFactor,
-            margin = max(5, (gps * 0.02).roundToInt()),
+            km = last.km + gps * bike.gpsFactor + guessed,
+            margin = max(5, (gps * 0.02 + guessed * 0.3).roundToInt()),
             basis = EstimateBasis.rides,
             gpsSinceReading = gps,
             rides = after.size,
+            estimatedSinceReading = guessed,
         )
     }
     val first = bike.readings.minBy { it.date }
@@ -114,7 +117,8 @@ fun upNext(bike: Bike, odo: Double, today: LocalDate): List<Pair<Part, PartState
 fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
     val est = estimate(this, today)
     val last = readings.maxWith(compareBy({ it.date }, { it.at }))
-    val factor = if (est.gpsSinceReading > 0) {
+    // With estimated km in the gap the difference says nothing about the GPS.
+    val factor = if (est.gpsSinceReading > 0 && est.estimatedSinceReading == 0.0) {
         val f = (km - last.km) / est.gpsSinceReading
         if (f in 0.85..1.15) f else gpsFactor
     } else gpsFactor
