@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -130,19 +131,20 @@ fun ModelPicker(catalog: Catalog?, brand: String, model: String, onPick: (Catalo
     }
 }
 
-/** A category's switch is on while any of its parts is watched and sets the whole group; [open] adds the intro's chevron. */
+/** A category's switch is on while any of its parts is watched and sets the whole group; [open] makes the whole row expand it, with the intro's chevron. */
 @Composable
 fun WatchCategory(c: PartCategory, parts: List<Part>, open: Boolean? = null, onOpen: () -> Unit = {}, onWatch: (Boolean) -> Unit) {
     val shop = LocalShop.current
     val on = parts.count { it.watched }
     val label = categoryLabel(c)
     Column {
-        Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        val expand = if (open != null) Modifier.clickable(onClickLabel = stringResource(R.string.show_parts), role = Role.Button, onClick = onOpen) else Modifier
+        Row(Modifier.fillMaxWidth().then(expand).padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(categoryIcon(c), shop.ink, 18.dp)
             Spacer(Modifier.width(10.dp))
             Cap(stringResource(R.string.cat_count, label, on, parts.size), shop.ink, Modifier.weight(1f))
             ToggleKnob(on > 0, stringResource(R.string.watch_item, label), onWatch)
-            if (open != null) Box(Modifier.size(44.dp).clickable(onClickLabel = stringResource(R.string.show_parts), onClick = onOpen), contentAlignment = Alignment.Center) { Chevron(open) }
+            if (open != null) Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Chevron(open) }
         }
         HorizontalDivider(color = shop.line)
     }
