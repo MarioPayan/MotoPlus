@@ -82,7 +82,7 @@ class SmallWidget : GlanceAppWidget() {
     }
 }
 
-/** 4×2: the plate with its status colours, the odometer and two shortcuts. */
+/** 4×2: the plate with its status colours, the odometer and Salgo. */
 class LargeWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -106,28 +106,16 @@ class LargeWidget : GlanceAppWidget() {
                 ImageProvider(plateBitmap(ctx, bike, shop, today, 720)), ctx.getString(R.string.widget_bike_description),
                 GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity<MainActivity>()), contentScale = androidx.glance.layout.ContentScale.Fit,
             )
-            Row(GlanceModifier.fillMaxWidth()) {
-                val chain = bike.parts.any { it.id == "chain_lube" }
-                Box(GlanceModifier.defaultWeight().height(34.dp).background(shop.accent).cornerRadius(6.dp)
-                    .clickable(if (chain) actionRunCallback<LubeAction>() else actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
-                    Text(ctx.getString(if (chain) R.string.widget_lubed else R.string.widget_open), style = TextStyle(color = ColorProvider(shop.onAccent), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
-                }
-                Spacer(GlanceModifier.width(8.dp))
-                Box(GlanceModifier.defaultWeight().height(34.dp).background(shop.sheet2).cornerRadius(6.dp).clickable(actionRunCallback<RideAction>()), contentAlignment = Alignment.Center) {
-                    Text(ctx.getString(R.string.widget_start_ride), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
-                }
-            }
+            Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End) { RideButton(ctx, shop) }
         }
     }
 }
 
-class LubeAction : ActionCallback {
-    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        Repo.init(context)
-        val b = Repo.garage.value.selected ?: return
-        val today = LocalDate.now()
-        Repo.updateBike(b.id) { it.markDone("chain_lube", estimate(it, today).km.toInt(), today) }
-        ReminderWorker.runNow(context)
+/** Salgo: starts a manual ride. Icon only; the label stays for TalkBack. */
+@Composable
+private fun RideButton(ctx: Context, shop: Shop) {
+    Box(GlanceModifier.size(40.dp).background(shop.accent).cornerRadius(20.dp).clickable(actionRunCallback<RideAction>()), contentAlignment = Alignment.Center) {
+        Image(ImageProvider(iconBitmap(ctx, "route", shop.onAccent.toArgb(), 66)), ctx.getString(R.string.widget_start_ride_description), GlanceModifier.size(22.dp))
     }
 }
 
@@ -181,6 +169,15 @@ private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, 
             "pi" in k -> { stroke.color = (if (i.z == null) shop.sheet else lerp(shop.sheet, line, shop.tint)).toArgb(); stroke.strokeWidth = i.w ?: 6f; c.drawPath(path, stroke) }
             else -> c.drawPath(path, stroke)
         }
+    }
+    return bmp
+}
+
+/** A Phosphor icon in one colour, drawn here like the rings so it looks the same on every launcher. */
+private fun iconBitmap(ctx: Context, icon: String, color: Int, size: Int): Bitmap {
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    ICONS[icon]?.let { id ->
+        androidx.core.content.ContextCompat.getDrawable(ctx, id)?.mutate()?.let { d -> d.setTint(color); d.setBounds(0, 0, size, size); d.draw(Canvas(bmp)) }
     }
     return bmp
 }

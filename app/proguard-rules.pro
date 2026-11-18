@@ -7,5 +7,5 @@
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_** { *; }
 
-# Glance builds widget action callbacks by reflection (NoSuchMethodException on LubeAction.<init> in release).
+# Glance builds widget action callbacks by reflection (NoSuchMethodException on a callback's <init> in release, first seen on the old Engrasé button).
 -keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }

@@ -541,9 +541,7 @@
     <string name="callout_more">+%1$d</string>
     <string name="widget_health">%1$s · SALUD %2$d</string>
     <string name="widget_bike_description">La moto con el estado de cada zona</string>
-    <string name="widget_lubed">ENGRASÉ</string>
-    <string name="widget_open">ABRIR</string>
-    <string name="widget_start_ride">SALGO</string>
+    <string name="widget_start_ride_description">Salgo: empezar una salida</string>
     <string name="ride_start_title">¿Sales en moto?</string>
     <string name="ride_start_hint">Toca para registrar la salida. Quita la optimización de batería para que empiece sola.</string>
     <string name="ride_recording">Registrando salida · %1$s km</string>

@@ -540,9 +540,7 @@
     <string name="callout_more">+%1$d</string>
     <string name="widget_health">%1$s · HEALTH %2$d</string>
     <string name="widget_bike_description">The motorcycle with the status of each zone</string>
-    <string name="widget_lubed">LUBED</string>
-    <string name="widget_open">OPEN</string>
-    <string name="widget_start_ride">RIDE</string>
+    <string name="widget_start_ride_description">Ride: start a ride</string>
     <string name="ride_start_title">Going for a ride?</string>
     <string name="ride_start_hint">Tap to record the ride. Turn off battery optimization to start automatically.</string>
     <string name="ride_recording">Recording ride · %1$s km</string>
