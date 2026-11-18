@@ -44,7 +44,7 @@ fun PartScreen(vm: AppViewModel, bike: Bike, partId: String) {
     WorkshopPage(partLabel(part), { vm.screen = vm.back }) {
         Sheet {
             Cap(zoneName(part.zone))
-            PartRow(vm, part, partState(part, estimate(bike, vm.today).km, vm.today), showInterval = true)
+            PartRow(vm, part, partState(part, estimate(bike, vm.today).km, vm.today, vm.prefs.soon), showInterval = true)
             PartProblemSection(vm, part)
             Btn(stringResource(R.string.p2_record_with_details), { vm.newRecord(part.id) }, Modifier.fillMaxWidth(), ghost = true, icon = "calendar")
         }

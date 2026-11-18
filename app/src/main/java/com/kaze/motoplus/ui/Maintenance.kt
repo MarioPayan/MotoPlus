@@ -87,7 +87,7 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
                 knownAiSource(d.source)?.let { Hint(stringResource(R.string.p2_ai_source, it)) }
                 Hint(stringResource(R.string.p2_ai_invoice_review))
             }
-            QuickPicks(bike, d, odo, today) { ids ->
+            QuickPicks(bike, d, odo, today, vm.prefs.soon) { ids ->
                 set { m -> if (ids.all(m.checked::contains)) m.copy(checked = m.checked - ids.toSet()) else m.copy(checked = (m.checked + ids).distinct()) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,7 +106,7 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
             groups.forEach { (category, parts) ->
                 CategoryCap(category)
                 parts.forEach { p -> key(p.id) {
-                    val s = partState(p, odo, today)
+                    val s = partState(p, odo, today, vm.prefs.soon)
                     val status = if (p.watched) s.status else Status.none
                     val on = p.id in d.checked
                     JobRow(d, p.id, on, ::set) {
@@ -172,7 +172,7 @@ fun MaintenanceScreen(vm: AppViewModel, bike: Bike, d: MaintenanceDraft) {
 
 /** One tap checks a whole set; tapping it again when all of it is checked unchecks it. */
 @Composable
-private fun QuickPicks(bike: Bike, d: MaintenanceDraft, odo: Double, today: LocalDate, onPick: (List<String>) -> Unit) {
+private fun QuickPicks(bike: Bike, d: MaintenanceDraft, odo: Double, today: LocalDate, soon: SoonThreshold, onPick: (List<String>) -> Unit) {
     val picks = listOfNotNull(
         if (d.visit) QuickPick.pending to R.string.mt_pending else null,
         QuickPick.overdue to R.string.mt_overdue, QuickPick.soon to R.string.mt_soon,
@@ -180,7 +180,7 @@ private fun QuickPicks(bike: Bike, d: MaintenanceDraft, odo: Double, today: Loca
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         picks.forEach { (pick, label) ->
-            val ids = bike.quickPick(pick, odo, today)
+            val ids = bike.quickPick(pick, odo, today, soon)
             Chip(ids.isNotEmpty() && ids.all(d.checked::contains), stringResource(label, ids.size), enabled = ids.isNotEmpty()) { onPick(ids) }
         }
     }

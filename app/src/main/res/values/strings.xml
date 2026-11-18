@@ -702,4 +702,13 @@
     <string name="ride_estimating">Salida en curso (km estimados)</string>
     <string name="ride_too_long">más de 3 horas sin terminar</string>
     <string name="live_estimate">Salida en curso · unos %1$s km</string>
+    <string name="thresholds_title">Umbrales</string>
+    <string name="thresholds_entry_hint">Pronto: %1$d %% de km o %2$d %% de tiempo restante</string>
+    <string name="thresholds_hint">Una pieza pasa a «pronto» cuando le queda este porcentaje de su intervalo, por km o por tiempo, lo que llegue primero. Vale para todas las piezas.</string>
+    <string name="thresholds_km">Km restantes (%)</string>
+    <string name="thresholds_time">Tiempo restante (%)</string>
+    <string name="thresholds_invalid">Entre %1$d y %2$d %%</string>
+    <string name="thresholds_example">%1$s: aviso cuando le queden %2$s km o %3$d días</string>
+    <string name="intervals_title">Intervalos de las piezas</string>
+    <string name="intervals_entry_hint">Cada cuánto toca cada pieza</string>
 </resources>

@@ -56,7 +56,23 @@ class DomainTest {
         assertEquals(Status.bad, s.status)
         assertEquals(Measure.days, s.measure); assertEquals(-23, s.left)
         assertEquals(Status.none, partState(Part("b", "engine", "Bujías", km = 1), 0.0, today).status)
-        assertEquals(Status.warn, partState(Part("c", "drivetrain", "Engrase", km = 600, lastKm = 11500), 11980.0, today).status)
+        assertEquals(Status.warn, partState(Part("c", "drivetrain", "Engrase", km = 600, lastKm = 11500), 12050.0, today).status)
+    }
+
+    @Test fun soonIsAShareOfTheIntervalLeftByKmOrTime() {
+        val oil = Part("a", "engine", "Aceite", km = 6000, days = 365, lastKm = 10000, lastDate = "2026-10-01")
+        // 10 % by default: 600 km of 6.000 or 36,5 days of 365, whichever comes first.
+        assertEquals(Status.warn, partState(oil, 15400.0, today).status)
+        assertEquals(Status.ok, partState(oil, 15399.0, today).status)
+        assertEquals(Status.warn, partState(oil.copy(lastDate = today.minusDays(329).toString()), 10000.0, today).status)
+        assertEquals(Status.ok, partState(oil.copy(lastDate = today.minusDays(328).toString()), 10000.0, today).status)
+        // The rider's setting replaces it, km and time on their own.
+        assertEquals(Status.ok, partState(oil, 14600.0, today).status)
+        assertEquals(Status.warn, partState(oil, 14600.0, today, SoonThreshold(kmPct = 25, timePct = 10)).status)
+        assertEquals(Status.ok, partState(oil.copy(lastDate = today.minusDays(300).toString()), 10000.0, today).status)
+        assertEquals(Status.warn, partState(oil.copy(lastDate = today.minusDays(300).toString()), 10000.0, today, SoonThreshold(kmPct = 10, timePct = 20)).status)
+        // Overdue stays overdue whatever the threshold.
+        assertEquals(Status.bad, partState(oil, 16000.0, today, SoonThreshold(50, 50)).status)
     }
 
     @Test fun zoneTakesWorstPart() {
@@ -140,7 +156,7 @@ class HistoryTest {
     }
 
     @Test fun alertsFireOncePerWorsening() {
-        val b = base.markDone("chain_lube", 11500, today)
+        val b = base.markDone("chain_lube", 11450, today)
         val (first, baseline) = dueAlerts(b, 12000.0, today)
         assertEquals(listOf("chain_lube"), first.map { it.first.id })
         val again = dueAlerts(b.copy(notified = baseline), 12000.0, today).first

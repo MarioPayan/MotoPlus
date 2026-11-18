@@ -701,4 +701,13 @@
     <string name="ride_estimating">Ride in progress (estimated km)</string>
     <string name="ride_too_long">over 3 hours without ending</string>
     <string name="live_estimate">Ride in progress · about %1$s km</string>
+    <string name="thresholds_title">Thresholds</string>
+    <string name="thresholds_entry_hint">Soon: %1$d %% of km or %2$d %% of time left</string>
+    <string name="thresholds_hint">A part turns “soon” when this share of its interval is left, by km or by time, whichever comes first. It applies to every part.</string>
+    <string name="thresholds_km">Km left (%)</string>
+    <string name="thresholds_time">Time left (%)</string>
+    <string name="thresholds_invalid">Between %1$d and %2$d %%</string>
+    <string name="thresholds_example">%1$s: alert when %2$s km or %3$d days are left</string>
+    <string name="intervals_title">Part intervals</string>
+    <string name="intervals_entry_hint">How often each part is due</string>
 </resources>

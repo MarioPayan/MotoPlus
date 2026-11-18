@@ -20,8 +20,8 @@ data class WorkOrder(
 data class PendingJob(val id: String, val name: String, val note: String = "")
 
 /** Watched parts worth taking to the workshop now: overdue or coming due, most urgent first. */
-fun Bike.dueForWorkshop(odo: Double, today: java.time.LocalDate): List<String> =
-    watchedParts.map { it to partState(it, odo, today) }.filter { it.second.status == Status.bad || it.second.status == Status.warn }
+fun Bike.dueForWorkshop(odo: Double, today: java.time.LocalDate, soon: SoonThreshold = SoonThreshold()): List<String> =
+    watchedParts.map { it to partState(it, odo, today, soon) }.filter { it.second.status == Status.bad || it.second.status == Status.warn }
         .sortedByDescending { it.second.used }.map { it.first.id }
 
 fun Bike.openOrder() = orders.lastOrNull { !it.closed }
@@ -32,9 +32,9 @@ data class WorkshopItems(val partIds: List<String>, val customItems: List<Pendin
 }
 
 /** A saved list (including an empty one) wins over automatically suggested due parts. */
-fun Bike.workshopItems(odo: Double, today: java.time.LocalDate): WorkshopItems {
+fun Bike.workshopItems(odo: Double, today: java.time.LocalDate, soon: SoonThreshold = SoonThreshold()): WorkshopItems {
     val open = openOrder()
-    val ids = (open?.partIds ?: dueForWorkshop(odo, today)).distinct().filter { id -> parts.any { it.id == id } }
+    val ids = (open?.partIds ?: dueForWorkshop(odo, today, soon)).distinct().filter { id -> parts.any { it.id == id } }
     return WorkshopItems(ids, open?.customItems.orEmpty())
 }
 

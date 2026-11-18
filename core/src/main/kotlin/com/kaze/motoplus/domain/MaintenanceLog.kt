@@ -17,11 +17,11 @@ private val OIL_CHANGE = listOf("engine_oil", "oil_filter")
 private val FULL_SERVICE = listOf("engine_oil", "oil_filter", "air_filter", "spark_plugs", "chain_lube")
 
 /** Ids a quick pick checks; parts the bike lacks are skipped and Vencidas/Próximas take only watched parts. Pendientes are the Taller list, custom jobs included. */
-fun Bike.quickPick(pick: QuickPick, odo: Double, today: LocalDate): List<String> {
+fun Bike.quickPick(pick: QuickPick, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): List<String> {
     fun present(ids: List<String>) = ids.filter { id -> parts.any { it.id == id } }
-    fun status(s: Status) = watchedParts.filter { partState(it, odo, today).status == s }.map { it.id }
+    fun status(s: Status) = watchedParts.filter { partState(it, odo, today, soon).status == s }.map { it.id }
     return when (pick) {
-        QuickPick.pending -> workshopItems(odo, today).let { it.partIds + it.customItems.map(PendingJob::id) }
+        QuickPick.pending -> workshopItems(odo, today, soon).let { it.partIds + it.customItems.map(PendingJob::id) }
         QuickPick.overdue -> status(Status.bad)
         QuickPick.soon -> status(Status.warn)
         QuickPick.oil -> present(OIL_CHANGE)

@@ -5,6 +5,7 @@ import com.kaze.motoplus.domain.CHECK_STEPS
 import com.kaze.motoplus.domain.Density
 import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.domain.Preferences
+import com.kaze.motoplus.domain.SoonThreshold
 
 /**
  * [Preferences] in the "display" shared preferences, next to the theme. Plain keys, no reflection: the worker,
@@ -23,6 +24,7 @@ object Prefs {
             drawing = p.getBoolean("ui_drawing", defaults.drawing),
             density = runCatching { Density.valueOf(p.getString("ui_density", null)!!) }.getOrDefault(defaults.density),
             reminders = p.getBoolean("ui_reminders", defaults.reminders),
+            soon = runCatching { SoonThreshold(p.getInt("soon_km_pct", defaults.soon.kmPct), p.getInt("soon_time_pct", defaults.soon.timePct)) }.getOrDefault(defaults.soon),
         )
     }
 
@@ -34,6 +36,8 @@ object Prefs {
             putBoolean("ui_drawing", v.drawing)
             putString("ui_density", v.density.name)
             putBoolean("ui_reminders", v.reminders)
+            putInt("soon_km_pct", v.soon.kmPct)
+            putInt("soon_time_pct", v.soon.timePct)
         }.apply()
     }
 }

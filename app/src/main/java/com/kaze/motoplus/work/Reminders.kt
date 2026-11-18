@@ -66,7 +66,7 @@ fun notifyDue(ctx: Context) {
     val today = LocalDate.now()
     val allowed = ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     for (bike in Repo.garage.value.bikes) {
-        val (alerts, baseline) = dueAlerts(bike, estimate(bike, today).km, today)
+        val (alerts, baseline) = dueAlerts(bike, estimate(bike, today).km, today, prefs.soon)
         if (alerts.isNotEmpty() && allowed) {
             val (first, state) = alerts.first()
             val overdue = alerts.count { it.second.status == Status.bad }

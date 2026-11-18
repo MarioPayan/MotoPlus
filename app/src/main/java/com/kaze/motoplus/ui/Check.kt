@@ -32,7 +32,7 @@ private fun steps(ctx: android.content.Context, vm: AppViewModel, bike: Bike): L
     val today = vm.today
     val odo = estimate(bike, today).km
     fun note(vararg ids: String) = ids.mapNotNull { id -> bike.parts.firstOrNull { it.id == id && it.watched } }
-        .map { it to partState(it, odo, today) }.filter { it.second.status != Status.ok }
+        .map { it to partState(it, odo, today, vm.prefs.soon) }.filter { it.second.status != Status.ok }
         .joinToString(ctx.getString(R.string.or)) { (p, s) -> "${partLabel(p, ctx)}: ${remaining(s, ctx)}" }.ifEmpty { null }
     val papers = vm.papers.map { it to docState(it, today, vm.garage.paperReminderDays[it.type] ?: 30) }.filter { it.second.status != Status.ok }
         .joinToString(ctx.getString(R.string.or)) { (d, s) -> "${documentLabel(d, ctx)}: ${documentExpiry(d, s, ctx)}" }.ifEmpty { null }
@@ -60,7 +60,7 @@ fun CheckScreen(vm: AppViewModel, bike: Bike) {
     val results = remember(bike.id) { mutableStateMapOf<String, Boolean>() }
     val pager = rememberPagerState { list.size + 1 }
     val today = vm.today
-    val zones = zoneStates(bike, estimate(bike, today).km, today)
+    val zones = zoneStates(bike, estimate(bike, today).km, today, vm.prefs.soon)
     val plate = rememberPlate(vm.drawingFor(bike))
     fun answer(step: Step, fine: Boolean) {
         haptic.performHapticFeedback(if (fine) HapticFeedbackType.Confirm else HapticFeedbackType.Reject)

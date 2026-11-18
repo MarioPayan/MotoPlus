@@ -31,11 +31,12 @@ import com.kaze.motoplus.domain.*
 fun BikeScreen(vm: AppViewModel, bike: Bike) {
     val today = vm.today
     val odo = estimate(bike, today).km
-    val zones = zoneStates(bike, odo, today)
-    val states = bike.watchedParts.map { it to partState(it, odo, today) }
+    val soon = vm.prefs.soon
+    val zones = zoneStates(bike, odo, today, soon)
+    val states = bike.watchedParts.map { it to partState(it, odo, today, soon) }
     val shop = LocalShop.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(if (LocalCompact.current) 10.dp else 18.dp)) {
-        HealthBar(health(bike, odo, today), states.count { it.second.status != Status.ok })
+        HealthBar(health(bike, odo, today, soon), states.count { it.second.status != Status.ok })
         if (vm.prefs.drawing) BikeCanvas(rememberPlate(vm.drawingFor(bike)), zones, highlighted = vm.highlighted,
             callouts = callouts(bike, zones), flash = vm.flash, onZone = { vm.openZone(it) })
         Column {
@@ -43,7 +44,7 @@ fun BikeScreen(vm: AppViewModel, bike: Bike) {
                 Box(Modifier.weight(1f)) { SectionTitle(stringResource(R.string.next)) }
                 TextButton({ vm.openMaintenance(preset = QuickPick.overdue) }) { Text(stringResource(R.string.mt_several), color = shop.accent) }
             }
-            val alerts = upNext(bike, odo, today)
+            val alerts = upNext(bike, odo, today, soon)
             alerts.forEach { (p, state) -> key(p.id) { PartRow(vm, p, state) } }
             if (alerts.isEmpty()) Hint(stringResource(R.string.no_alerts))
             ReportPartButton(vm, bike, Modifier.fillMaxWidth().padding(top = 10.dp))
@@ -177,7 +178,7 @@ fun ZoneScreen(vm: AppViewModel, bike: Bike, zone: String) {
     val shop = LocalShop.current
     val today = vm.today
     val odo = estimate(bike, today).km
-    val zones = zoneStates(bike, odo, today)
+    val zones = zoneStates(bike, odo, today, vm.prefs.soon)
     val plate = rememberPlate(vm.drawingFor(bike))
     val st = zones.getValue(zone)
     val last = bike.history.filter { r -> st.all.any { it.first.id == r.partId } }.maxWithOrNull(compareBy({ it.date }, { it.km }))

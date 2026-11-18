@@ -7,7 +7,7 @@ import java.time.LocalDate
 class MaintenanceLogTest {
     private val today = LocalDate.parse("2026-10-25")
     private val bike = Bike("b", "Y", "M", null, Category.naked, Drive.chain, Cooling.liquid, defaultParts(Category.naked, Drive.chain, Cooling.liquid),
-        listOf(Reading("2026-10-25", 12000, 1))).markDone("chain_lube", 11500, today).markDone("front_pads", 1000, today).markDone("engine_oil", 11000, today)
+        listOf(Reading("2026-10-25", 12000, 1))).markDone("chain_lube", 11450, today).markDone("front_pads", 1000, today).markDone("engine_oil", 11000, today)
     private var n = 0
     private val ids = { "id${n++}" }
 
@@ -85,7 +85,7 @@ class MaintenanceLogTest {
 
     @Test fun quickPicksFollowStatusAndTheBikesParts() {
         val odo = 12000.0
-        // engine_oil 11000 of 6000 km: ok; front_pads 1000 of 10000: overdue; chain_lube 500 of 600 km: coming due.
+        // engine_oil 11000 of 6000 km: ok; front_pads 1000 of 10000: overdue; chain_lube 550 of 600 km: coming due.
         assertEquals(listOf("front_pads"), bike.quickPick(QuickPick.overdue, odo, today))
         assertEquals(listOf("chain_lube"), bike.quickPick(QuickPick.soon, odo, today))
         assertEquals(listOf("engine_oil", "oil_filter"), bike.quickPick(QuickPick.oil, odo, today))

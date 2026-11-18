@@ -58,22 +58,35 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
     )
 }
 
+/**
+ * When a part is coming due: at most [kmPct] of its km interval or [timePct] of its time interval left, whichever
+ * comes first. One setting for every part; it lives in [Preferences].
+ */
+data class SoonThreshold(val kmPct: Int = 10, val timePct: Int = 10) {
+    init { require(kmPct in RANGE && timePct in RANGE) }
+
+    companion object { val RANGE = 1..50 }
+}
+
 /** Above any real interval use, so reported parts sort first wherever parts are ranked by urgency. */
 private const val REPORTED_USED = 1e6
 
-fun partState(p: Part, odo: Double, today: LocalDate): PartState {
-    val state = intervalState(p, odo, today)
+fun partState(p: Part, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): PartState {
+    val state = intervalState(p, odo, today, soon)
     return if (p.problem != null) state.copy(status = Status.bad, used = REPORTED_USED, problem = p.problem) else state
 }
 
-private fun intervalState(p: Part, odo: Double, today: LocalDate): PartState {
+private fun intervalState(p: Part, odo: Double, today: LocalDate, soon: SoonThreshold): PartState {
     if (p.lastKm == null && p.lastDate == null) return PartState(Status.none, 1.0, null, 0)
     val byKm = if (p.km != null && p.lastKm != null) (odo - p.lastKm) / p.km else 0.0
     val byTime = if (p.days != null && p.lastDate != null) daysBetween(p.lastDate, today) / p.days else 0.0
     val used = max(byKm, byTime)
+    // Measured on each interval the part has: what is left against that share of the interval.
+    val soonByKm = p.km != null && p.lastKm != null && p.km - (odo - p.lastKm) <= p.km * soon.kmPct / 100.0
+    val soonByTime = p.days != null && p.lastDate != null && p.days - daysBetween(p.lastDate, today) <= p.days * soon.timePct / 100.0
     val status = when {
         used >= 1 -> Status.bad
-        used >= 0.75 -> Status.warn
+        soonByKm || soonByTime -> Status.warn
         else -> Status.ok
     }
     return if (byKm >= byTime && p.km != null && p.lastKm != null) {
@@ -85,9 +98,9 @@ private fun intervalState(p: Part, odo: Double, today: LocalDate): PartState {
 
 private val rank = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2, Status.none to 3)
 
-fun zoneStates(bike: Bike, odo: Double, today: LocalDate): Map<String, ZoneState> =
+fun zoneStates(bike: Bike, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): Map<String, ZoneState> =
     Zone.entries.map { it.id }.associateWith { z ->
-        val all = bike.parts.filter { it.zone == z }.map { it to partState(it, odo, today) }
+        val all = bike.parts.filter { it.zone == z }.map { it to partState(it, odo, today, soon) }
             .sortedByDescending { it.second.used }
         val parts = all.filter { it.first.watched }
         ZoneState(
@@ -99,18 +112,18 @@ fun zoneStates(bike: Bike, odo: Double, today: LocalDate): Map<String, ZoneState
     }
 
 /** 0–100 over the watched parts: an ok part counts 1, a part coming due counts half, overdue or unknown counts 0. */
-fun health(bike: Bike, odo: Double, today: LocalDate): Int {
+fun health(bike: Bike, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): Int {
     val watched = bike.watchedParts
     if (watched.isEmpty()) return 100
     val score = watched.sumOf {
-        when (partState(it, odo, today).status) { Status.ok -> 1.0; Status.warn -> 0.5; else -> 0.0 }
+        when (partState(it, odo, today, soon).status) { Status.ok -> 1.0; Status.warn -> 0.5; else -> 0.0 }
     }
     return (100 * score / watched.size).roundToInt()
 }
 
 /** Lo próximo: watched parts that need attention and are not snoozed, most used first. */
-fun upNext(bike: Bike, odo: Double, today: LocalDate): List<Pair<Part, PartState>> =
-    bike.watchedParts.map { it to partState(it, odo, today) }.filter { it.second.status != Status.ok && !it.first.snoozed(today) }
+fun upNext(bike: Bike, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): List<Pair<Part, PartState>> =
+    bike.watchedParts.map { it to partState(it, odo, today, soon) }.filter { it.second.status != Status.ok && !it.first.snoozed(today) }
         .sortedByDescending { it.second.used }
 
 /** Records a real odometer reading and, when GPS rides covered the gap, recalibrates the GPS factor. */
@@ -155,8 +168,8 @@ fun fmtKm(n: Int): String = "%,d".format(java.util.Locale.ROOT, n).replace(',', 
  * Parts that got worse since we last told the rider (ok → coming due → overdue), plus the new baseline.
  * Never-recorded parts are not news: the rider sees them in red already. Unwatched and snoozed parts keep their old baseline.
  */
-fun dueAlerts(bike: Bike, odo: Double, today: LocalDate): Pair<List<Pair<Part, PartState>>, Map<String, Status>> {
-    val now = bike.parts.associate { it.id to partState(it, odo, today) }
+fun dueAlerts(bike: Bike, odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): Pair<List<Pair<Part, PartState>>, Map<String, Status>> {
+    val now = bike.parts.associate { it.id to partState(it, odo, today, soon) }
     val sev = mapOf(Status.ok to 0, Status.warn to 1, Status.bad to 2)
     val worse = bike.parts.mapNotNull { p ->
         val s = now.getValue(p.id)

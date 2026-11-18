@@ -7,7 +7,7 @@ import java.time.LocalDate
 class WorkOrderTest {
     private val today = LocalDate.parse("2026-10-25")
     private val bike = Bike("b", "Y", "M", null, Category.naked, Drive.chain, Cooling.liquid, defaultParts(Category.naked, Drive.chain, Cooling.liquid),
-        listOf(Reading("2026-10-25", 12000))).markDone("chain_lube", 11500, today).markDone("front_pads", 1000, today)
+        listOf(Reading("2026-10-25", 12000))).markDone("chain_lube", 11450, today).markDone("front_pads", 1000, today)
 
     @Test fun picksOverdueAndComingDue() {
         assertEquals(listOf("front_pads", "chain_lube"), bike.dueForWorkshop(12000.0, today))

@@ -95,6 +95,7 @@ private fun AppContent(vm: AppViewModel) {
                                 Screen.settings -> SettingsScreen(vm)
                                 Screen.data -> DataScreen(vm)
                                 Screen.kmSources -> KmSourcesScreen(vm)
+                                Screen.thresholds -> ThresholdsScreen(vm, bike)
                                 else -> HistoryScreen(vm, bike)
                             }
                         }

@@ -141,7 +141,7 @@ private fun WelcomeWatch(vm: AppViewModel, bike: Bike) {
         bike.parts.byCategory().forEach { (c, parts) ->
             val open = c in w.open
             WatchCategory(c, parts, open, { vm.welcome = w.copy(open = if (open) w.open - c else w.open + c) }) { vm.watchCategory(c, it) }
-            Collapse(open) { parts.forEach { p -> key(p.id) { WatchRow(p, partState(p, odo, vm.today)) { vm.watch(p.id, it) } } } }
+            Collapse(open) { parts.forEach { p -> key(p.id) { WatchRow(p, partState(p, odo, vm.today, vm.prefs.soon)) { vm.watch(p.id, it) } } } }
         }
     }
     Text(stringResource(R.string.watch_summary, bike.watchedParts.size, bike.parts.size), style = Mono.copy(fontSize = 12.sp), color = LocalShop.current.ink2)
@@ -236,7 +236,7 @@ fun InterfaceOptions(vm: AppViewModel) {
         ChoiceRow(listOf(Density.comfortable.name to stringResource(R.string.density_comfortable), Density.compact.name to stringResource(R.string.density_compact)), p.density.name) { d ->
             vm.updatePrefs { it.copy(density = Density.valueOf(d)) }
         }
-        vm.bike?.let { DensityPreview(it, vm.today) }
+        vm.bike?.let { DensityPreview(it, vm.today, vm.prefs.soon) }
         HorizontalDivider(color = LocalShop.current.line)
         Toggle(stringResource(R.string.ui_reminders), stringResource(R.string.ui_reminders_hint), p.reminders) { on -> vm.updatePrefs { it.copy(reminders = on) } }
     }
@@ -244,13 +244,13 @@ fun InterfaceOptions(vm: AppViewModel) {
 
 /** Nothing else on the intro's Interfaz step is a part list, so a few real rows show the choice where it is made. */
 @Composable
-private fun DensityPreview(bike: Bike, today: LocalDate) {
+private fun DensityPreview(bike: Bike, today: LocalDate, soon: SoonThreshold) {
     val shop = LocalShop.current
     val odo = estimate(bike, today).km
     Column {
         Cap(stringResource(R.string.density_preview), modifier = Modifier.padding(bottom = 6.dp))
         bike.watchedParts.ifEmpty { bike.parts }.take(3).forEach { p ->
-            val s = partState(p, odo, today)
+            val s = partState(p, odo, today, soon)
             HorizontalDivider(color = shop.line)
             Row(Modifier.fillMaxWidth().padding(vertical = rowPad), verticalAlignment = Alignment.CenterVertically) {
                 Icon(partIcon(p), shop.status(s.status), 24.dp)

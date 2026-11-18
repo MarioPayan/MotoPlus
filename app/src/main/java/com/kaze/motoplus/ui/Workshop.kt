@@ -27,7 +27,7 @@ import java.util.UUID
 
 @Composable
 fun WorkshopTab(vm: AppViewModel, bike: Bike) {
-    val count = bike.workshopItems(estimate(bike, vm.today).km, vm.today).count
+    val count = bike.workshopItems(estimate(bike, vm.today).km, vm.today, vm.prefs.soon).count
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Sheet {
             SectionTitle(stringResource(R.string.workshop_tab))
@@ -35,10 +35,38 @@ fun WorkshopTab(vm: AppViewModel, bike: Bike) {
             WorkshopRow("wrench", stringResource(R.string.p2_workshop_list), count) { vm.screen = Screen.order }
             WorkshopRow("check", stringResource(R.string.p2_from_workshop), count) { vm.openMaintenance(visit = true) }
         }
+        Sheet {
+            WorkshopRow("sliders", stringResource(R.string.thresholds_title), null, hint = stringResource(R.string.thresholds_entry_hint, vm.prefs.soon.kmPct, vm.prefs.soon.timePct)) { vm.screen = Screen.thresholds }
+            WorkshopRow("settings", stringResource(R.string.intervals_title), null, hint = stringResource(R.string.intervals_entry_hint)) { vm.openSetup(Screen.main) }
+        }
         if (vm.aiEnabled) Sheet { WorkshopRow("bulb", stringResource(R.string.p2_consult_ai), null, bike.reports.lastOrNull()?.let { localizedDate(it.at) }) { vm.screen = Screen.ai } }
         Sheet { WorkshopRow("history", stringResource(R.string.history), bike.history.size + bike.orders.size + bike.reports.size + bike.fuel.size + bike.rides.size + bike.readings.size + vm.papers.size + bike.parts.count { it.problem != null }) { vm.screen = Screen.history } }
         HistoryTimeline(vm, bike, compact = true)
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+/** Umbrales: one share of the interval, by km and by time, at which every part turns coming due. */
+@Composable
+fun ThresholdsScreen(vm: AppViewModel, bike: Bike) {
+    val soon = vm.prefs.soon
+    var km by remember { mutableStateOf(soon.kmPct.toString()) }
+    var time by remember { mutableStateOf(soon.timePct.toString()) }
+    fun valid(v: String) = v.toIntOrNull()?.let { it in SoonThreshold.RANGE } == true
+    fun save() { if (valid(km) && valid(time)) vm.setSoon(km.toInt(), time.toInt()) }
+    WorkshopPage(stringResource(R.string.thresholds_title), { vm.screen = Screen.main }) {
+        Hint(stringResource(R.string.thresholds_hint))
+        Sheet {
+            IntegerField(km, { km = it; save() }, stringResource(R.string.thresholds_km), Modifier.fillMaxWidth(), maxDigits = 2, grouping = false)
+            Spacer(Modifier.height(10.dp))
+            IntegerField(time, { time = it; save() }, stringResource(R.string.thresholds_time), Modifier.fillMaxWidth(), maxDigits = 2, grouping = false)
+            if (!valid(km) || !valid(time)) Hint(stringResource(R.string.thresholds_invalid, SoonThreshold.RANGE.first, SoonThreshold.RANGE.last), LocalShop.current.bad)
+        }
+        // A worked example on a real part with both intervals, so the percentages read as km and days.
+        bike.parts.firstOrNull { it.id == "engine_oil" && it.km != null && it.days != null }?.let { p ->
+            Hint(stringResource(R.string.thresholds_example, partLabel(p), distance(p.km!! * vm.prefs.soon.kmPct / 100), p.days!! * vm.prefs.soon.timePct / 100))
+        }
+        Btn(stringResource(R.string.intervals_title), { vm.openSetup(Screen.thresholds) }, Modifier.fillMaxWidth(), ghost = true, icon = "settings")
     }
 }
 
@@ -84,7 +112,7 @@ internal fun FormField(value: String, label: String, onChange: (String) -> Unit,
 @Composable
 fun OrderScreen(vm: AppViewModel, bike: Bike) {
     val open = bike.openOrder()
-    val items = bike.workshopItems(estimate(bike, vm.today).km, vm.today)
+    val items = bike.workshopItems(estimate(bike, vm.today).km, vm.today, vm.prefs.soon)
     var ids by remember(bike.id, open?.id) { mutableStateOf(items.partIds) }
     var custom by remember(bike.id, open?.id) { mutableStateOf(items.customItems) }
     var notes by remember(bike.id, open?.id) { mutableStateOf(open?.notes.orEmpty()) }

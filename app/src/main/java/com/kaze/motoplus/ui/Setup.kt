@@ -70,7 +70,7 @@ fun SetupScreen(vm: AppViewModel, bike: Bike) {
             Column {
                 bike.parts.byCategory().forEach { (c, parts) ->
                     WatchCategory(c, parts) { vm.watchCategory(c, it) }
-                    parts.forEach { p -> key(p.id) { SetupRow(p, partState(p, odo, vm.today), { vm.editing = p.id }, { vm.watch(p.id, it) }, if (p.isCustom) ({ deleting = p }) else null) } }
+                    parts.forEach { p -> key(p.id) { SetupRow(p, partState(p, odo, vm.today, vm.prefs.soon), { vm.editing = p.id }, { vm.watch(p.id, it) }, if (p.isCustom) ({ deleting = p }) else null) } }
                 }
             }
             Btn(stringResource(R.string.add_own_part), { adding = true }, Modifier.fillMaxWidth(), ghost = true, icon = "plus")

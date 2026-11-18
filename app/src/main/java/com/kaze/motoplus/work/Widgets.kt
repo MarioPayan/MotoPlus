@@ -34,6 +34,7 @@ import com.kaze.motoplus.R
 import com.kaze.motoplus.ui.partLabel
 import com.kaze.motoplus.MainActivity
 import com.kaze.motoplus.data.Drawing
+import com.kaze.motoplus.data.Prefs
 import com.kaze.motoplus.data.Repo
 import com.kaze.motoplus.domain.*
 import com.kaze.motoplus.ui.ICONS
@@ -51,7 +52,7 @@ private fun dark(ctx: Context) = when (ctx.getSharedPreferences("display", Conte
 private fun Shop.argb(s: Status) = status(s).toArgb()
 
 /** Most urgent watched part of the selected bike, for the small widget. */
-private fun urgent(bike: Bike, today: LocalDate) = bike.watchedParts.map { it to partState(it, estimate(bike, today).km, today) }.maxByOrNull { it.second.used }
+private fun urgent(bike: Bike, today: LocalDate, soon: SoonThreshold) = bike.watchedParts.map { it to partState(it, estimate(bike, today).km, today, soon) }.maxByOrNull { it.second.used }
 
 /** 2×2: the most urgent part in its life ring. */
 class SmallWidget : GlanceAppWidget() {
@@ -71,7 +72,7 @@ class SmallWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (bike == null) { Text(ctx.getString(R.string.add_bike_title), style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
-            val (p, s) = urgent(bike, today) ?: return@Column
+            val (p, s) = urgent(bike, today, Prefs.load(ctx).soon) ?: return@Column
             Text(bike.model.uppercase(), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace))
             Spacer(GlanceModifier.height(6.dp))
             Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 180)), partLabel(p, ctx), GlanceModifier.size(64.dp))
@@ -98,12 +99,13 @@ class LargeWidget : GlanceAppWidget() {
         Column(GlanceModifier.fillMaxSize().background(shop.paper).cornerRadius(24.dp).padding(horizontal = 14.dp, vertical = 10.dp)) {
             if (bike == null) { Text(ctx.getString(R.string.add_bike_title), style = TextStyle(color = ColorProvider(shop.ink))); return@Column }
             val odo = estimate(bike, today)
+            val soon = Prefs.load(ctx).soon
             Row(GlanceModifier.fillMaxWidth().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
-                Text(ctx.getString(R.string.widget_health, bike.model.uppercase(), health(bike, odo.km, today)), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
+                Text(ctx.getString(R.string.widget_health, bike.model.uppercase(), health(bike, odo.km, today, soon)), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
                 Text(ctx.getString(R.string.p2_km_value, formatKm(odo.km.toInt(), ctx.resources.configuration.locales[0])), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
             }
             Image(
-                ImageProvider(plateBitmap(ctx, bike, shop, today, 720)), ctx.getString(R.string.widget_bike_description),
+                ImageProvider(plateBitmap(ctx, bike, shop, today, soon, 720)), ctx.getString(R.string.widget_bike_description),
                 GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity<MainActivity>()), contentScale = androidx.glance.layout.ContentScale.Fit,
             )
             Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End) { RideButton(ctx, shop) }
@@ -140,7 +142,7 @@ suspend fun updateWidgets(ctx: Context) {
 
 private val drawings = mutableMapOf<String, Drawing>()
 
-private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, width: Int): Bitmap {
+private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, soon: SoonThreshold, width: Int): Bitmap {
     val name = silhouette(bike.category)
     val d = drawings.getOrPut(name) { runCatching { Drawing.load(ctx, "bike_$name.json") }.getOrElse { Drawing.load(ctx) } }
     val (vx, vy, vw, vh) = d.viewBox
@@ -148,7 +150,7 @@ private fun plateBitmap(ctx: Context, bike: Bike, shop: Shop, today: LocalDate, 
     val bmp = Bitmap.createBitmap(width, (vh * s).toInt(), Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     c.scale(s, s); c.translate(-vx, -vy)
-    val zones = zoneStates(bike, estimate(bike, today).km, today)
+    val zones = zoneStates(bike, estimate(bike, today).km, today, soon)
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     val grid = Paint().apply { color = shop.plate.copy(alpha = .1f).toArgb(); strokeWidth = 1f }

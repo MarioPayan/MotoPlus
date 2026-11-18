@@ -25,7 +25,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class Tab { bike, km, papers, report }
-enum class Screen { main, setup, customize, part, history, zone, doc, control, fuel, order, maintenance, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi }
+enum class Screen { main, setup, customize, part, history, zone, doc, control, fuel, order, maintenance, check, data, kmSources, settings, ai, aiReview, aiError, invoiceAi, thresholds }
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val drawings = mutableMapOf<String, Drawing>()
@@ -65,6 +65,17 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         Prefs.save(app, prefs)
         if (before.on(Feature.kmAuto) != prefs.on(Feature.kmAuto)) com.kaze.motoplus.work.Tracker.register(app)
         if (!before.reminders && prefs.reminders || !before.on(Feature.papers) && prefs.on(Feature.papers)) com.kaze.motoplus.work.ReminderWorker.runNow(app)
+        if (before.soon != prefs.soon) {
+            // Coming due moved for every part: reminders and both widgets follow.
+            com.kaze.motoplus.work.ReminderWorker.runNow(app)
+            viewModelScope.launch { com.kaze.motoplus.work.updateWidgets(app) }
+        }
+    }
+
+    /** Taller → Umbrales: the share of each interval left at which every part turns coming due. Out of range is ignored. */
+    fun setSoon(kmPct: Int, timePct: Int) {
+        if (kmPct !in SoonThreshold.RANGE || timePct !in SoonThreshold.RANGE) return
+        updatePrefs { it.copy(soon = SoonThreshold(kmPct, timePct)) }
     }
 
     /** Tabs left after hidden features; the bar re-flows. */
@@ -75,7 +86,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun routeOpen(s: Screen) = when (s) {
         Screen.fuel -> prefs.on(Feature.fuel)
         Screen.check -> prefs.on(Feature.checks) && checkSteps().isNotEmpty()
-        Screen.order -> prefs.on(Feature.workshop)
+        Screen.order, Screen.thresholds -> prefs.on(Feature.workshop)
         Screen.maintenance -> maintenance?.visit != true || prefs.on(Feature.workshop)
         Screen.doc, Screen.control -> prefs.on(Feature.papers)
         Screen.ai, Screen.aiReview, Screen.aiError, Screen.invoiceAi -> aiEnabled
@@ -389,15 +400,15 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val odo = estimate(b, today).km
         val order = if (visit) b.openOrder() else null
         val checked = when {
-            visit -> b.quickPick(QuickPick.pending, odo, today)
-            preset != null -> b.quickPick(preset, odo, today)
+            visit -> b.quickPick(QuickPick.pending, odo, today, prefs.soon)
+            preset != null -> b.quickPick(preset, odo, today, prefs.soon)
             partId != null && b.parts.any { it.id == partId } -> listOf(partId)
             else -> emptyList()
         }
         return MaintenanceDraft(visit, screen, order?.id, today.toString(), odo.toInt().toString(), if (visit) Venue.shop else null,
             checked = checked,
             notes = order?.let { o -> o.itemNotes + o.customItems.filter { it.note.isNotBlank() }.associate { it.id to it.note } }.orEmpty(),
-            custom = if (visit) b.workshopItems(odo, today).customItems.map { DraftJob(it.id, it.name, fromOrder = true) } else emptyList())
+            custom = if (visit) b.workshopItems(odo, today, prefs.soon).customItems.map { DraftJob(it.id, it.name, fromOrder = true) } else emptyList())
     }
 
     fun saveMaintenance(d: MaintenanceDraft) {

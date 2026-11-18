@@ -21,6 +21,8 @@ data class Preferences(
     val density: Density = Density.comfortable,
     /** Off stops maintenance and paper notifications only; nothing else changes. */
     val reminders: Boolean = true,
+    /** When a part turns "coming due", for every part. */
+    val soon: SoonThreshold = SoonThreshold(),
 ) {
     fun on(f: Feature) = f in features
 
