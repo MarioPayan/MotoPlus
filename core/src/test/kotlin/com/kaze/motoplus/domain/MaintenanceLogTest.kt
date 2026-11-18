@@ -30,13 +30,26 @@ class MaintenanceLogTest {
         assertEquals(b, GarageCodec.decode(GarageCodec.encode(Garage(bikes = listOf(b)))).bikes.single())
     }
 
-    @Test fun addsAReadingOnlyWhenTodayAndAboveTheEstimate() {
+    @Test fun addsAReadingOnlyWhenTodayAndOffTheEstimate() {
         assertEquals(bike.readings, log(km = 12000).readings)
-        assertEquals(bike.readings, log(km = 11900).readings)
+        val below = log(km = 11900)
+        assertEquals(bike.readings + Reading(today.toString(), 11900, 99), below.readings)
+        assertEquals(11900.0, estimate(below, today).km, 0.0)
         assertEquals(bike.readings, log(date = "2026-10-20", km = 12500).readings)
         val above = log(km = 12500)
         assertEquals(bike.readings + Reading(today.toString(), 12500, 99), above.readings)
         assertEquals(12500.0, estimate(above, today).km, 0.0)
+    }
+
+    /** Tester note: an oil change logged at the real odometer, below an estimate that had run ahead, left 1.500 km of 6.000. */
+    @Test fun anOilChangeResetsTheIntervalWhenTheEstimateRanAhead() {
+        val ahead = bike.copy(rides = listOf(Ride(today.toString(), 4500.0, at = 50, estimated = true)))
+        assertEquals(16500.0, estimate(ahead, today).km, 0.0)
+        val b = log(ahead, km = 12000, jobs = listOf(LoggedJob("engine_oil"), LoggedJob("oil_filter")))
+        val odo = estimate(b, today).km
+        assertEquals(12000.0, odo, 0.0)
+        assertEquals(6000, partState(b.parts.first { it.id == "engine_oil" }, odo, today).left)
+        assertEquals(12000, partState(b.parts.first { it.id == "oil_filter" }, odo, today).left)
     }
 
     @Test fun rejectsFutureDatesAndEmptyLogs() {

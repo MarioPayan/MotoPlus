@@ -125,6 +125,13 @@ fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
     return copy(readings = readings + Reading(today.toString(), km, now), gpsFactor = factor)
 }
 
+/**
+ * A job logged for today at [km] is also the odometer right now. Any km other than the estimate's own becomes a
+ * reading, below the estimate too: otherwise an overshooting estimate keeps eating the interval the job just reset.
+ */
+fun Bike.withServiceReading(date: String, km: Int, today: LocalDate, now: Long = 0): Bike =
+    if (date == today.toString() && km != estimate(this, today).km.toInt()) withReading(km, today, now) else this
+
 /** Fixes a mistyped latest reading (and the fill-up that brought it): it is replaced, never added on top of. */
 fun Bike.replaceLastReading(km: Int, today: LocalDate, now: Long = 0): Bike {
     val last = readings.maxWith(compareBy({ it.date }, { it.at }))

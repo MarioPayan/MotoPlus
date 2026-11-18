@@ -31,7 +31,7 @@ fun Bike.quickPick(pick: QuickPick, odo: Double, today: LocalDate): List<String>
 
 /**
  * Many jobs at one date and odometer reading: one record per job, all sharing a new group id.
- * A reading taken today above the estimate becomes an odometer reading. With [orderId], the done jobs leave that
+ * A km for today that differs from the estimate becomes an odometer reading. With [orderId], the done jobs leave that
  * Taller list; it closes, keeping its last jobs for the history, only when none remain.
  */
 fun Bike.logMaintenance(
@@ -42,7 +42,7 @@ fun Bike.logMaintenance(
     require(jobs.all { j -> j.cost == null || (j.cost.isFinite() && j.cost >= 0) })
     val order = orders.firstOrNull { it.id == orderId && !it.closed }
     val group = newId()
-    var b = if (date == today.toString() && km > estimate(this, today).km.toInt()) withReading(km, today, now) else this
+    var b = withServiceReading(date, km, today, now)
     for (j in jobs) {
         val part = parts.any { it.id == j.id }
         if (!part && j.name.isNullOrBlank()) continue

@@ -286,7 +286,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val old = bike?.history?.firstOrNull { it.id == d.id }
         val r = (old ?: ServiceRecord(UUID.randomUUID().toString(), d.partId, d.date, km))
             .copy(date = d.date, km = km, cost = parseAmount(d.cost, localizedLocale(app)), notes = d.notes.trim(), photo = d.photo)
-        updateBike { if (d.id == null) it.addRecord(r) else it.updateRecord(r) }
+        updateBike { if (d.id == null) it.withServiceReading(r.date, r.km, today, System.currentTimeMillis()).addRecord(r) else it.updateRecord(r) }
         recording = null
         message = if (d.id == null) text(R.string.record_saved) else text(R.string.record_updated)
     }
