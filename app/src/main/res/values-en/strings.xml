@@ -316,7 +316,7 @@
     <string name="no_alerts">All up to date</string>
     <string name="photo_save_failed">Could not save the photo</string>
     <string name="widget_small">Your bike’s most urgent part</string>
-    <string name="widget_large">Your bike drawing, distance and shortcuts</string>
+    <string name="widget_large">Your bike drawing, distance and what to check soon</string>
     <string name="drive_setup_error">Drive is not configured for this app yet.</string>
     <string name="offline_error">Offline. Try again with an internet connection.</string>
     <string name="drive_expired_error">Drive access expired. Connect again.</string>
@@ -710,4 +710,6 @@
     <string name="thresholds_example">%1$s: alert when %2$s km or %3$d days are left</string>
     <string name="intervals_title">Part intervals</string>
     <string name="intervals_entry_hint">How often each part is due</string>
+    <string name="widget_all_good">All up to date</string>
+    <string name="widget_more">+%1$d</string>
 </resources>

@@ -317,7 +317,7 @@
     <string name="no_alerts">Todo al día</string>
     <string name="photo_save_failed">No pude guardar la foto</string>
     <string name="widget_small">La pieza más urgente de tu moto</string>
-    <string name="widget_large">Tu moto en la lámina, con los km y accesos rápidos</string>
+    <string name="widget_large">Tu moto en la lámina, con los km y lo que hay que revisar pronto</string>
     <string name="drive_setup_error">Drive aún no está configurado para esta app.</string>
     <string name="offline_error">Sin conexión. Inténtalo con internet.</string>
     <string name="drive_expired_error">El acceso a Drive caducó. Vuelve a conectar.</string>
@@ -711,4 +711,6 @@
     <string name="thresholds_example">%1$s: aviso cuando le queden %2$s km o %3$d días</string>
     <string name="intervals_title">Intervalos de las piezas</string>
     <string name="intervals_entry_hint">Cada cuánto toca cada pieza</string>
+    <string name="widget_all_good">Todo al día</string>
+    <string name="widget_more">+%1$d</string>
 </resources>

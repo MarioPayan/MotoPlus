@@ -126,6 +126,12 @@ fun upNext(bike: Bike, odo: Double, today: LocalDate, soon: SoonThreshold = Soon
     bike.watchedParts.map { it to partState(it, odo, today, soon) }.filter { it.second.status != Status.ok && !it.first.snoozed(today) }
         .sortedByDescending { it.second.used }
 
+/** What to look at soon, for the wide widget: watched, unsnoozed parts overdue (first) or coming due, most used first. */
+fun Bike.dueSoon(odo: Double, today: LocalDate, soon: SoonThreshold = SoonThreshold()): List<Pair<Part, PartState>> =
+    watchedParts.filterNot { it.snoozed(today) }.map { it to partState(it, odo, today, soon) }
+        .filter { it.second.status == Status.bad || it.second.status == Status.warn }
+        .sortedWith(compareBy<Pair<Part, PartState>> { if (it.second.status == Status.bad) 0 else 1 }.thenByDescending { it.second.used })
+
 /** Records a real odometer reading and, when GPS rides covered the gap, recalibrates the GPS factor. */
 fun Bike.withReading(km: Int, today: LocalDate, now: Long = 0): Bike {
     val est = estimate(this, today)

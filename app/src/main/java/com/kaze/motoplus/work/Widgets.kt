@@ -83,7 +83,10 @@ class SmallWidget : GlanceAppWidget() {
     }
 }
 
-/** 4×2: the plate with its status colours, the odometer and Salgo. */
+/**
+ * 4×2, the wide one: health and odometer on top; the plate on the left and, beside it, the parts to look at soon
+ * (overdue first) above Salgo. Only status: logging happens in the app.
+ */
 class LargeWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -104,12 +107,42 @@ class LargeWidget : GlanceAppWidget() {
                 Text(ctx.getString(R.string.widget_health, bike.model.uppercase(), health(bike, odo.km, today, soon)), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
                 Text(ctx.getString(R.string.p2_km_value, formatKm(odo.km.toInt(), ctx.resources.configuration.locales[0])), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
             }
-            Image(
-                ImageProvider(plateBitmap(ctx, bike, shop, today, soon, 720)), ctx.getString(R.string.widget_bike_description),
-                GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity<MainActivity>()), contentScale = androidx.glance.layout.ContentScale.Fit,
-            )
-            Row(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.End) { RideButton(ctx, shop) }
+            Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    ImageProvider(plateBitmap(ctx, bike, shop, today, soon, 720)), ctx.getString(R.string.widget_bike_description),
+                    GlanceModifier.defaultWeight().fillMaxHeight().clickable(actionStartActivity<MainActivity>()), contentScale = androidx.glance.layout.ContentScale.Fit,
+                )
+                Spacer(GlanceModifier.width(8.dp))
+                Column(GlanceModifier.width(DUE_COLUMN).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
+                        DueParts(ctx, shop, bike.dueSoon(odo.km, today, soon))
+                    }
+                    RideButton(ctx, shop)
+                }
+            }
         }
+    }
+}
+
+private val DUE_COLUMN = 84.dp
+private const val DUE_SHOWN = 4
+
+/** Up to four life rings, two per row, then "+N"; or Todo al día. */
+@Composable
+private fun DueParts(ctx: Context, shop: Shop, due: List<Pair<Part, PartState>>) {
+    if (due.isEmpty()) {
+        Text(ctx.getString(R.string.widget_all_good), style = TextStyle(color = ColorProvider(shop.ok), fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
+        return
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        due.take(DUE_SHOWN).chunked(2).forEach { row ->
+            Row {
+                row.forEach { (p, s) ->
+                    Image(ImageProvider(ringBitmap(ctx, shop, partIcon(p), s.status, s.used, 108)), partLabel(p, ctx) + ": " + remaining(s, ctx), GlanceModifier.size(36.dp))
+                }
+            }
+        }
+        if (due.size > DUE_SHOWN) Text(ctx.getString(R.string.widget_more, due.size - DUE_SHOWN), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace))
     }
 }
 

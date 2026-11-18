@@ -75,6 +75,20 @@ class DomainTest {
         assertEquals(Status.bad, partState(oil, 16000.0, today, SoonThreshold(50, 50)).status)
     }
 
+    @Test fun dueSoonPutsOverdueFirstAndSkipsTheRest() {
+        val b = bike(parts = listOf(
+            Part("soon", "drivetrain", "Engrase", km = 600, lastKm = 11760),            // 50 left: coming due, 92 % used
+            Part("late", "front_brake", "Pastillas", km = 10000, lastKm = 2000),         // overdue, 103 % used
+            Part("fine", "engine", "Aceite", km = 6000, lastKm = 12000),                 // ok
+            Part("never", "battery", "Batería", days = 180),                             // never recorded
+            Part("hidden", "fork", "Horquilla", km = 1000, lastKm = 11000, watched = false),
+            Part("napping", "lights", "Luces", km = 1000, lastKm = 11000, snoozedUntil = "2026-11-01"),
+        ))
+        assertEquals(listOf("late", "soon"), b.dueSoon(12310.0, today).map { it.first.id })
+        assertEquals(listOf("late"), b.dueSoon(12310.0, today, SoonThreshold(5, 5)).map { it.first.id })
+        assertTrue(bike(parts = listOf(Part("fine", "engine", "Aceite", km = 6000, lastKm = 12000))).dueSoon(12310.0, today).isEmpty())
+    }
+
     @Test fun zoneTakesWorstPart() {
         val b = bike(parts = listOf(
             Part("x", "drivetrain", "Engrase", km = 600, lastKm = 12100),
