@@ -17,6 +17,8 @@ class DistanceMeter(
     private var lon = 0.0
     private var at = 0L
     private var has = false
+    /** Fix time and total meters after each counted step, so the km since any moment can be told. */
+    private val steps = ArrayList<Pair<Long, Double>>()
 
     /** Returns true when the fix counted as movement. */
     fun add(latitude: Double, longitude: Double, accuracyM: Float, timeMs: Long): Boolean {
@@ -28,10 +30,14 @@ class DistanceMeter(
         if (d < maxOf(minStepM, accuracyM.toDouble())) return false
         if (dt > 0 && d / dt > maxSpeedMs) { lat = latitude; lon = longitude; at = timeMs; return false }
         meters += d; lat = latitude; lon = longitude; at = timeMs; lastMovingAt = timeMs
+        steps += timeMs to meters
         return true
     }
 
     val km get() = meters / 1000.0
+
+    /** Km from fixes taken after [timeMs]. */
+    fun kmSince(timeMs: Long): Double = (meters - (steps.lastOrNull { it.first <= timeMs }?.second ?: 0.0)) / 1000.0
 }
 
 fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

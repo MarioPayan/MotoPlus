@@ -44,6 +44,7 @@ import com.kaze.motoplus.domain.estimateIsOver
 import com.kaze.motoplus.domain.isPastEstimateCap
 import com.kaze.motoplus.domain.isParked
 import com.kaze.motoplus.domain.orphanRide
+import com.kaze.motoplus.domain.rideKm
 import com.kaze.motoplus.ui.rideSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -290,7 +291,7 @@ class RideService : Service() {
     private val callback = object : LocationCallback() {
         override fun onLocationResult(r: LocationResult) {
             for (l in r.locations) meter.add(l.latitude, l.longitude, l.accuracy, l.time)
-            Tracker.set(LiveRide(trigger, device, meter.km, startedAt))
+            Tracker.set(LiveRide(trigger, device, km(), startedAt))
             Tracker.notify(this@RideService, ID_LIVE, liveNotification())
             checkpoint()
         }
@@ -340,9 +341,12 @@ class RideService : Service() {
         Tracker.whenCarConnected(this, t.carDevices.keys) { carBluetooth = true; checkCar() }
     }
 
+    /** The ride's km so far, from the last reading the rider typed during it if there is one. */
+    private fun km() = Repo.garage.value.selected?.rideKm(startedAt, meter) ?: meter.km
+
     private fun checkpoint() {
         val bike = Repo.garage.value.selected ?: return
-        Tracker.writeCheckpoint(this, RideCheckpoint(bike.id, trigger, device, meter.km, startedAt, System.currentTimeMillis(), carBluetooth, androidAuto))
+        Tracker.writeCheckpoint(this, RideCheckpoint(bike.id, trigger, device, bike.rideKm(startedAt, meter), startedAt, System.currentTimeMillis(), carBluetooth, androidAuto))
     }
 
     private fun checkCar() {
@@ -353,7 +357,7 @@ class RideService : Service() {
         val stop = PendingIntent.getService(this, 3, Intent(this, RideService::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 4, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)
-            .setContentTitle(getString(R.string.ride_recording, "%.1f".format(meter.km)))
+            .setContentTitle(getString(R.string.ride_recording, "%.1f".format(km())))
             .setContentText(Tracker.live.value?.label(this) ?: "").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
             .addAction(0, getString(R.string.ride_stop), stop).build()
     }
@@ -365,9 +369,9 @@ class RideService : Service() {
         handler.removeCallbacks(parkedCheck)
         if (::client.isInitialized) client.removeLocationUpdates(callback)
         carConnection?.removeObserver(autoObserver)
-        val km = meter.km
         Tracker.set(null)
         val bike = Repo.garage.value.selected
+        val km = km()
         val discarded = discardReason(trigger, carBluetooth, androidAuto, Repo.garage.value.tracking)
         if (discarded != null) {
             Tracker.notify(this, ID_DONE, NotificationCompat.Builder(this, CHANNEL_RIDE).setSmallIcon(R.drawable.ic_stat_moto)

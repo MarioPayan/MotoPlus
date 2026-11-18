@@ -34,6 +34,12 @@ class EstimateRideTest {
         assertEquals(RideTrigger.motion, ride.trigger)
     }
 
+    @Test fun aReadingTypedDuringTheSessionStartsItsKm() {
+        val typed = Garage(bikes = listOf(bike().copy(readings = bike().readings + Reading("2026-11-03", 1500, startedAt + hour / 2))),
+            tracking = Tracking(mode = TrackingMode.estimate))
+        assertEquals(12.5, typed.endEstimate(session, startedAt + hour, bogota).ride!!.km, 1e-9)
+    }
+
     @Test fun tooShortIsDropped() {
         val end = garage().endEstimate(session, startedAt + 30_000, bogota)
         assertEquals(EstimateDrop.tooShort, end.dropped)

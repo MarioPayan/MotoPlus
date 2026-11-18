@@ -38,6 +38,7 @@ import com.kaze.motoplus.domain.TrackingMode
 import com.kaze.motoplus.domain.estimatedKm
 import com.kaze.motoplus.domain.isPastEstimateCap
 import com.kaze.motoplus.domain.measuredKmh
+import com.kaze.motoplus.domain.readingDuring
 import com.kaze.motoplus.domain.Tracking
 import com.kaze.motoplus.domain.Feature
 import com.kaze.motoplus.work.Tracker
@@ -65,7 +66,7 @@ fun TrackingSummary(vm: AppViewModel) {
                     delay(10_000)
                 }
             }
-            Text(if (r.estimated) ctx.getString(R.string.live_estimate, decimal(estimatedKm(r.startedAt, now, t.estimateKmh))) else ctx.getString(R.string.live_ride, decimal(r.km)),
+            Text(if (r.estimated) ctx.getString(R.string.live_estimate, decimal(estimatedKm(vm.bike?.readingDuring(r.startedAt)?.at ?: r.startedAt, now, t.estimateKmh))) else ctx.getString(R.string.live_ride, decimal(r.km)),
                 fontWeight = FontWeight.SemiBold, color = shop.accent)
             Hint(ctx.getString(when (r.trigger) { RideTrigger.manual -> R.string.manual; RideTrigger.motion -> R.string.motion; RideTrigger.bluetooth -> R.string.bluetooth }))
             Btn(ctx.getString(R.string.finish_ride), { Tracker.stop(ctx) }, Modifier.fillMaxWidth())

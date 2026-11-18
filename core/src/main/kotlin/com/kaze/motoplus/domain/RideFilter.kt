@@ -28,6 +28,15 @@ fun isParked(now: Long, lastMovingAt: Long, startedAt: Long) = now - maxOf(lastM
 /** Below this a ride is GPS noise, not a trip. */
 const val MIN_RIDE_KM = 0.3
 
+/** The latest odometer reading the rider typed after [startedAt], while a ride was open. */
+fun Bike.readingDuring(startedAt: Long): Reading? = readings.filter { it.at > startedAt }.maxByOrNull { it.at }
+
+/**
+ * A reading typed mid-ride is the odometer at that moment, so the ride only adds what it covered after it.
+ * Counting it all would add the km before the reading twice.
+ */
+fun Bike.rideKm(startedAt: Long, meter: DistanceMeter): Double = readingDuring(startedAt)?.let { meter.kmSince(it.at) } ?: meter.km
+
 /** What a live ride keeps on disk so that a system kill, which skips onDestroy, doesn't lose it. [lastAt] is when it was written. */
 @Serializable
 data class RideCheckpoint(

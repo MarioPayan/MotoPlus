@@ -53,9 +53,11 @@ data class EstimateEnd(val km: Double, val ride: Ride?, val dropped: EstimateDro
  * "Already saved" means a kill landed between saving the ride and deleting the session.
  */
 fun Garage.endEstimate(s: EstimateSession, now: Long, zone: ZoneId): EstimateEnd {
-    val km = estimatedKm(s.startedAt, now, tracking.estimateKmh)
+    val bike = bikes.firstOrNull { it.id == s.bikeId }
+    // A reading typed during the session is the odometer then: only the time after it adds km.
+    val km = estimatedKm(bike?.readingDuring(s.startedAt)?.at ?: s.startedAt, now, tracking.estimateKmh)
     fun dropped(why: EstimateDrop) = EstimateEnd(km, null, why)
-    val bike = bikes.firstOrNull { it.id == s.bikeId } ?: return dropped(EstimateDrop.noBike)
+    if (bike == null) return dropped(EstimateDrop.noBike)
     if (bike.rides.any { it.at >= s.startedAt }) return dropped(EstimateDrop.alreadySaved)
     if (isPastEstimateCap(s.startedAt, now)) return dropped(EstimateDrop.tooLong)
     if (discardReason(s.trigger, s.carBluetooth, false, tracking) != null) return dropped(EstimateDrop.carBluetooth)

@@ -183,5 +183,23 @@ class DistanceTest {
         assertEquals(0.27, m.km, 0.04)
     }
 
+    /** Tester note: a reading of 60.649 typed while parked at the end of a ride, then the ride ended and added its 2,36 km on top. */
+    @Test fun aReadingTypedMidRideKeepsOnlyTheKmAfterIt() {
+        val m = DistanceMeter()
+        var t = 1_000L
+        // ~2.3 km before the reading, ~0.6 km after it
+        for (i in 0..23) { m.add(40.0 + i * 0.0009, -3.7, 8f, t); t += 5000 }
+        val readingAt = t
+        for (i in 24..29) { m.add(40.0 + i * 0.0009, -3.7, 8f, t + 1); t += 5000 }
+        val bike = Bike("b", "Y", "M", null, Category.naked, Drive.chain, Cooling.liquid, emptyList(), listOf(Reading("2026-11-18", 60000, 10)))
+        assertEquals(m.km, bike.rideKm(500, m), 0.0)
+        val typed = bike.withReading(60649, LocalDate.parse("2026-11-18"), readingAt)
+        val km = typed.rideKm(500, m)
+        assertEquals(0.6, km, 0.02)
+        assertEquals("the 23 steps before the reading are left out", m.km * 6 / 29, km, 1e-6)
+        val ended = typed.copy(rides = listOf(Ride("2026-11-18", km, RideTrigger.motion, at = t)))
+        assertEquals(60649 + km, estimate(ended, LocalDate.parse("2026-11-18")).km, 1e-9)
+    }
+
     @Test fun haversineKnownDistance() = assertEquals(111_195.0, haversine(0.0, 0.0, 1.0, 0.0), 50.0)
 }
