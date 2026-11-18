@@ -11,7 +11,10 @@ object GarageCodec {
 
     fun encode(g: Garage): String = json.encodeToString(g)
 
-    fun decode(text: String): Garage = json.decodeFromJsonElement(migrate(json.parseToJsonElement(text).jsonObject))
+    fun decode(text: String): Garage = json.decodeFromJsonElement<Garage>(migrate(json.parseToJsonElement(text).jsonObject)).withoutNoiseRides()
+
+    /** A ride under [MIN_RIDE_KM] is GPS noise and is never saved; one in an old file or an edited export is dropped on read. */
+    private fun Garage.withoutNoiseRides() = copy(bikes = bikes.map { b -> b.copy(rides = b.rides.filter { it.km >= MIN_RIDE_KM }) })
 
     fun migrate(root: JsonObject): JsonObject {
         var o = root

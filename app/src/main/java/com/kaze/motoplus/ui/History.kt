@@ -87,7 +87,8 @@ internal fun HistoryTimeline(vm: AppViewModel, bike: Bike, compact: Boolean = fa
     val orders = bike.orders.map { o -> HistoryEvent(o.date, "list-checks", stringResource(R.string.p2_workshop_list), stringResource(R.string.p2_km_value, distance(o.km))) { orderDetail = o } }
     val reports = bike.reports.map { r -> HistoryEvent(r.at, "bulb", r.data.title.ifBlank { stringResource(R.string.p2_report) }, stringResource(R.string.p2_km_value, distance(r.km))) { reportDetail = r } }
     val fuel = bike.fuel.map { f -> HistoryEvent(f.date, "fuel", stringResource(R.string.fillup), stringResource(R.string.p2_km_value, distance(f.km)) + (f.total?.let { " · " + money(it) } ?: "")) {} }
-    val rides = bike.rides.map { r -> HistoryEvent(r.date, "route", rideSource(r), stringResource(R.string.p2_km_value, distance(r.km.toInt()))) {} }
+    // One decimal like the Km tab: a short ride must not read "0 km".
+    val rides = bike.rides.map { r -> HistoryEvent(r.date, "route", rideSource(r), "+" + stringResource(R.string.p2_km_value, decimal(r.km))) {} }
     val readings = bike.readings.map { r -> HistoryEvent(r.date, "gauge", stringResource(R.string.reading), stringResource(R.string.p2_km_value, distance(r.km))) {} }
     val papers = vm.papers.map { d -> HistoryEvent(vm.today.toString(), "doc", documentLabel(d, androidx.compose.ui.platform.LocalContext.current), "") { vm.editDoc(d) } }
     val problems = bike.parts.mapNotNull { p -> p.problem?.let { HistoryEvent(it.date, "warning", partLabel(p), stringResource(problemLabel(it.kind))) { vm.openPart(p.id) } } }

@@ -21,6 +21,13 @@ class CodecTest {
          "selectedId":"b1","tracking":{"enabled":true,"devices":{"AA:BB":"Cardo"}}}
     """.trimIndent()
 
+    @Test fun noiseRidesNeverReachTheGarage() {
+        val bike = Bike("b", "Y", "M", null, Category.naked, Drive.chain, Cooling.liquid, emptyList(), listOf(Reading("2026-11-18", 60649, 1)),
+            rides = listOf(Ride("2026-11-18", 0.0, at = 2), Ride("2026-11-18", 0.01, at = 3), Ride("2026-11-18", MIN_RIDE_KM, at = 4), Ride("2026-11-18", 2.4, at = 5)))
+        val read = GarageCodec.decode(GarageCodec.encode(Garage(bikes = listOf(bike)))).bikes.single()
+        assertEquals(listOf(MIN_RIDE_KM, 2.4), read.rides.map { it.km })
+    }
+
     @Test fun migratesV1() {
         val g = GarageCodec.decode(v1)
         val b = g.bikes.single()
