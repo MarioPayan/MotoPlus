@@ -38,6 +38,7 @@ import com.kaze.motoplus.domain.Bike
 import com.kaze.motoplus.domain.Density
 import com.kaze.motoplus.domain.EstimateBasis
 import com.kaze.motoplus.domain.estimate
+import com.kaze.motoplus.domain.isProjected
 import com.kaze.motoplus.domain.suggested
 
 private val TABS = listOf(
@@ -180,8 +181,8 @@ private fun TopBar(vm: AppViewModel, bike: Bike, tab: Tab) {
             Box(Modifier.padding(start = 6.dp).border(1.dp, shop.line, RoundedCornerShape(3.dp))) { IconBtn("settings", stringResource(R.string.settings), { vm.screen = Screen.settings }) }
         }
         Row(Modifier.fillMaxWidth().clickable { vm.screen = Screen.kmSources }.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Cap(stringResource(if (est.basis == EstimateBasis.todayReading) R.string.read_today else R.string.estimated), modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.p2_km_value, distance(est.km.toInt())), style = Mono.copy(fontSize = 14.sp), color = shop.accent)
+            Cap(stringResource(when { est.basis == EstimateBasis.todayReading -> R.string.read_today; est.isProjected -> R.string.estimated_average; else -> R.string.estimated }), modifier = Modifier.weight(1f))
+            Text(stringResource(if (est.isProjected) R.string.approx_km_value else R.string.p2_km_value, distance(est.km.toInt())), style = Mono.copy(fontSize = 14.sp), color = shop.accent)
         }
     }
     if (open) ModalBottomSheet(onDismissRequest = { open = false }, containerColor = shop.sheet) {

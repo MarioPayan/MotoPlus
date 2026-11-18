@@ -153,7 +153,8 @@ private fun WelcomeSummary(vm: AppViewModel, bike: Bike) {
     @Composable fun yn(on: Boolean) = stringResource(if (on) R.string.yes_label else R.string.no_label)
     Hint(stringResource(R.string.summary_hint))
     Sheet(padding = 4.dp) {
-        SummaryLine("bike", bike.title, stringResource(R.string.p2_km_value, distance(estimate(bike, vm.today).km.toInt())))
+        val est = estimate(bike, vm.today)
+        SummaryLine("bike", bike.title, stringResource(if (est.isProjected) R.string.approx_km_value else R.string.p2_km_value, distance(est.km.toInt())))
         SummaryLine("gauge", stringResource(R.string.setup_watch), stringResource(R.string.watch_summary, bike.watchedParts.size, bike.parts.size))
         FEATURE_ROWS.forEach { (f, title, _, icon) -> SummaryLine(icon, stringResource(title), yn(p.on(f)), p.on(f)) }
         SummaryLine("bulb", stringResource(R.string.ai_features), stringResource(R.string.coming_soon), false)

@@ -49,6 +49,9 @@
     <string name="km_unit">KM</string>
     <string name="read_today">LEÍDO HOY</string>
     <string name="estimated">≈ ESTIMADO</string>
+    <string name="estimated_average">≈ ESTIMADO POR PROMEDIO</string>
+    <string name="projected_breakdown">Última lectura %1$s km + %2$s km estimados por promedio</string>
+    <string name="approx_km_value">≈ %1$s km</string>
     <string name="moto_tab">MOTO</string>
     <string name="km_tab">KM</string>
     <string name="papers_tab">PAPELES</string>

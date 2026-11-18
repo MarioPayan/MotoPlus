@@ -18,8 +18,20 @@ data class ZoneState(val status: Status, val worst: Double, val parts: List<Pair
 
 enum class EstimateBasis { rides, todayReading, lastReading, average }
 
-/** [rides] counts GPS rides since the last reading; [kmPerDay] is the rider's average when [basis] is average. */
-data class OdoEstimate(val km: Double, val margin: Int, val basis: EstimateBasis, val gpsSinceReading: Double, val rides: Int = 0, val kmPerDay: Double = 0.0, val estimatedSinceReading: Double = 0.0)
+/**
+ * [rides] counts GPS rides since the last reading; [kmPerDay] is the rider's average when [basis] is average.
+ * [lastReadingKm] is the latest real reading the estimate starts from.
+ */
+data class OdoEstimate(val km: Double, val margin: Int, val basis: EstimateBasis, val gpsSinceReading: Double, val rides: Int = 0, val kmPerDay: Double = 0.0, val estimatedSinceReading: Double = 0.0, val lastReadingKm: Int = 0)
+
+/**
+ * Whole km of the shown odometer ([OdoEstimate.km] truncated, as every screen shows it) that come from projecting the
+ * rider's daily average, not from a reading or a recorded ride; 0 when nothing is projected.
+ */
+val OdoEstimate.projectedKm: Int get() = if (basis == EstimateBasis.average) km.toInt() - lastReadingKm else 0
+
+/** Part of the shown odometer is the daily-average projection, so screens mark it as estimated. */
+val OdoEstimate.isProjected: Boolean get() = projectedKm != 0
 
 private fun daysBetween(from: String, to: LocalDate) =
     max(0L, ChronoUnit.DAYS.between(LocalDate.parse(from), to)).toDouble()
@@ -42,12 +54,13 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
             gpsSinceReading = gps,
             rides = after.size,
             estimatedSinceReading = guessed,
+            lastReadingKm = last.km,
         )
     }
     val first = bike.readings.minBy { it.date }
     val span = daysBetween(first.date, LocalDate.parse(last.date))
     val d = daysBetween(last.date, today)
-    if (span < 1) return OdoEstimate(last.km.toDouble(), 0, if (d < 1) EstimateBasis.todayReading else EstimateBasis.lastReading, 0.0)
+    if (span < 1) return OdoEstimate(last.km.toDouble(), 0, if (d < 1) EstimateBasis.todayReading else EstimateBasis.lastReading, 0.0, lastReadingKm = last.km)
     val rate = (last.km - first.km) / span
     return OdoEstimate(
         km = last.km + rate * d,
@@ -55,6 +68,7 @@ fun estimate(bike: Bike, today: LocalDate): OdoEstimate {
         basis = if (d < 1) EstimateBasis.todayReading else EstimateBasis.average,
         gpsSinceReading = 0.0,
         kmPerDay = rate,
+        lastReadingKm = last.km,
     )
 }
 

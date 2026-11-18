@@ -98,7 +98,7 @@ private fun Dial(bike: Bike, est: OdoEstimate, month: Int, onCorrect: () -> Unit
     val shop = LocalShop.current
     val average = monthlyAverage(bike, java.time.LocalDate.now())
     Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Cap(stringResource(R.string.odometer))
+        Cap(stringResource(R.string.odometer) + if (est.isProjected) " · " + stringResource(R.string.estimated) else "")
         Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 40.dp)) {
                 val digits = distance(est.km.toInt())
@@ -108,6 +108,7 @@ private fun Dial(bike: Bike, est: OdoEstimate, month: Int, onCorrect: () -> Unit
             Box(Modifier.align(Alignment.CenterEnd)) { IconBtn("edit", stringResource(R.string.correct_reading), onCorrect) }
         }
         Text((if (est.margin > 0) stringResource(R.string.estimate_margin, distance(est.margin)) else "") + estimateSource(est), style = Mono.copy(fontSize = 11.sp), color = shop.ink2)
+        if (est.isProjected) Text(stringResource(R.string.projected_breakdown, distance(est.lastReadingKm), distance(est.projectedKm)), style = Mono.copy(fontSize = 11.sp), color = shop.ink2, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(22.dp))
         Cap(stringResource(R.string.month_distance, distance(month)), modifier = Modifier.align(Alignment.Start))
         Spacer(Modifier.height(8.dp))

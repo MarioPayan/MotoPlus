@@ -105,7 +105,7 @@ class LargeWidget : GlanceAppWidget() {
             val soon = Prefs.load(ctx).soon
             Row(GlanceModifier.fillMaxWidth().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
                 Text(ctx.getString(R.string.widget_health, bike.model.uppercase(), health(bike, odo.km, today, soon)), style = TextStyle(color = ColorProvider(shop.ink2), fontSize = 10.sp, fontFamily = FontFamily.Monospace), modifier = GlanceModifier.defaultWeight())
-                Text(ctx.getString(R.string.p2_km_value, formatKm(odo.km.toInt(), ctx.resources.configuration.locales[0])), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
+                Text(ctx.getString(if (odo.isProjected) R.string.approx_km_value else R.string.p2_km_value, formatKm(odo.km.toInt(), ctx.resources.configuration.locales[0])), style = TextStyle(color = ColorProvider(shop.ink), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace))
             }
             Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
                 Image(

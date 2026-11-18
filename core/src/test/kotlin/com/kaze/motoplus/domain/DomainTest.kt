@@ -28,6 +28,16 @@ class DomainTest {
         assertTrue(e.margin > 0)
     }
 
+    @Test fun projectedKmIsTheAverageShareOfTheShownOdometer() {
+        val e = estimate(bike(), today)
+        // 14 days since the 12 210 km reading at (12210 - 11020) / 69 km/day: the shown 12 451 km is 241 projected.
+        assertEquals(241, e.projectedKm)
+        assertEquals(e.km.toInt(), e.lastReadingKm + e.projectedKm)
+        assertTrue(e.isProjected)
+        assertEquals(0, estimate(bike(listOf(Ride("2026-10-12", 100.0))), today).projectedKm)
+        assertFalse(estimate(bike().withReading(12500, today), today).isProjected)
+    }
+
     @Test fun singleReadingIsExact() {
         val b = bike().copy(readings = listOf(Reading("2026-10-24", 500)))
         assertEquals(500.0, estimate(b, today).km, 0.0)
