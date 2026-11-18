@@ -105,11 +105,18 @@ fun SettingsEntry(icon: String, label: String, sub: String? = null, onClick: () 
 }
 
 
+private const val RELEASES_URL = "https://github.com/MarioPayan/MotoPlus/releases/latest"
+
 @Composable
 private fun AboutScreen(vm: AppViewModel, onBack: () -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var license by remember { mutableStateOf<String?>(null) }
+    val version = remember { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }
     WorkshopPage(stringResource(R.string.p3_about), onBack) {
+        // ponytail: opens the releases page; an in-app download and install comes when sideloading needs it
+        SettingsEntry("external", stringResource(R.string.check_update), stringResource(R.string.installed_version, version ?: "")) {
+            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(RELEASES_URL)))
+        }
         SectionTitle(stringResource(R.string.p3_catalog_sources))
         vm.catalog?.sources?.values?.forEach { source -> Sheet { Text(source, style = MaterialTheme.typography.bodyLarge) } }
         SectionTitle(stringResource(R.string.p3_licenses))

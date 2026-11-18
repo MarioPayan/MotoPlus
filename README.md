@@ -38,3 +38,7 @@ node tools/icons/build.mjs            # regenera los vectores Phosphor y ui/Icon
 1. *Compartir con la IA* manda el estado completo de la moto por el menú Compartir de Android.
 2. La IA responde con un bloque ```` ```motoplus ```` en JSON, o con un enlace `https://motoplus.app/r?d=<base64url>` (JSON compacto UTF-8, versión 3; `kind`: `report` o `invoice`).
 3. El usuario comparte esa respuesta de vuelta a MotoPlus (o la pega) y la app abre **Revisar informe** antes de guardar y marcar las zonas. Las facturas abren **Completar visita** para revisar trabajos y costos. También acepta `motoplus://r?d=…` y los enlaces antiguos `/i#r=…`.
+
+## Releases
+
+Run `tools/release/release.sh` to build the signed APK and publish it as a GitHub release (`v<versionName>`). Install it from https://github.com/MarioPayan/MotoPlus/releases/latest; the app links there from Acerca de → Buscar actualización.

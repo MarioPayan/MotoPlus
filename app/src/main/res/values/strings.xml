@@ -716,4 +716,6 @@
     <string name="intervals_entry_hint">Cada cuánto toca cada pieza</string>
     <string name="widget_all_good">Todo al día</string>
     <string name="widget_more">+%1$d</string>
+    <string name="check_update">Buscar actualización</string>
+    <string name="installed_version">Versión instalada: %1$s</string>
 </resources>

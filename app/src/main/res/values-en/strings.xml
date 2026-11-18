@@ -715,4 +715,6 @@
     <string name="intervals_entry_hint">How often each part is due</string>
     <string name="widget_all_good">All up to date</string>
     <string name="widget_more">+%1$d</string>
+    <string name="check_update">Check for updates</string>
+    <string name="installed_version">Installed version: %1$s</string>
 </resources>
